@@ -34,9 +34,22 @@
 		348D934B2E97E2130044655A /* SystemAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioRecorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		348D934F2E97E3AE0044655A /* Exceptions for "SystemVoiceMemos" folder in "SystemVoiceMemos" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 346BD3012E974213001D2758 /* SystemVoiceMemos */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		346BD3042E974213001D2758 /* SystemVoiceMemos */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				348D934F2E97E3AE0044655A /* Exceptions for "SystemVoiceMemos" folder in "SystemVoiceMemos" target */,
+			);
 			path = SystemVoiceMemos;
 			sourceTree = "<group>";
 		};

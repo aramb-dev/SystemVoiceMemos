@@ -8,12 +8,48 @@ struct ContentView: View {
     @Query(sort: \RecordingEntity.createdAt, order: .reverse)
     private var recordings: [RecordingEntity]
 
+    @State private var recorder = SystemAudioRecorder()
+    @State private var isRecording = false
+
     // 👇 Ensure the app can call ContentView() without parameters
     init() {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
+                Button(isRecording ? "Stop Recording" : "Start Recording") {
+                    Task {
+                        if isRecording {
+                            await recorder.stopRecording()
+                            isRecording = false
+                        } else {
+                            do {
+                                let dir = try AppDirectories.recordingsDir()
+                                let formatter = DateFormatter()
+                                formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+                                let base = formatter.string(from: .now)
+                                let fileName = "\(base).m4a"
+                                let url = dir.appendingPathComponent(fileName)
+
+                                try await recorder.startRecording(to: url)
+
+                                // Insert SwiftData row
+                                let entity = RecordingEntity(
+                                    title: base,
+                                    createdAt: .now,
+                                    duration: 0,
+                                    fileName: fileName
+                                )
+                                modelContext.insert(entity)
+                                try? modelContext.save()
+
+                                isRecording = true
+                            } catch {
+                                print("startRecording error:", error)
+                            }
+                        }
+                    }
+                }
                 Button("New Test File") { createTestFileAndRow() }
                 Button("Open Folder") { openFolder() }
             }

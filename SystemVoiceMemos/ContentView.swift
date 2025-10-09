@@ -50,7 +50,6 @@ struct ContentView: View {
                         }
                     }
                 }
-                Button("New Test File") { createTestFileAndRow() }
                 Button("Open Folder") { openFolder() }
             }
 
@@ -75,29 +74,6 @@ struct ContentView: View {
     }
 
     // MARK: - Actions
-
-    private func createTestFileAndRow() {
-        do {
-            let dir = try AppDirectories.recordingsDir()
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
-            let base = formatter.string(from: .now)
-            let fileName = "\(base) test.txt"
-            let url = dir.appendingPathComponent(fileName)
-            try "hello from SystemVoiceMemos".data(using: .utf8)!.write(to: url)
-
-            let entity = RecordingEntity(
-                title: base,
-                createdAt: .now,
-                duration: 0,
-                fileName: fileName
-            )
-            modelContext.insert(entity)
-            try? modelContext.save()
-        } catch {
-            print("createTestFileAndRow error:", error)
-        }
-    }
 
     private func reveal(_ rec: RecordingEntity) {
         if let dir = try? AppDirectories.recordingsDir() {

@@ -1,66 +1,92 @@
-//
-//  ContentView.swift
-//  SystemVoiceMemos
-//
-//  Created by Abdur-Rahman Abu Musa Bilal on 10/8/25.
-//
-
 import SwiftUI
+import AppKit
 import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    // 👇 Explicit root type fixes “Cannot infer key path type…”
+    @Query(sort: \RecordingEntity.createdAt, order: .reverse)
+    private var recordings: [RecordingEntity]
+
+    // 👇 Ensure the app can call ContentView() without parameters
+    init() {}
 
     var body: some View {
-        NavigationSplitView {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Button("New Test File") { createTestFileAndRow() }
+                Button("Open Folder") { openFolder() }
+            }
+
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+                ForEach(recordings) { rec in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(rec.title).bold()
+                            Text(rec.createdAt.formatted(date: .numeric, time: .standard))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Show in Finder") { reveal(rec) }
+                        Button(role: .destructive) { delete(rec) } label: { Text("Delete") }
                     }
                 }
-                .onDelete(perform: deleteItems)
+                .onDelete(perform: delete(offsets:))
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+            .frame(minHeight: 320)
+        }
+        .padding()
+    }
+
+    // MARK: - Actions
+
+    private func createTestFileAndRow() {
+        do {
+            let dir = try AppDirectories.recordingsDir()
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+            let base = formatter.string(from: .now)
+            let fileName = "\(base) test.txt"
+            let url = dir.appendingPathComponent(fileName)
+            try "hello from SystemVoiceMemos".data(using: .utf8)!.write(to: url)
+
+            let entity = RecordingEntity(
+                title: base,
+                createdAt: .now,
+                duration: 0,
+                fileName: fileName
+            )
+            modelContext.insert(entity)
+            try? modelContext.save()
+        } catch {
+            print("createTestFileAndRow error:", error)
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+    private func reveal(_ rec: RecordingEntity) {
+        if let dir = try? AppDirectories.recordingsDir() {
+            let url = dir.appendingPathComponent(rec.fileName)
+            NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+    // Removed unnecessary do/catch (nothing here throws)
+    private func delete(_ rec: RecordingEntity) {
+        if let dir = try? AppDirectories.recordingsDir() {
+            let url = dir.appendingPathComponent(rec.fileName)
+            try? FileManager.default.removeItem(at: url)
+        }
+        modelContext.delete(rec)
+        try? modelContext.save()
+    }
+
+    private func delete(offsets: IndexSet) {
+        for index in offsets { delete(recordings[index]) }
+    }
+
+    private func openFolder() {
+        if let dir = try? AppDirectories.recordingsDir() {
+            NSWorkspace.shared.open(dir)
         }
     }
-}
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		348D934C2E97E2130044655A /* SystemAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348D934B2E97E2130044655A /* SystemAudioRecorder.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		346BD3132E974216001D2758 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		346BD3022E974213001D2758 /* SystemVoiceMemos.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SystemVoiceMemos.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		346BD3122E974216001D2758 /* SystemVoiceMemosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SystemVoiceMemosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		346BD31C2E974216001D2758 /* SystemVoiceMemosUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SystemVoiceMemosUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		348D934B2E97E2130044655A /* SystemAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioRecorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +80,7 @@
 		346BD2F92E974213001D2758 = {
 			isa = PBXGroup;
 			children = (
+				348D934B2E97E2130044655A /* SystemAudioRecorder.swift */,
 				346BD3042E974213001D2758 /* SystemVoiceMemos */,
 				346BD3152E974216001D2758 /* SystemVoiceMemosTests */,
 				346BD31F2E974216001D2758 /* SystemVoiceMemosUITests */,
@@ -236,6 +242,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				348D934C2E97E2130044655A /* SystemAudioRecorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,6 +404,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SystemVoiceMemos/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -436,6 +444,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SystemVoiceMemos/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

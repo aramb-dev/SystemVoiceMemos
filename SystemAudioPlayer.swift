@@ -7,6 +7,7 @@
 
 import Foundation
 import AVFoundation
+import MediaPlayer
 
 @MainActor
 final class PlaybackManager: NSObject, ObservableObject {
@@ -39,11 +40,24 @@ final class PlaybackManager: NSObject, ObservableObject {
     private var selectedRecording: RecordingInfo?
     private var player: AVAudioPlayer?
     private var timer: Timer?
+    private var nowPlayingInfo: [String: Any] = [:]
+    private var commandTargets: [(command: MPRemoteCommand, token: Any)] = []
 
     var isPlaying: Bool { phase == .playing }
     var hasSelection: Bool { selectedRecording != nil }
     var hasActivePlayer: Bool { player != nil }
     var canPlaySelection: Bool { hasSelection }
+
+    override init() {
+        super.init()
+        configureRemoteCommands()
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            tearDownRemoteCommands()
+        }
+    }
 
     func select(recording: RecordingEntity?, autoPlay: Bool = false) {
         guard let recording else {
@@ -102,9 +116,12 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     func stop() {
-        guard let player else { return }
+        guard let player else {
+            resetPlayerState(preserveSelection: true)
+            return
+        }
         player.stop()
-        resetPlayerState()
+        resetPlayerState(preserveSelection: true)
     }
 
     func seek(to time: TimeInterval) {
@@ -112,6 +129,7 @@ final class PlaybackManager: NSObject, ObservableObject {
         let clamped = max(0, min(time, player.duration))
         player.currentTime = clamped
         currentTime = clamped
+        updateNowPlayingElapsedTime()
     }
 
     func skip(by interval: TimeInterval) {
@@ -140,7 +158,7 @@ final class PlaybackManager: NSObject, ObservableObject {
         if let player {
             player.stop()
         }
-        resetPlayerState()
+        resetPlayerState(preserveSelection: true)
 
         do {
             let player = try AVAudioPlayer(contentsOf: info.url)
@@ -155,9 +173,10 @@ final class PlaybackManager: NSObject, ObservableObject {
             self.duration = player.duration
             self.currentTime = player.currentTime
             startTimer()
+            updateNowPlayingInfo(for: info, player: player)
         } catch {
             presentError(message: "Unable to play \(info.title)")
-            resetPlayerState()
+            resetPlayerState(preserveSelection: true)
         }
     }
 
@@ -165,28 +184,37 @@ final class PlaybackManager: NSObject, ObservableObject {
         player.pause()
         phase = .paused
         stopTimer()
+        updateNowPlayingPlaybackState(isPlaying: false)
     }
 
     private func resumePlayback(player: AVAudioPlayer) {
         player.play()
         phase = .playing
         startTimer()
+        updateNowPlayingPlaybackState(isPlaying: true)
     }
 
-    private func resetPlayerState() {
+    private func resetPlayerState(preserveSelection: Bool = false) {
         stopTimer()
         player = nil
         phase = .stopped
         activeRecordingID = nil
         currentTime = 0
         duration = 0
+        if !preserveSelection {
+            selectedRecording = nil
+            selectedRecordingID = nil
+        }
+        clearNowPlaying()
     }
 
     private func startTimer() {
         stopTimer()
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             guard let self else { return }
-            self.syncWithPlayer()
+            Task { @MainActor in
+                self.syncWithPlayer()
+            }
         }
     }
 
@@ -197,6 +225,7 @@ final class PlaybackManager: NSObject, ObservableObject {
         }
         currentTime = player.currentTime
         duration = player.duration
+        updateNowPlayingElapsedTime()
     }
 
     private func stopTimer() {
@@ -215,6 +244,107 @@ final class PlaybackManager: NSObject, ObservableObject {
 
     private func presentError(message: String) {
         error = PlaybackError(message: message)
+    }
+
+    private func configureRemoteCommands() {
+        let center = MPRemoteCommandCenter.shared()
+        let commands: [(MPRemoteCommand, (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus)] = [
+            (center.playCommand, { [weak self] _ in self?.handlePlayCommand() ?? .commandFailed }),
+            (center.pauseCommand, { [weak self] _ in self?.handlePauseCommand() ?? .commandFailed }),
+            (center.togglePlayPauseCommand, { [weak self] _ in self?.handleToggleCommand() ?? .commandFailed }),
+            (center.nextTrackCommand, { [weak self] _ in self?.handleSkipForwardCommand() ?? .commandFailed }),
+            (center.previousTrackCommand, { [weak self] _ in self?.handleSkipBackwardCommand() ?? .commandFailed })
+        ]
+
+        for (command, handler) in commands {
+            command.isEnabled = true
+            let token = command.addTarget(handler: handler)
+            commandTargets.append((command, token))
+        }
+    }
+
+    private func tearDownRemoteCommands() {
+        let center = MPRemoteCommandCenter.shared()
+        for entry in commandTargets {
+            entry.command.removeTarget(entry.token)
+        }
+        commandTargets.removeAll()
+        center.togglePlayPauseCommand.isEnabled = false
+        center.playCommand.isEnabled = false
+        center.pauseCommand.isEnabled = false
+        center.nextTrackCommand.isEnabled = false
+        center.previousTrackCommand.isEnabled = false
+    }
+
+    private func handlePlayCommand() -> MPRemoteCommandHandlerStatus {
+        if isPlaying { return .success }
+        playSelected()
+        return hasSelection ? .success : .noSuchContent
+    }
+
+    private func handlePauseCommand() -> MPRemoteCommandHandlerStatus {
+        guard hasActivePlayer else { return .noSuchContent }
+        if isPlaying {
+            togglePlayPause()
+        }
+        return .success
+    }
+
+    private func handleToggleCommand() -> MPRemoteCommandHandlerStatus {
+        togglePlayPause()
+        return hasSelection || hasActivePlayer ? .success : .noSuchContent
+    }
+
+    private func handleSkipForwardCommand() -> MPRemoteCommandHandlerStatus {
+        guard hasActivePlayer else { return .noSuchContent }
+        skip(by: 15)
+        return .success
+    }
+
+    private func handleSkipBackwardCommand() -> MPRemoteCommandHandlerStatus {
+        guard hasActivePlayer else { return .noSuchContent }
+        skip(by: -15)
+        return .success
+    }
+
+    private func updateNowPlayingInfo(for info: RecordingInfo, player: AVAudioPlayer) {
+        var infoDictionary: [String: Any] = [
+            MPMediaItemPropertyTitle: info.title,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: player.currentTime,
+            MPMediaItemPropertyPlaybackDuration: player.duration,
+            MPNowPlayingInfoPropertyPlaybackRate: 1.0
+        ]
+        if #available(macOS 14.0, *) {
+            infoDictionary[MPMediaItemPropertyArtist] = "System Voice Memos"
+        }
+        nowPlayingInfo = infoDictionary
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        updateNowPlayingPlaybackState(isPlaying: true)
+    }
+
+    private func updateNowPlayingElapsedTime() {
+        guard let player else { return }
+        guard !nowPlayingInfo.isEmpty else { return }
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = player.duration
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+
+    private func updateNowPlayingPlaybackState(isPlaying: Bool) {
+        guard !nowPlayingInfo.isEmpty else { return }
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        if #available(macOS 10.12.2, *) {
+            MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
+        }
+    }
+
+    private func clearNowPlaying() {
+        nowPlayingInfo.removeAll()
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        if #available(macOS 10.12.2, *) {
+            MPNowPlayingInfoCenter.default().playbackState = .stopped
+        }
     }
 }
 

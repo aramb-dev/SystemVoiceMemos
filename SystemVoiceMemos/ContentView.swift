@@ -14,6 +14,8 @@ struct ContentView: View {
     @State private var isRecording = false
     @State private var selectedRecordingID: RecordingEntity.ID?
     @State private var pendingRecording: RecordingEntity?
+    @State private var recordingPendingDeletion: RecordingEntity?
+    @State private var isShowingDeleteConfirmation = false
 
     init() {}
 
@@ -25,10 +27,15 @@ struct ContentView: View {
                 .environmentObject(playbackManager)
         }
         .padding()
-        .onAppear { refreshDurationsIfNeeded() }
-        .task(id: recordingsHash) { refreshDurationsIfNeeded() }
+        .task(id: recordingsHash) { await refreshDurationsIfNeeded() }
         .alert(item: Binding(get: { playbackManager.error }, set: { playbackManager.error = $0 })) { error in
             Alert(title: Text("Playback Error"), message: Text(error.message), dismissButton: .default(Text("OK")))
+        }
+        .confirmationDialog("Delete Recording?", isPresented: $isShowingDeleteConfirmation, presenting: recordingPendingDeletion) { recording in
+            Button("Delete", role: .destructive) { performDeletion(recording) }
+            Button("Cancel", role: .cancel) { recordingPendingDeletion = nil }
+        } message: { recording in
+            Text("Are you sure you want to delete \(recording.title)?")
         }
     }
 
@@ -39,7 +46,7 @@ struct ContentView: View {
                     if isRecording {
                         await recorder.stopRecording()
                         isRecording = false
-                        finalizePendingRecording()
+                        await finalizePendingRecording()
                     } else {
                         await startNewRecording()
                     }
@@ -57,19 +64,19 @@ struct ContentView: View {
                              isSelected: selectedRecordingID == rec.id,
                              durationString: formatTime(rec.duration),
                              revealAction: { reveal(rec) },
-                             deleteAction: { delete(rec) })
+                             deleteAction: { confirmDelete(rec) })
                     .tag(rec.id)
                     .contentShape(Rectangle())
                     .contextMenu {
                         Button("Show in Finder") { reveal(rec) }
-                        Button("Delete", role: .destructive) { delete(rec) }
+                        Button("Delete", role: .destructive) { confirmDelete(rec) }
                     }
             }
             .onDelete(perform: delete(offsets:))
         }
         .frame(minHeight: 320)
-        .onChange(of: selectedRecordingID) { _ in
-            handleSelectionChange()
+        .onChange(of: selectedRecordingID) { _, newValue in
+            handleSelectionChange(newValue: newValue)
         }
     }
 
@@ -111,40 +118,54 @@ struct ContentView: View {
         }
     }
 
-    private func finalizePendingRecording() {
+    private func finalizePendingRecording() async {
         guard let recording = pendingRecording,
               let url = try? url(for: recording) else {
             pendingRecording = nil
             return
         }
         let asset = AVURLAsset(url: url)
-        let seconds = CMTimeGetSeconds(asset.duration)
-        if seconds.isFinite && seconds > 0.01 {
-            recording.duration = seconds
-            try? modelContext.save()
+        do {
+            let cmDuration = try await asset.load(.duration)
+            let seconds = CMTimeGetSeconds(cmDuration)
+            if seconds.isFinite && seconds > 0.01 {
+                recording.duration = seconds
+                try? modelContext.save()
+            }
+        } catch {
+            print("duration load error:", error)
         }
         pendingRecording = nil
     }
 
-    private func handleSelectionChange() {
-        guard let selectedRecordingID,
-              let rec = recordings.first(where: { $0.id == selectedRecordingID }) else {
+    private func handleSelectionChange(newValue: RecordingEntity.ID?) {
+        guard let newValue,
+              let rec = recordings.first(where: { $0.id == newValue }) else {
             playbackManager.select(recording: nil)
             return
         }
         playbackManager.select(recording: rec, autoPlay: true)
     }
 
-    private func refreshDurationsIfNeeded() {
+    private func refreshDurationsIfNeeded() async {
+        var didUpdate = false
         for recording in recordings where recording.duration <= 0 {
             guard let url = try? url(for: recording) else { continue }
             let asset = AVURLAsset(url: url)
-            let seconds = CMTimeGetSeconds(asset.duration)
-            if seconds.isFinite && seconds > 0.01 {
-                recording.duration = seconds
+            do {
+                let cmDuration = try await asset.load(.duration)
+                let seconds = CMTimeGetSeconds(cmDuration)
+                if seconds.isFinite && seconds > 0.01 {
+                    recording.duration = seconds
+                    didUpdate = true
+                }
+            } catch {
+                print("duration load error:", error)
             }
         }
-        try? modelContext.save()
+        if didUpdate {
+            try? modelContext.save()
+        }
     }
 
     private func reveal(_ rec: RecordingEntity) {
@@ -154,11 +175,26 @@ struct ContentView: View {
         }
     }
 
-    private func delete(_ rec: RecordingEntity) {
+    private func confirmDelete(_ rec: RecordingEntity) {
+        recordingPendingDeletion = rec
+        isShowingDeleteConfirmation = true
+    }
+
+    private func performDeletion(_ rec: RecordingEntity) {
+        defer {
+            recordingPendingDeletion = nil
+            isShowingDeleteConfirmation = false
+        }
+
         if let dir = try? AppDirectories.recordingsDir() {
             let url = dir.appendingPathComponent(rec.fileName)
-            try? FileManager.default.removeItem(at: url)
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            } catch {
+                print("trashItem error:", error)
+            }
         }
+
         if selectedRecordingID == rec.id {
             selectedRecordingID = nil
         }
@@ -168,7 +204,8 @@ struct ContentView: View {
     }
 
     private func delete(offsets: IndexSet) {
-        for index in offsets { delete(recordings[index]) }
+        guard let index = offsets.first else { return }
+        confirmDelete(recordings[index])
     }
 
     private func openFolder() {

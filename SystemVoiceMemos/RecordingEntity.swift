@@ -16,18 +16,24 @@ final class RecordingEntity {
     var duration: Double
     var fileName: String
     var isFavorite: Bool
+    var folder: String?
+    var deletedAt: Date?
 
     init(id: UUID = UUID(),
          title: String,
          createdAt: Date = .now,
          duration: Double = 0,
          fileName: String,
-         isFavorite: Bool = false) {
+         isFavorite: Bool = false,
+         folder: String? = nil,
+         deletedAt: Date? = nil) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
         self.duration = duration
         self.fileName = fileName
         self.isFavorite = isFavorite
+        self.folder = folder
+        self.deletedAt = deletedAt
     }
 }

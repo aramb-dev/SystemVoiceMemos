@@ -77,7 +77,8 @@ struct ContentView: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
-        .frame(width: sidebarWidth, maxHeight: .infinity)
+        .frame(width: sidebarWidth)
+        .frame(maxHeight: .infinity)
         .background(panelBackground())
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
@@ -565,6 +566,107 @@ private struct RecordingRow: View {
         if recording.deletedAt != nil { return .secondary }
         if recording.isFavorite { return .yellow }
         return isActive ? .accentColor : .secondary
+    }
+}
+
+// MARK: - Playback Controls
+
+private struct PlaybackControlsView: View {
+    @EnvironmentObject private var playbackManager: PlaybackManager
+    let recording: RecordingEntity
+
+    private var sliderBinding: Binding<Double> {
+        Binding(
+            get: { playbackManager.currentTime },
+            set: { playbackManager.seek(to: $0) }
+        )
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
+        let total = Int(seconds.rounded())
+        let minutes = total / 60
+        let secs = total % 60
+        return String(format: "%d:%02d", minutes, secs)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(recording.title)
+                    .font(.headline)
+                Spacer()
+                Text(formatTime(playbackManager.duration))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    playbackManager.togglePlayPause()
+                } label: {
+                    Label(playbackManager.isPlaying ? "Pause" : "Play",
+                          systemImage: playbackManager.isPlaying ? "pause.fill" : "play.fill")
+                        .labelStyle(.titleAndIcon)
+                }
+                .keyboardShortcut(.space, modifiers: [])
+                .disabled(!playbackManager.hasSelection)
+
+                Button {
+                    playbackManager.skip(by: -15)
+                } label: {
+                    Label("-15s", systemImage: "gobackward.15")
+                        .labelStyle(.iconOnly)
+                }
+                .disabled(!playbackManager.hasActivePlayer)
+
+                Button {
+                    playbackManager.skip(by: 15)
+                } label: {
+                    Label("+15s", systemImage: "goforward.15")
+                        .labelStyle(.iconOnly)
+                }
+                .disabled(!playbackManager.hasActivePlayer)
+
+                Button {
+                    playbackManager.stop()
+                } label: {
+                    Label("Stop", systemImage: "stop.fill")
+                        .labelStyle(.titleAndIcon)
+                }
+                .disabled(!playbackManager.hasActivePlayer)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Slider(value: sliderBinding,
+                       in: 0...(playbackManager.duration > 0 ? playbackManager.duration : 1))
+                    .disabled(playbackManager.duration <= 0)
+                HStack {
+                    Text(formatTime(playbackManager.currentTime))
+                    Spacer()
+                    let remaining = max(playbackManager.duration - playbackManager.currentTime, 0)
+                    Text("-" + formatTime(remaining))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Volume")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: Binding(
+                    get: { Double(playbackManager.volume) },
+                    set: { playbackManager.setVolume(Float($0)) }
+                ), in: 0...1)
+                    .frame(width: 140)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
     }
 }
 

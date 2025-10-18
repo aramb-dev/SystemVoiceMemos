@@ -45,14 +45,6 @@ struct SystemVoiceMemosApp: App {
                 }
                 .keyboardShortcut(.rightArrow, modifiers: [.option])
                 .disabled(!playbackManager.hasActivePlayer)
-
-                Divider()
-
-                Button("Stop") {
-                    playbackManager.stop()
-                }
-                .keyboardShortcut(.escape, modifiers: [])
-                .disabled(!playbackManager.hasActivePlayer)
             }
         }
     }

@@ -384,7 +384,7 @@ struct ContentView: View {
         if rec.deletedAt != nil {
             playbackManager.select(recording: nil)
         } else {
-            playbackManager.select(recording: rec, autoPlay: true)
+            playbackManager.select(recording: rec, autoPlay: false)
         }
     }
 
@@ -625,14 +625,6 @@ private struct PlaybackControlsView: View {
                 } label: {
                     Label("+15s", systemImage: "goforward.15")
                         .labelStyle(.iconOnly)
-                }
-                .disabled(!playbackManager.hasActivePlayer)
-
-                Button {
-                    playbackManager.stop()
-                } label: {
-                    Label("Stop", systemImage: "stop.fill")
-                        .labelStyle(.titleAndIcon)
                 }
                 .disabled(!playbackManager.hasActivePlayer)
             }

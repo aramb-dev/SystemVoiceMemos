@@ -573,6 +573,7 @@ private struct RecordingRow: View {
 
 private struct PlaybackControlsView: View {
     @EnvironmentObject private var playbackManager: PlaybackManager
+    @StateObject private var waveformAnalyzer = WaveformAnalyzer()
     let recording: RecordingEntity
 
     private var sliderBinding: Binding<Double> {
@@ -589,9 +590,20 @@ private struct PlaybackControlsView: View {
         let secs = total % 60
         return String(format: "%d:%02d", minutes, secs)
     }
+    
+    private func formatTimeDetailed(_ seconds: Double) -> String {
+        guard seconds.isFinite && seconds >= 0 else { return "00:00.00" }
+        let total = Int(seconds * 100) // Convert to centiseconds
+        let minutes = total / 6000
+        let centiseconds = total % 6000
+        let secs = centiseconds / 100
+        let cs = centiseconds % 100
+        return String(format: "%02d:%02d.%02d", minutes, secs, cs)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Title and duration
             HStack {
                 Text(recording.title)
                     .font(.headline)
@@ -601,48 +613,123 @@ private struct PlaybackControlsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 12) {
-                Button {
-                    playbackManager.togglePlayPause()
-                } label: {
-                    Label(playbackManager.isPlaying ? "Pause" : "Play",
-                          systemImage: playbackManager.isPlaying ? "pause.fill" : "play.fill")
-                        .labelStyle(.titleAndIcon)
+            // Main waveform visualization
+            if waveformAnalyzer.isAnalyzing {
+                VStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Analyzing audio...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .keyboardShortcut(.space, modifiers: [])
-                .disabled(!playbackManager.hasSelection)
+                .frame(height: 120)
+            } else if !waveformAnalyzer.waveformData.isEmpty {
+                VStack(spacing: 12) {
+                    // Detailed waveform
+                    WaveformView(
+                        waveformData: waveformAnalyzer.waveformData,
+                        currentTime: playbackManager.currentTime,
+                        duration: playbackManager.duration,
+                        onSeek: { time in
+                            playbackManager.seek(to: time)
+                        }
+                    )
+                    
+                    // Overview waveform scrubber
+                    OverviewWaveformView(
+                        waveformData: waveformAnalyzer.waveformData,
+                        currentTime: playbackManager.currentTime,
+                        duration: playbackManager.duration,
+                        onSeek: { time in
+                            playbackManager.seek(to: time)
+                        }
+                    )
+                }
+            } else {
+                // Fallback to simple slider if no waveform data
+                VStack(alignment: .leading, spacing: 4) {
+                    Slider(value: sliderBinding,
+                           in: 0...(playbackManager.duration > 0 ? playbackManager.duration : 1))
+                        .disabled(playbackManager.duration <= 0)
+                    HStack {
+                        Text(formatTime(playbackManager.currentTime))
+                        Spacer()
+                        let remaining = max(playbackManager.duration - playbackManager.currentTime, 0)
+                        Text("-" + formatTime(remaining))
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
 
+            // Timer display (matching reference design)
+            HStack {
+                Spacer()
+                Text(formatTimeDetailed(playbackManager.currentTime))
+                    .font(.system(size: 24, weight: .medium, design: .monospaced))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+
+            // Playback controls (matching reference design)
+            HStack(spacing: 20) {
+                // Skip back 15s
                 Button {
                     playbackManager.skip(by: -15)
                 } label: {
-                    Label("-15s", systemImage: "gobackward.15")
-                        .labelStyle(.iconOnly)
+                    ZStack {
+                        Circle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 50, height: 50)
+                        HStack(spacing: 2) {
+                            Image(systemName: "gobackward")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("15")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                    }
                 }
                 .disabled(!playbackManager.hasActivePlayer)
+                .buttonStyle(.plain)
 
+                // Play/Pause button
+                Button {
+                    playbackManager.togglePlayPause()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 60, height: 60)
+                        Image(systemName: playbackManager.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                }
+                .disabled(!playbackManager.hasSelection)
+                .buttonStyle(.plain)
+
+                // Skip forward 15s
                 Button {
                     playbackManager.skip(by: 15)
                 } label: {
-                    Label("+15s", systemImage: "goforward.15")
-                        .labelStyle(.iconOnly)
+                    ZStack {
+                        Circle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 50, height: 50)
+                        HStack(spacing: 2) {
+                            Text("15")
+                                .font(.system(size: 12, weight: .medium))
+                            Image(systemName: "goforward")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                    }
                 }
                 .disabled(!playbackManager.hasActivePlayer)
+                .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Slider(value: sliderBinding,
-                       in: 0...(playbackManager.duration > 0 ? playbackManager.duration : 1))
-                    .disabled(playbackManager.duration <= 0)
-                HStack {
-                    Text(formatTime(playbackManager.currentTime))
-                    Spacer()
-                    let remaining = max(playbackManager.duration - playbackManager.currentTime, 0)
-                    Text("-" + formatTime(remaining))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
+            // Volume control
             VStack(alignment: .leading, spacing: 4) {
                 Text("Volume")
                     .font(.caption)
@@ -659,6 +746,26 @@ private struct PlaybackControlsView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.primary.opacity(0.04))
         )
+        .task {
+            // Analyze waveform when recording changes
+            if let url = try? url(for: recording) {
+                await waveformAnalyzer.analyzeAudioFile(at: url)
+            }
+        }
+        .onChange(of: recording.id) { _, _ in
+            // Clear and re-analyze when recording changes
+            waveformAnalyzer.clearData()
+            Task {
+                if let url = try? url(for: recording) {
+                    await waveformAnalyzer.analyzeAudioFile(at: url)
+                }
+            }
+        }
+    }
+    
+    private func url(for recording: RecordingEntity) throws -> URL {
+        let dir = try AppDirectories.recordingsDir()
+        return dir.appendingPathComponent(recording.fileName)
     }
 }
 

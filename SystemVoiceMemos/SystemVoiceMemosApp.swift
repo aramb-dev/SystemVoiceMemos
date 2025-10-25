@@ -54,7 +54,7 @@ struct SystemVoiceMemosApp: App {
                 }
             }
         }
-        .sheet(isPresented: $isShowingAboutWindow) {
+        .window("About System Voice Memos", id: "about", isPresented: $isShowingAboutWindow) {
             AboutView()
         }
     }

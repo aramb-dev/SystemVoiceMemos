@@ -12,6 +12,7 @@ struct WaveformView: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     let onSeek: (TimeInterval) -> Void
+    let isPlaceholder: Bool
     
     @State private var isDragging = false
     
@@ -101,9 +102,9 @@ struct WaveformView: View {
         let dataIndex = Int(progress * Double(waveformData.count))
         
         if index <= dataIndex {
-            return Color.white
+            return isPlaceholder ? Color.white.opacity(0.7) : Color.white
         } else {
-            return Color.gray.opacity(0.6)
+            return isPlaceholder ? Color.gray.opacity(0.4) : Color.gray.opacity(0.6)
         }
     }
 }
@@ -113,6 +114,7 @@ struct OverviewWaveformView: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     let onSeek: (TimeInterval) -> Void
+    let isPlaceholder: Bool
     
     @State private var isDragging = false
     
@@ -181,9 +183,9 @@ struct OverviewWaveformView: View {
         let dataIndex = Int(progress * Double(waveformData.count))
         
         if index <= dataIndex {
-            return Color.white
+            return isPlaceholder ? Color.white.opacity(0.7) : Color.white
         } else {
-            return Color.gray.opacity(0.6)
+            return isPlaceholder ? Color.gray.opacity(0.4) : Color.gray.opacity(0.6)
         }
     }
     
@@ -202,7 +204,8 @@ struct OverviewWaveformView: View {
             waveformData: Array(0..<100).map { _ in Float.random(in: 0...1) },
             currentTime: 15.5,
             duration: 60.0,
-            onSeek: { _ in }
+            onSeek: { _ in },
+            isPlaceholder: false
         )
         .frame(height: 140)
         
@@ -210,7 +213,8 @@ struct OverviewWaveformView: View {
             waveformData: Array(0..<100).map { _ in Float.random(in: 0...1) },
             currentTime: 15.5,
             duration: 60.0,
-            onSeek: { _ in }
+            onSeek: { _ in },
+            isPlaceholder: false
         )
         .frame(height: 30)
     }

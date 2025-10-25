@@ -614,16 +614,7 @@ private struct PlaybackControlsView: View {
             }
 
             // Main waveform visualization
-            if waveformAnalyzer.isAnalyzing {
-                VStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Analyzing audio...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(height: 120)
-            } else if !waveformAnalyzer.waveformData.isEmpty {
+            if !waveformAnalyzer.waveformData.isEmpty {
                 VStack(spacing: 12) {
                     // Detailed waveform
                     WaveformView(
@@ -632,7 +623,8 @@ private struct PlaybackControlsView: View {
                         duration: playbackManager.duration,
                         onSeek: { time in
                             playbackManager.seek(to: time)
-                        }
+                        },
+                        isPlaceholder: !waveformAnalyzer.hasRealData
                     )
                     
                     // Overview waveform scrubber
@@ -642,7 +634,8 @@ private struct PlaybackControlsView: View {
                         duration: playbackManager.duration,
                         onSeek: { time in
                             playbackManager.seek(to: time)
-                        }
+                        },
+                        isPlaceholder: !waveformAnalyzer.hasRealData
                     )
                 }
             } else {
@@ -749,7 +742,7 @@ private struct PlaybackControlsView: View {
         .task {
             // Analyze waveform when recording changes
             if let url = try? url(for: recording) {
-                await waveformAnalyzer.analyzeAudioFile(at: url)
+                await waveformAnalyzer.analyzeAudioFile(at: url, duration: playbackManager.duration)
             }
         }
         .onChange(of: recording.id) { _, _ in
@@ -757,7 +750,7 @@ private struct PlaybackControlsView: View {
             waveformAnalyzer.clearData()
             Task {
                 if let url = try? url(for: recording) {
-                    await waveformAnalyzer.analyzeAudioFile(at: url)
+                    await waveformAnalyzer.analyzeAudioFile(at: url, duration: playbackManager.duration)
                 }
             }
         }

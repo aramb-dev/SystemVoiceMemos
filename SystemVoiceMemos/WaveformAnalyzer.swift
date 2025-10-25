@@ -13,25 +13,54 @@ import Accelerate
 class WaveformAnalyzer: ObservableObject {
     @Published var waveformData: [Float] = []
     @Published var isAnalyzing = false
+    @Published var hasRealData = false
     
     private let analysisQueue = DispatchQueue(label: "waveform.analysis", qos: .userInitiated)
     
-    func analyzeAudioFile(at url: URL) async {
+    func analyzeAudioFile(at url: URL, duration: TimeInterval) async {
+        // First, show a placeholder waveform immediately
         await MainActor.run {
-            isAnalyzing = true
+            self.waveformData = generatePlaceholderWaveform(duration: duration)
+            self.hasRealData = false
+            self.isAnalyzing = true
         }
         
-        let data = await withCheckedContinuation { continuation in
+        // Then analyze the real audio file in the background
+        let realData = await withCheckedContinuation { continuation in
             analysisQueue.async {
                 let data = self.extractWaveformData(from: url)
                 continuation.resume(returning: data)
             }
         }
         
+        // Update with real data when analysis is complete
         await MainActor.run {
-            self.waveformData = data
+            self.waveformData = realData
+            self.hasRealData = true
             self.isAnalyzing = false
         }
+    }
+    
+    private func generatePlaceholderWaveform(duration: TimeInterval) -> [Float] {
+        // Generate a realistic-looking placeholder waveform
+        let targetPoints = min(1000, Int(duration * 20)) // ~20 points per second
+        var placeholder: [Float] = []
+        placeholder.reserveCapacity(targetPoints)
+        
+        for i in 0..<targetPoints {
+            // Create a more realistic waveform pattern
+            let progress = Float(i) / Float(targetPoints)
+            
+            // Add some variation based on position
+            let baseAmplitude: Float = 0.3 + 0.4 * sin(progress * .pi * 4) * cos(progress * .pi * 8)
+            let noise = Float.random(in: -0.1...0.1)
+            let variation = sin(progress * .pi * 12) * 0.2
+            
+            let amplitude = max(0.05, min(1.0, baseAmplitude + noise + variation))
+            placeholder.append(amplitude)
+        }
+        
+        return placeholder
     }
     
     private func extractWaveformData(from url: URL) -> [Float] {
@@ -89,5 +118,7 @@ class WaveformAnalyzer: ObservableObject {
     
     func clearData() {
         waveformData = []
+        hasRealData = false
+        isAnalyzing = false
     }
 }

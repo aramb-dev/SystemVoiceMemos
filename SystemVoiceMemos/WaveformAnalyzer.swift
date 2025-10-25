@@ -17,17 +17,20 @@ class WaveformAnalyzer: ObservableObject {
     private let analysisQueue = DispatchQueue(label: "waveform.analysis", qos: .userInitiated)
     
     func analyzeAudioFile(at url: URL) async {
-        isAnalyzing = true
+        await MainActor.run {
+            isAnalyzing = true
+        }
         
-        await withCheckedContinuation { continuation in
+        let data = await withCheckedContinuation { continuation in
             analysisQueue.async {
                 let data = self.extractWaveformData(from: url)
-                Task { @MainActor in
-                    self.waveformData = data
-                    self.isAnalyzing = false
-                    continuation.resume()
-                }
+                continuation.resume(returning: data)
             }
+        }
+        
+        await MainActor.run {
+            self.waveformData = data
+            self.isAnalyzing = false
         }
     }
     

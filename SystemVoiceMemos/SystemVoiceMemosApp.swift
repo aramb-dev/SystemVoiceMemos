@@ -7,11 +7,11 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 @main
 struct SystemVoiceMemosApp: App {
     @StateObject private var playbackManager = PlaybackManager()
-    @State private var isShowingAboutWindow = false
 
     var body: some Scene {
         WindowGroup {
@@ -54,66 +54,28 @@ struct SystemVoiceMemosApp: App {
                 }
             }
         }
-        .window("About System Voice Memos", id: "about", isPresented: $isShowingAboutWindow) {
-            AboutView()
-        }
     }
     
     private func showAboutWindow() {
-        isShowingAboutWindow = true
-    }
-}
-
-// MARK: - About View
-
-struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            // App Icon
-            Image(systemName: "waveform.circle.fill")
-                .font(.system(size: 64))
-                .foregroundColor(.accentColor)
-            
-            // App Name
-            Text("System Voice Memos")
-                .font(.title)
-                .fontWeight(.bold)
-            
-            // Version (you can update this as needed)
-            Text("Version 1.0.0")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            // Open Source Information
-            VStack(spacing: 12) {
-                Text("This app is entirely open source")
-                    .font(.headline)
-                
-                Text("Made by aramb-dev")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                // GitHub Link
-                Link("github.com/aramb-dev", destination: URL(string: "https://github.com/aramb-dev")!)
-                    .font(.subheadline)
-                    .foregroundColor(.accentColor)
+        let alert = NSAlert()
+        alert.messageText = "System Voice Memos"
+        alert.informativeText = """
+        Version 1.0.0
+        
+        This app is entirely open source
+        Made by aramb-dev
+        
+        GitHub: github.com/aramb-dev
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Visit GitHub")
+        
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            if let url = URL(string: "https://github.com/aramb-dev") {
+                NSWorkspace.shared.open(url)
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.primary.opacity(0.05))
-            )
-            
-            // Close Button
-            Button("Close") {
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
         }
-        .padding(30)
-        .frame(width: 400, height: 350)
     }
 }

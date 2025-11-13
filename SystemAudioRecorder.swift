@@ -8,9 +8,10 @@
 import Foundation
 import AVFoundation
 import ScreenCaptureKit
+import Combine
 
 @MainActor
-final class SystemAudioRecorder: NSObject {
+final class SystemAudioRecorder: NSObject, ObservableObject {
 
     private var stream: SCStream?
     private var writer: AVAssetWriter?
@@ -19,6 +20,11 @@ final class SystemAudioRecorder: NSObject {
 
     private var isRecording = false
     private var startTime: CMTime = .zero
+    private var recordingStartDate: Date?
+    private var durationTimer: Timer?
+
+    // Published property for real-time duration tracking
+    @Published var currentRecordingDuration: TimeInterval = 0
 
     // Start capture: create a stream that captures AUDIO ONLY (no video)
     func startRecording(to url: URL) async throws {
@@ -85,13 +91,38 @@ final class SystemAudioRecorder: NSObject {
         print("🚀 Starting capture...")
         try await stream.startCapture()
         print("✅ Capture started successfully!")
-        
+
         isRecording = true
+
+        // Start real-time duration tracking
+        recordingStartDate = Date()
+        currentRecordingDuration = 0
+        startDurationTimer()
+    }
+
+    private func startDurationTimer() {
+        // Update duration every 0.1 seconds for smooth UI updates
+        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, let startDate = self.recordingStartDate else { return }
+            Task { @MainActor in
+                self.currentRecordingDuration = Date().timeIntervalSince(startDate)
+            }
+        }
+    }
+
+    private func stopDurationTimer() {
+        durationTimer?.invalidate()
+        durationTimer = nil
+        recordingStartDate = nil
+        currentRecordingDuration = 0
     }
 
     func stopRecording() async {
         guard isRecording else { return }
         isRecording = false
+
+        // Stop duration tracking
+        stopDurationTimer()
 
         do {
             try await stream?.stopCapture()

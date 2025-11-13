@@ -9,6 +9,10 @@ import SwiftUI
 import SwiftData
 import AppKit
 
+extension Notification.Name {
+    static let showOnboarding = Notification.Name("showOnboarding")
+}
+
 @main
 struct SystemVoiceMemosApp: App {
     @StateObject private var playbackManager = PlaybackManager()
@@ -49,6 +53,13 @@ struct SystemVoiceMemosApp: App {
             }
             
             CommandMenu("Help") {
+                Button("Show Welcome Guide") {
+                    NotificationCenter.default.post(name: .showOnboarding, object: nil)
+                }
+                .keyboardShortcut("?", modifiers: [.command])
+
+                Divider()
+
                 Button("About System Voice Memos") {
                     showAboutWindow()
                 }

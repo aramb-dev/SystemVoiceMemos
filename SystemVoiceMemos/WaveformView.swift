@@ -80,13 +80,13 @@ struct WaveformView: View {
     private var timelineView: some View {
         GeometryReader { geometry in
             HStack {
-                ForEach(0..<Int(duration.rounded()) + 1, id: \.self) { second in
+                ForEach(timelineMarkers, id: \.self) { second in
                     VStack(spacing: 2) {
                         Rectangle()
                             .fill(Color.gray.opacity(0.6))
                             .frame(width: 1, height: 8)
-                        
-                        Text("\(second)")
+
+                        Text(formatTimelineLabel(second))
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -96,15 +96,65 @@ struct WaveformView: View {
         }
         .frame(height: timelineHeight)
     }
+
+    // Generate smart timeline markers (max 20 ticks)
+    private var timelineMarkers: [Int] {
+        let totalSeconds = Int(duration.rounded())
+        guard totalSeconds > 0 else { return [0] }
+
+        // Maximum number of timeline markers to display
+        let maxMarkers = 20
+
+        // If duration is short enough, show all seconds
+        if totalSeconds <= maxMarkers {
+            return Array(0...totalSeconds)
+        }
+
+        // Calculate interval to show approximately maxMarkers
+        // Use nice intervals: 5, 10, 15, 30, 60, 120, 300, 600, etc.
+        let niceIntervals = [5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600]
+        let targetInterval = totalSeconds / maxMarkers
+
+        let interval = niceIntervals.first { $0 >= targetInterval } ?? niceIntervals.last!
+
+        // Generate markers at the chosen interval
+        var markers: [Int] = []
+        var current = 0
+        while current <= totalSeconds {
+            markers.append(current)
+            current += interval
+        }
+
+        return markers
+    }
+
+    private func formatTimelineLabel(_ seconds: Int) -> String {
+        if seconds < 60 {
+            return "\(seconds)s"
+        } else {
+            let minutes = seconds / 60
+            let secs = seconds % 60
+            if secs == 0 {
+                return "\(minutes)m"
+            } else {
+                return "\(minutes):\(String(format: "%02d", secs))"
+            }
+        }
+    }
     
     private func waveformColor(for index: Int) -> Color {
         let progress = duration > 0 ? currentTime / duration : 0
         let dataIndex = Int(progress * Double(waveformData.count))
-        
+
+        // Use consistent colors for both placeholder and real data
+        // Only difference: slightly dimmed when placeholder for subtle indication
+        let playedOpacity: Double = isPlaceholder ? 0.8 : 1.0
+        let unplayedOpacity: Double = isPlaceholder ? 0.5 : 0.6
+
         if index <= dataIndex {
-            return isPlaceholder ? Color.white.opacity(0.7) : Color.white
+            return Color.white.opacity(playedOpacity)
         } else {
-            return isPlaceholder ? Color.gray.opacity(0.4) : Color.gray.opacity(0.6)
+            return Color.gray.opacity(unplayedOpacity)
         }
     }
 }
@@ -181,11 +231,16 @@ struct OverviewWaveformView: View {
     private func waveformColor(for index: Int) -> Color {
         let progress = duration > 0 ? currentTime / duration : 0
         let dataIndex = Int(progress * Double(waveformData.count))
-        
+
+        // Use consistent colors for both placeholder and real data
+        // Only difference: slightly dimmed when placeholder for subtle indication
+        let playedOpacity: Double = isPlaceholder ? 0.8 : 1.0
+        let unplayedOpacity: Double = isPlaceholder ? 0.5 : 0.6
+
         if index <= dataIndex {
-            return isPlaceholder ? Color.white.opacity(0.7) : Color.white
+            return Color.white.opacity(playedOpacity)
         } else {
-            return isPlaceholder ? Color.gray.opacity(0.4) : Color.gray.opacity(0.6)
+            return Color.gray.opacity(unplayedOpacity)
         }
     }
     

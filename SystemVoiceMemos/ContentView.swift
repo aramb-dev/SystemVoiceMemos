@@ -9,7 +9,7 @@ struct ContentView: View {
     @Query(sort: \RecordingEntity.createdAt, order: .reverse)
     private var recordings: [RecordingEntity]
 
-    @State private var recorder = SystemAudioRecorder()
+    @StateObject private var recorder = SystemAudioRecorder()
     @State private var isRecording = false
     @State private var selectedRecordingID: RecordingEntity.ID?
     @State private var pendingRecording: RecordingEntity?
@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var searchText = ""
     @State private var selectedSidebarItem: SidebarItem? = .library(.all)
+    @State private var isShowingOnboarding = false
 
     private let sidebarWidth: CGFloat = 220
 
@@ -50,7 +51,17 @@ struct ContentView: View {
         .onChange(of: recordingsHash) { _, _ in
             recalcSelection(keepExisting: true)
         }
-        .onAppear { recalcSelection() }
+        .onAppear {
+            recalcSelection()
+            checkFirstLaunch()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
+            isShowingOnboarding = true
+        }
+        .sheet(isPresented: $isShowingOnboarding) {
+            OnboardingView(isPresented: $isShowingOnboarding)
+                .interactiveDismissDisabled()
+        }
     }
 
     // MARK: - Sidebar
@@ -248,19 +259,36 @@ struct ContentView: View {
                 }
             }
         } label: {
-            Label(isRecording ? "Stop Recording" : "Start Recording",
-                  systemImage: isRecording ? "stop.circle.fill" : "record.circle")
-                .font(.title3)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .background(
-                    Capsule()
-                        .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
-                )
-                .foregroundStyle(Color.white)
-                .shadow(radius: 6, y: 3)
+            HStack(spacing: 8) {
+                Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isRecording ? "Stop Recording" : "Start Recording")
+                        .font(.title3)
+                    if isRecording {
+                        Text(formatRecordingDuration(recorder.currentRecordingDuration))
+                            .font(.caption)
+                            .opacity(0.9)
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
+            )
+            .foregroundStyle(Color.white)
+            .shadow(radius: 6, y: 3)
         }
         .buttonStyle(.plain)
+    }
+
+    private func formatRecordingDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        let centiseconds = Int((duration.truncatingRemainder(dividingBy: 1)) * 100)
+        return String(format: "%02d:%02d.%02d", minutes, seconds, centiseconds)
     }
 
     // MARK: - Helpers
@@ -268,6 +296,16 @@ struct ContentView: View {
     private var selectedRecording: RecordingEntity? {
         guard let id = selectedRecordingID else { return nil }
         return recordings.first(where: { $0.id == id })
+    }
+
+    private func checkFirstLaunch() {
+        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        if !hasCompletedOnboarding {
+            // Delay showing onboarding slightly for smooth presentation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isShowingOnboarding = true
+            }
+        }
     }
 
     private var filteredRecordings: [RecordingEntity] {

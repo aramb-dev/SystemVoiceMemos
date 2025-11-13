@@ -41,16 +41,28 @@ struct OnboardingView: View {
 
             // Main content
             VStack(spacing: 0) {
-                // Page content
-                TabView(selection: $currentPage) {
-                    ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                        OnboardingPageView(page: page)
-                            .tag(index)
+                // Page content with manual page management (macOS compatible)
+                VStack {
+                    OnboardingPageView(page: pages[currentPage])
+                        .id(currentPage)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
+                }
+                .frame(maxWidth: 600, maxHeight: 500)
+                .animation(.easeInOut(duration: 0.3), value: currentPage)
+
+                // Page indicators
+                HStack(spacing: 8) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        Circle()
+                            .fill(index == currentPage ? Color.accentColor : Color.gray.opacity(0.3))
+                            .frame(width: 8, height: 8)
+                            .animation(.easeInOut(duration: 0.2), value: currentPage)
                     }
                 }
-                .tabViewStyle(.page)
-                .indexViewStyle(.page(backgroundDisplayMode: .always))
-                .frame(maxWidth: 600, maxHeight: 500)
+                .padding(.top, 16)
 
                 // Bottom actions
                 HStack(spacing: 16) {

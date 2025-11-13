@@ -102,8 +102,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
     private func startDurationTimer() {
         // Update duration every 0.1 seconds for smooth UI updates
-        // Timer already executes on main run loop, no need for Task wrapper
-        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { @MainActor [weak self] _ in
             guard let self = self, let startDate = self.recordingStartDate else { return }
             self.currentRecordingDuration = Date().timeIntervalSince(startDate)
         }

@@ -88,7 +88,7 @@ class WaveformAnalyzer: ObservableObject {
         return placeholder
     }
     
-    private func extractWaveformData(from url: URL) -> [Float] {
+    nonisolated private func extractWaveformData(from url: URL) -> [Float] {
         // Validate file exists before trying to open it
         guard FileManager.default.fileExists(atPath: url.path) else {
             print("⚠️ Waveform: File not found at \(url.path)")

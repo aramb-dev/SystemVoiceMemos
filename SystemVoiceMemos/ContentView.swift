@@ -299,7 +299,7 @@ struct ContentView: View {
     }
 
     private func checkFirstLaunch() {
-        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.hasCompletedOnboarding)
         if !hasCompletedOnboarding {
             // Delay showing onboarding slightly for smooth presentation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

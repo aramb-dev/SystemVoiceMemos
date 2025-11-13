@@ -96,8 +96,11 @@ class WaveformAnalyzer: ObservableObject {
         }
 
         // Try to open the audio file with proper error handling
-        guard let audioFile = try? AVAudioFile(forReading: url) else {
-            print("⚠️ Waveform: Could not open audio file at \(url.path)")
+        let audioFile: AVAudioFile
+        do {
+            audioFile = try AVAudioFile(forReading: url)
+        } catch {
+            print("⚠️ Waveform: Could not open audio file at \(url.path). Error: \(error.localizedDescription)")
             return []
         }
 

@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var searchText = ""
     @State private var selectedSidebarItem: SidebarItem? = .library(.all)
+    @State private var isShowingOnboarding = false
 
     private let sidebarWidth: CGFloat = 220
 
@@ -50,7 +51,17 @@ struct ContentView: View {
         .onChange(of: recordingsHash) { _, _ in
             recalcSelection(keepExisting: true)
         }
-        .onAppear { recalcSelection() }
+        .onAppear {
+            recalcSelection()
+            checkFirstLaunch()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
+            isShowingOnboarding = true
+        }
+        .sheet(isPresented: $isShowingOnboarding) {
+            OnboardingView(isPresented: $isShowingOnboarding)
+                .interactiveDismissDisabled()
+        }
     }
 
     // MARK: - Sidebar
@@ -285,6 +296,16 @@ struct ContentView: View {
     private var selectedRecording: RecordingEntity? {
         guard let id = selectedRecordingID else { return nil }
         return recordings.first(where: { $0.id == id })
+    }
+
+    private func checkFirstLaunch() {
+        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        if !hasCompletedOnboarding {
+            // Delay showing onboarding slightly for smooth presentation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isShowingOnboarding = true
+            }
+        }
     }
 
     private var filteredRecordings: [RecordingEntity] {

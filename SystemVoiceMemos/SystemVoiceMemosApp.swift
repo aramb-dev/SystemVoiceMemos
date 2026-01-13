@@ -15,13 +15,21 @@ extension Notification.Name {
 
 @main
 struct SystemVoiceMemosApp: App {
+    @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @StateObject private var playbackManager = PlaybackManager()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()   // works because we added init() {}
-                .environmentObject(playbackManager)
+            if hasCompletedOnboarding {
+                ContentView()
+                    .environmentObject(playbackManager)
+                    .transition(.opacity)
+            } else {
+                OnboardingView()
+                    .transition(.opacity)
+            }
         }
+        .windowStyle(.hiddenTitleBar)
         .modelContainer(for: RecordingEntity.self)
         .commands {
             CommandMenu("Playback") {
@@ -54,7 +62,7 @@ struct SystemVoiceMemosApp: App {
             
             CommandMenu("Help") {
                 Button("Show Welcome Guide") {
-                    NotificationCenter.default.post(name: .showOnboarding, object: nil)
+                    hasCompletedOnboarding = false
                 }
                 .keyboardShortcut("?", modifiers: [.command])
 

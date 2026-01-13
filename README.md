@@ -26,14 +26,18 @@ SystemVoiceMemos captures system audio on macOS using ScreenCaptureKit and store
 4. On launch, ensure you grant the required **Screen Recording** permissions when prompted.
 
 ### Building from Command Line
-You can build the project using `xcodebuild`:
+You can build the project using `xcodebuild`. 
+
+**Note:** If you encounter a signing error (e.g., "No signing certificate found"), you can build for verification only by disabling signing:
 
 ```bash
-# Build the project
-xcodebuild -scheme SystemVoiceMemos -configuration Release
+# Build for verification (skips signing)
+xcodebuild -scheme SystemVoiceMemos -configuration Debug CODE_SIGNING_ALLOWED=NO
 ```
 
-The resulting binary will be located in the `build/Build/Products/Release` directory.
+For a functional build that runs with all features (like Screen Capture), you should open the project in Xcode and select your own Development Team in the **Signing & Capabilities** tab.
+
+The resulting binary will be located in the `build/Build/Products/Debug` directory (if using the command above).
 
 ## Troubleshooting
 - If capture fails with CoreGraphics errors, confirm Screen Recording permission is granted in **System Settings → Privacy & Security → Screen Recording**.

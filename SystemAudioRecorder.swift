@@ -22,9 +22,19 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     private var startTime: CMTime = .zero
     private var recordingStartDate: Date?
     private var durationTimer: Timer?
+    private var pausedDuration: TimeInterval = 0
+    private var pauseStartDate: Date?
 
-    // Published property for real-time duration tracking
+    // Published properties for UI state
     @Published var currentRecordingDuration: TimeInterval = 0
+    @Published var isPaused = false
+    @Published var recordingState: RecordingState = .idle
+    
+    enum RecordingState {
+        case idle
+        case recording
+        case paused
+    }
 
     // Start capture: create a stream that captures AUDIO ONLY (no video)
     func startRecording(to url: URL) async throws {
@@ -93,18 +103,54 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         print("✅ Capture started successfully!")
 
         isRecording = true
+        recordingState = .recording
+        isPaused = false
 
         // Start real-time duration tracking
         recordingStartDate = Date()
         currentRecordingDuration = 0
+        pausedDuration = 0
         startDurationTimer()
+    }
+    
+    func pauseRecording() async {
+        guard isRecording, !isPaused else { return }
+        
+        do {
+            try await stream?.stopCapture()
+            isPaused = true
+            recordingState = .paused
+            pauseStartDate = Date()
+            durationTimer?.invalidate()
+        } catch {
+            print("Pause error:", error)
+        }
+    }
+    
+    func resumeRecording() async {
+        guard isRecording, isPaused else { return }
+        
+        do {
+            try await stream?.startCapture()
+            isPaused = false
+            recordingState = .recording
+            
+            // Account for paused time
+            if let pauseStart = pauseStartDate {
+                pausedDuration += Date().timeIntervalSince(pauseStart)
+            }
+            pauseStartDate = nil
+            startDurationTimer()
+        } catch {
+            print("Resume error:", error)
+        }
     }
 
     private func startDurationTimer() {
         // Update duration every 0.1 seconds for smooth UI updates
         durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { @MainActor [weak self] _ in
             guard let self = self, let startDate = self.recordingStartDate else { return }
-            self.currentRecordingDuration = Date().timeIntervalSince(startDate)
+            self.currentRecordingDuration = Date().timeIntervalSince(startDate) - self.pausedDuration
         }
     }
 
@@ -113,11 +159,15 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         durationTimer = nil
         recordingStartDate = nil
         currentRecordingDuration = 0
+        pausedDuration = 0
+        pauseStartDate = nil
     }
 
     func stopRecording() async {
         guard isRecording else { return }
         isRecording = false
+        recordingState = .idle
+        isPaused = false
 
         // Stop duration tracking
         stopDurationTimer()

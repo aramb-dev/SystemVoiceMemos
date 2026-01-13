@@ -10,6 +10,7 @@ struct ContentView: View {
     private var recordings: [RecordingEntity]
 
     @StateObject private var recorder = SystemAudioRecorder()
+    @StateObject private var floatingPanel = FloatingRecordingPanel()
     @State private var isRecording = false
     @State private var selectedRecordingID: RecordingEntity.ID?
     @State private var pendingRecording: RecordingEntity?
@@ -244,27 +245,16 @@ struct ContentView: View {
         Button {
             Task {
                 if isRecording {
-                    await recorder.stopRecording()
-                    isRecording = false
-                    await finalizePendingRecording()
-                    recalcSelection()
+                    await stopRecordingFlow()
                 } else {
-                    await startNewRecording()
-                    recalcSelection(selectNewest: true)
+                    await startRecordingFlow()
                 }
             }
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(isRecording ? "Stop Recording" : "Start Recording")
-                        .font(.title3)
-                    if isRecording {
-                        Text(formatRecordingDuration(recorder.currentRecordingDuration))
-                            .font(.caption)
-                            .opacity(0.9)
-                    }
-                }
+                Text(isRecording ? "Stop Recording" : "Start Recording")
+                    .font(.title3)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -276,6 +266,52 @@ struct ContentView: View {
             .shadow(radius: 6, y: 3)
         }
         .buttonStyle(.plain)
+    }
+    
+    private func startRecordingFlow() async {
+        await startNewRecording()
+        isRecording = true
+        
+        floatingPanel.onStop = {
+            Task { @MainActor in
+                await self.stopRecordingFlow()
+            }
+        }
+        
+        floatingPanel.onRestart = {
+            Task { @MainActor in
+                await self.restartRecordingFlow()
+            }
+        }
+        
+        floatingPanel.show(recorder: recorder)
+        recalcSelection(selectNewest: true)
+    }
+    
+    private func stopRecordingFlow() async {
+        await recorder.stopRecording()
+        isRecording = false
+        floatingPanel.hide()
+        await finalizePendingRecording()
+        recalcSelection()
+    }
+    
+    private func restartRecordingFlow() async {
+        await recorder.stopRecording()
+        
+        // Delete the pending recording without saving
+        if let pending = pendingRecording {
+            let fileURL = (try? AppDirectories.recordingsDir())?.appendingPathComponent(pending.fileName)
+            if let url = fileURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+            modelContext.delete(pending)
+            pendingRecording = nil
+        }
+        
+        // Start fresh
+        await startNewRecording()
+        floatingPanel.show(recorder: recorder)
     }
 
     private func formatRecordingDuration(_ duration: TimeInterval) -> String {

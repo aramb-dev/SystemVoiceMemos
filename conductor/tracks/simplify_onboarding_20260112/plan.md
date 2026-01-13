@@ -1,9 +1,9 @@
 # Plan - Simplify the Onboarding
 
-## Phase 1: Preparation and Design Analysis
-- [ ] Task: Review existing `OnboardingView.swift` and `SystemAudioRecorder.swift` permission logic.
-- [ ] Task: Design the new UI layout using native SwiftUI components.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Preparation and Design Analysis' (Protocol in workflow.md)
+## Phase 1: Preparation and Design Analysis [checkpoint: 8c0b650]
+- [x] Task: Review existing `OnboardingView.swift` and `SystemAudioRecorder.swift` permission logic.
+- [x] Task: Design the new UI layout using native SwiftUI components.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Preparation and Design Analysis' (Protocol in workflow.md)
 
 ## Phase 2: UI Modernization
 - [ ] Task: Update the `OnboardingView` structure with new SF Symbols and typography.

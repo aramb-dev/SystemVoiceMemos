@@ -14,11 +14,26 @@ SystemVoiceMemos captures system audio on macOS using ScreenCaptureKit and store
 - Screen Recording permission (prompted on first run).
 
 ## Getting Started
+
+### Prerequisites
+- macOS 15.0 or later.
+- Xcode 16 or later.
+
+### Building in Xcode
 1. Open `SystemVoiceMemos.xcodeproj` in Xcode.
-2. Ensure the `com.apple.security.personal-information.screen-recording` entitlement is enabled (already added).
-3. Build and run the `SystemVoiceMemos` scheme.
-4. On launch, click **Start Recording** to begin capturing system audio. Click **Stop Recording** to finish and save the file.
-5. Use the list to reveal recordings in Finder or delete entries you no longer need.
+2. Select the **SystemVoiceMemos** scheme and a destination (e.g., **My Mac**).
+3. Press `Cmd + B` to build or `Cmd + R` to run.
+4. On launch, ensure you grant the required **Screen Recording** permissions when prompted.
+
+### Building from Command Line
+You can build the project using `xcodebuild`:
+
+```bash
+# Build the project
+xcodebuild -scheme SystemVoiceMemos -configuration Release
+```
+
+The resulting binary will be located in the `build/Build/Products/Release` directory.
 
 ## Troubleshooting
 - If capture fails with CoreGraphics errors, confirm Screen Recording permission is granted in **System Settings → Privacy & Security → Screen Recording**.

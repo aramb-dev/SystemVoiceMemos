@@ -11,6 +11,7 @@ struct ContentView: View {
 
     @StateObject private var recorder = SystemAudioRecorder()
     @StateObject private var floatingPanel = FloatingRecordingPanel()
+    @StateObject private var windowAnimator = WindowAnimator()
     @State private var isRecording = false
     @State private var selectedRecordingID: RecordingEntity.ID?
     @State private var pendingRecording: RecordingEntity?
@@ -284,14 +285,35 @@ struct ContentView: View {
             }
         }
         
-        floatingPanel.show(recorder: recorder)
+        floatingPanel.onExpand = {
+            Task { @MainActor in
+                self.expandToFullWindow()
+            }
+        }
+        
+        windowAnimator.shrinkToBar()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            self.floatingPanel.show(recorder: self.recorder)
+        }
+        
         recalcSelection(selectNewest: true)
+    }
+    
+    private func expandToFullWindow() {
+        floatingPanel.hide()
+        windowAnimator.expandToFull()
     }
     
     private func stopRecordingFlow() async {
         await recorder.stopRecording()
         isRecording = false
         floatingPanel.hide()
+        
+        if windowAnimator.isMinimized {
+            windowAnimator.expandToFull()
+        }
+        
         await finalizePendingRecording()
         recalcSelection()
     }

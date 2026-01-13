@@ -7,6 +7,7 @@ struct MinimalRecordingView: View {
     
     var onStop: () -> Void
     var onRestart: () -> Void
+    var onExpand: () -> Void
     
     private var formattedDuration: String {
         let total = Int(recorder.currentRecordingDuration)
@@ -33,6 +34,8 @@ struct MinimalRecordingView: View {
                 .frame(height: 24)
             
             pinButton
+            
+            expandButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -128,6 +131,19 @@ struct MinimalRecordingView: View {
         }
         .buttonStyle(.plain)
         .help(isAlwaysOnTop ? "Unpin from top" : "Keep on top")
+    }
+    
+    private var expandButton: some View {
+        Button {
+            onExpand()
+        } label: {
+            Image(systemName: "rectangle.expand.vertical")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.plain)
+        .help("Show full window")
     }
 }
 

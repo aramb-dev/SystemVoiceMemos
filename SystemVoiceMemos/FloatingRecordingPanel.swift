@@ -11,6 +11,7 @@ final class FloatingRecordingPanel: ObservableObject {
     
     var onStop: (() -> Void)?
     var onRestart: (() -> Void)?
+    var onExpand: (() -> Void)?
     
     func show(recorder: SystemAudioRecorder) {
         self.recorder = recorder
@@ -83,7 +84,8 @@ final class FloatingRecordingPanel: ObservableObject {
             recorder: recorder,
             isAlwaysOnTop: isOnTopBinding,
             onStop: { [weak self] in self?.onStop?() },
-            onRestart: { [weak self] in self?.onRestart?() }
+            onRestart: { [weak self] in self?.onRestart?() },
+            onExpand: { [weak self] in self?.onExpand?() }
         )
         
         let hostingView = NSHostingView(rootView: contentView)

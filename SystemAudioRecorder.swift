@@ -172,14 +172,22 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         // Stop duration tracking
         stopDurationTimer()
 
+        // Stop capture first
         do {
             try await stream?.stopCapture()
         } catch {
             print("stopCapture error:", error)
         }
 
-        stream = nil
+        // Detach output to avoid stray buffers during teardown
+        do {
+            try stream?.removeStreamOutput(self, type: .audio)
+        } catch {
+            // Non-fatal: log and continue
+            print("removeStreamOutput error:", error)
+        }
 
+        // Finish writing cleanly
         audioInput?.markAsFinished()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             writer?.finishWriting {
@@ -187,6 +195,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             }
         }
 
+        if let writer, writer.status == .failed {
+            print("finishWriting failed:", writer.error ?? RecorderError.writerStartFailed)
+        }
+
+        // Release resources
+        stream = nil
         audioInput = nil
         writer = nil
     }

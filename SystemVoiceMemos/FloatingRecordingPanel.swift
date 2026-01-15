@@ -8,6 +8,7 @@ final class FloatingRecordingPanel: ObservableObject {
     
     @Published var isVisible = false
     @AppStorage("minimalRecordingAlwaysOnTop") var isAlwaysOnTop = true
+    @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing) private var excludeFromScreenCapture = true
     
     var onStop: (() -> Void)?
     var onRestart: (() -> Void)?
@@ -52,8 +53,8 @@ final class FloatingRecordingPanel: ObservableObject {
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         
-        // Exclude from screen capture/sharing
-        panel.sharingType = .none
+        // Exclude from screen capture/sharing if requested
+        panel.sharingType = excludeFromScreenCapture ? .none : .readOnly
         
         // Set initial level
         updateWindowLevel()
@@ -97,5 +98,10 @@ final class FloatingRecordingPanel: ObservableObject {
     
     private func updateWindowLevel() {
         panel?.level = isAlwaysOnTop ? .floating : .normal
+    }
+
+    func setScreenCaptureExclusion(_ isExcluded: Bool) {
+        excludeFromScreenCapture = isExcluded
+        panel?.sharingType = isExcluded ? .none : .readOnly
     }
 }

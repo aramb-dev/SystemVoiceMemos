@@ -12,5 +12,6 @@ enum AppConstants {
     /// UserDefaults keys used throughout the app
     enum UserDefaultsKeys {
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
+        static let hideFromScreenSharing = "hideFromScreenSharing"
     }
 }

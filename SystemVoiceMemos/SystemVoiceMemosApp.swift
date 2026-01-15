@@ -72,6 +72,13 @@ struct SystemVoiceMemosApp: App {
                     showAboutWindow()
                 }
             }
+
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    SettingsWindowController.shared.show()
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
         }
     }
     

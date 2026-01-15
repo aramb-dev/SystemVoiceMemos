@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var recorder = SystemAudioRecorder()
     @StateObject private var floatingPanel = FloatingRecordingPanel()
     @StateObject private var windowAnimator = WindowAnimator()
+    @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing) private var hideFromScreenSharing = true
     @State private var isRecording = false
     @State private var selectedRecordingID: RecordingEntity.ID?
     @State private var pendingRecording: RecordingEntity?
@@ -54,10 +55,14 @@ struct ContentView: View {
         }
         .onAppear {
             recalcSelection()
+            applyScreenSharingPreference(hideFromScreenSharing)
         }
         .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
             // Handle resetting onboarding if needed, or just let App handle it
             UserDefaults.standard.set(false, forKey: AppConstants.UserDefaultsKeys.hasCompletedOnboarding)
+        }
+        .onChange(of: hideFromScreenSharing) { _, newValue in
+            applyScreenSharingPreference(newValue)
         }
     }
 
@@ -295,6 +300,7 @@ struct ContentView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
             self.floatingPanel.show(recorder: self.recorder)
+            self.floatingPanel.setScreenCaptureExclusion(self.hideFromScreenSharing)
         }
         
         recalcSelection(selectNewest: true)
@@ -312,6 +318,9 @@ struct ContentView: View {
         
         if windowAnimator.isMinimized {
             windowAnimator.expandToFull()
+        } else {
+            // If the window was mid-animation or hidden, restore it to the last saved frame
+            windowAnimator.restoreWithoutAnimation()
         }
         
         await finalizePendingRecording()
@@ -574,6 +583,13 @@ struct ContentView: View {
     private func panelBackground() -> some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(.ultraThinMaterial)
+    }
+
+    private func applyScreenSharingPreference(_ exclude: Bool) {
+        NSApp.windows.forEach { window in
+            window.sharingType = exclude ? .none : .readOnly
+        }
+        floatingPanel.setScreenCaptureExclusion(exclude)
     }
 }
 

@@ -1,98 +1,27 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Settings Tab Enum
+// MARK: - Settings Tab View Controllers
 
-enum SettingsTab: String, CaseIterable {
-    case general
-    case recording
-
-    var displayName: String {
-        rawValue.capitalized
-    }
-
-    var icon: String {
-        switch self {
-        case .general: return "slider.horizontal.3"
-        case .recording: return "waveform"
-        }
+private class GeneralSettingsViewController: NSViewController {
+    override func loadView() {
+        view = NSHostingView(rootView: GeneralSettingsView())
     }
 }
 
-// MARK: - Settings Window Controller
-
-final class SettingsWindowController {
-    static let shared = SettingsWindowController()
-    private var window: NSWindow?
-
-    func show() {
-        if let window, window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        let hosting = NSHostingView(rootView: SettingsRootView())
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 400),
-            styleMask: [.titled, .closable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "Settings"
-        window.isReleasedWhenClosed = false
-        window.center()
-        window.contentView = hosting
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        self.window = window
+private class RecordingSettingsViewController: NSViewController {
+    override func loadView() {
+        view = NSHostingView(rootView: RecordingSettingsView())
     }
 }
 
-// MARK: - Settings Root View
+// MARK: - SwiftUI Views
 
-struct SettingsRootView: View {
-    @State private var selectedTab: SettingsTab = .general
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Segmented tab bar
-            Picker("", selection: $selectedTab) {
-                ForEach(SettingsTab.allCases, id: \.self) { tab in
-                    Label(tab.displayName, systemImage: tab.icon).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
-            // Content area
-            ScrollView {
-                switch selectedTab {
-                case .general:
-                    GeneralSettingsView()
-                case .recording:
-                    RecordingSettingsView()
-                }
-            }
-            .scrollIndicators(.hidden)
-        }
-        .frame(minWidth: 520, minHeight: 400)
-    }
-}
-
-// MARK: - General Settings View
-
-private struct GeneralSettingsView: View {
-    @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing) private var hideFromScreenSharing = true
+struct GeneralSettingsView: View {
+    @AppStorage("hideFromScreenSharing") private var hideFromScreenSharing = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("General")
-                .font(.title2)
-                .fontWeight(.semibold)
-
             Toggle(isOn: $hideFromScreenSharing) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hide while screen sharing")
@@ -111,15 +40,9 @@ private struct GeneralSettingsView: View {
     }
 }
 
-// MARK: - Recording Settings View
-
-private struct RecordingSettingsView: View {
+struct RecordingSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Recording")
-                .font(.title2)
-                .fontWeight(.semibold)
-
             Text("Recording settings will be added here.")
                 .font(.body)
                 .foregroundStyle(.secondary)
@@ -128,5 +51,63 @@ private struct RecordingSettingsView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Toolbar Tab View Controller
+
+private final class SettingsToolbarTabViewController: NSTabViewController {
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // This creates the Finder/System Preferences-style toolbar tabs
+        tabStyle = .toolbar
+        transitionOptions = .crossfade
+
+        // Add panes
+        addTab(title: "General", symbol: "slider.horizontal.3", controller: GeneralSettingsViewController())
+        addTab(title: "Recording", symbol: "waveform", controller: RecordingSettingsViewController())
+    }
+
+    private func addTab(title: String, symbol: String, controller: NSViewController) {
+        let item = NSTabViewItem(viewController: controller)
+        item.label = title
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        addTabViewItem(item)
+    }
+}
+
+// MARK: - Settings Window Controller
+
+final class SettingsWindowController: NSWindowController {
+    static let shared = SettingsWindowController()
+
+    private init() {
+        let tabViewController = SettingsToolbarTabViewController()
+
+        let window = NSWindow()
+        window.contentViewController = tabViewController
+        window.title = "Settings"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.setContentSize(NSSize(width: 520, height: 400))
+
+        super.init(window: window)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func show() {
+        if let window, window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        window?.center()
+        showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

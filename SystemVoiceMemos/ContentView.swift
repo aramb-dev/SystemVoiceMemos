@@ -711,7 +711,9 @@ private struct PlaybackControlsView: View {
             }
 
             // Main waveform visualization
-            if !waveformAnalyzer.waveformData.isEmpty {
+            if waveformAnalyzer.isAnalyzing {
+                LoadingWaveformView()
+            } else if !waveformAnalyzer.waveformData.isEmpty {
                 VStack(spacing: 12) {
                     // Detailed waveform
                     WaveformView(
@@ -723,7 +725,7 @@ private struct PlaybackControlsView: View {
                         },
                         isPlaceholder: !waveformAnalyzer.hasRealData
                     )
-                    
+
                     // Overview waveform scrubber
                     OverviewWaveformView(
                         waveformData: waveformAnalyzer.waveformData,

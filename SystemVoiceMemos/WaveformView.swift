@@ -7,6 +7,25 @@
 
 import SwiftUI
 
+// MARK: - Loading State View
+
+struct LoadingWaveformView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .scaleEffect(1.2)
+
+            Text("Analyzing audio...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(height: 100)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Main Waveform View
+
 struct WaveformView: View {
     let waveformData: [Float]
     let currentTime: TimeInterval
@@ -313,6 +332,9 @@ struct OverviewWaveformView: View {
 
 #Preview {
     VStack(spacing: 20) {
+        LoadingWaveformView()
+            .frame(height: 100)
+
         WaveformView(
             waveformData: Array(0..<100).map { _ in Float.random(in: 0.2...1) },
             currentTime: 15.5,

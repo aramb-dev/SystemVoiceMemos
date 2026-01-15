@@ -56,15 +56,18 @@ final class WindowAnimator: ObservableObject {
         } completionHandler: { [weak self] in
             self?.isMinimized = false
             self?.savedFrame = nil
+            // Activate app so window gets keyboard focus
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
     
     func restoreWithoutAnimation() {
         guard let window = mainWindow, let savedFrame = savedFrame else { return }
-        
+
         window.setFrame(savedFrame, display: true)
         window.alphaValue = 1
         window.orderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         isMinimized = false
         self.savedFrame = nil
     }

@@ -18,7 +18,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     private var audioInput: AVAssetWriterInput?
     private let outputQueue = DispatchQueue(label: "SystemVoiceMemos.AudioOutput")
 
-    private var isRecording = false
+    var isRecording = false
     private var startTime: CMTime = .zero
     private var recordingStartDate: Date?
     private var durationTimer: Timer?

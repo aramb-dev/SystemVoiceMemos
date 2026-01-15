@@ -312,6 +312,9 @@ struct ContentView: View {
     }
     
     private func stopRecordingFlow() async {
+        // Don't process if already stopped
+        guard recorder.isRecording else { return }
+
         await recorder.stopRecording()
         isRecording = false
         floatingPanel.hide()

@@ -40,44 +40,38 @@ struct MinimalRecordingView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            ZStack {
-                // Main glass material
-                Capsule()
-                    .fill(.ultraThinMaterial)
-
-                // Subtle inner highlight
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.12),
-                                Color.clear,
-                                Color.black.opacity(0.03)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            }
+            Capsule()
+                .fill(.ultraThinMaterial)
         )
         .overlay {
-            // Border with gradient
             Capsule()
-                .stroke(
+                .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.2),
-                            Color.white.opacity(0.05),
-                            Color.clear
+                            Color.white.opacity(0.08),
+                            Color.clear,
+                            Color.black.opacity(0.02)
                         ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
         }
-        .shadow(color: .black.opacity(0.15), radius: 12, y: 5)
-        .shadow(color: .white.opacity(0.05), radius: 1, y: -1)
+        .overlay {
+            Capsule()
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.15),
+                            Color.white.opacity(0.05)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 0.5
+                )
+        }
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
     }
     
     private var recordingIndicator: some View {

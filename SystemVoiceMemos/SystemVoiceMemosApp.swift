@@ -16,6 +16,7 @@ extension Notification.Name {
     static let stopRecording = Notification.Name("stopRecording")
     static let toggleSidebar = Notification.Name("toggleSidebar")
     static let clearDeletedRecordings = Notification.Name("clearDeletedRecordings")
+    static let checkForUpdates = Notification.Name("checkForUpdates")
 }
 
 @main

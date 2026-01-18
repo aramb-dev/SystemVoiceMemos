@@ -15,6 +15,12 @@ private class RecordingSettingsViewController: NSViewController {
     }
 }
 
+private class UpdatesSettingsViewController: NSViewController {
+    override func loadView() {
+        view = NSHostingView(rootView: UpdatesSettingsView())
+    }
+}
+
 // MARK: - SwiftUI Views
 
 struct GeneralSettingsView: View {
@@ -37,6 +43,53 @@ struct GeneralSettingsView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct UpdatesSettingsView: View {
+    @AppStorage("updateCheckInterval") private var updateCheckInterval = 86400
+    @AppStorage("automaticUpdateChecks") private var automaticUpdateChecks = true
+    
+    var body: some View {
+        Form {
+            Section("Automatic Updates") {
+                Toggle(isOn: $automaticUpdateChecks) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Check for updates automatically")
+                            .font(.headline)
+                        Text("System Voice Memos will periodically check for new versions")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                
+                if automaticUpdateChecks {
+                    Picker("Check for updates", selection: $updateCheckInterval) {
+                        Text("Every hour").tag(3600)
+                        Text("Every 6 hours").tag(21600)
+                        Text("Every 12 hours").tag(43200)
+                        Text("Daily").tag(86400)
+                        Text("Weekly").tag(604800)
+                    }
+                    .pickerStyle(.menu)
+                    .disabled(!automaticUpdateChecks)
+                }
+            }
+            
+            Section("Manual Check") {
+                Button("Check for Updates Now") {
+                    checkForUpdatesNow()
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private func checkForUpdatesNow() {
+        NotificationCenter.default.post(name: .checkForUpdates, object: nil)
     }
 }
 
@@ -155,6 +208,7 @@ private final class SettingsToolbarTabViewController: NSTabViewController {
         // Add panes
         addTab(title: "General", symbol: "slider.horizontal.3", controller: GeneralSettingsViewController())
         addTab(title: "Recording", symbol: "waveform", controller: RecordingSettingsViewController())
+        addTab(title: "Updates", symbol: "arrow.down.circle", controller: UpdatesSettingsViewController())
     }
 
     private func addTab(title: String, symbol: String, controller: NSViewController) {

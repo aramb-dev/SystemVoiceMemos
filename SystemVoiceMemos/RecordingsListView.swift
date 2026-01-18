@@ -72,32 +72,7 @@ struct RecordingsListView: View {
     private var recordingsList: some View {
         List(selection: $selectedRecordingID) {
             ForEach(recordings) { rec in
-                RecordingRow(
-                    recording: rec,
-                    isActive: activeRecordingID == rec.id,
-                    isSelected: selectedRecordingID == rec.id,
-                    durationString: TimeFormatter.format(rec.duration)
-                )
-                .tag(rec.id)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                .contextMenu {
-                    Button(rec.isFavorite ? "Remove from Favorites" : "Add to Favorites") {
-                        onToggleFavorite(rec)
-                    }
-                    if rec.deletedAt == nil {
-                        Button("Move to Folder...") { onMoveToFolder(rec) }
-                    }
-                    Button("Show in Finder") { onReveal(rec) }
-                    Divider()
-                    Button(rec.deletedAt == nil ? "Move to Trash" : "Delete Permanently", role: .destructive) {
-                        onDelete(rec)
-                    }
-                }
-                .onTapGesture {
-                    selectedRecordingID = rec.id
-                    onSelect(rec.id)
-                }
+                recordingRowView(for: rec)
             }
             .onDelete { offsets in
                 offsets.compactMap { recordings[safe: $0] }.forEach(onDelete)
@@ -105,6 +80,35 @@ struct RecordingsListView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+    }
+    
+    private func recordingRowView(for rec: RecordingEntity) -> some View {
+        RecordingRow(
+            recording: rec,
+            isActive: activeRecordingID == rec.id,
+            isSelected: selectedRecordingID == rec.id,
+            durationString: TimeFormatter.format(rec.duration)
+        )
+        .tag(rec.id)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+        .contextMenu {
+            Button(rec.isFavorite ? "Remove from Favorites" : "Add to Favorites") {
+                onToggleFavorite(rec)
+            }
+            if rec.deletedAt == nil {
+                Button("Move to Folder...") { onMoveToFolder(rec) }
+            }
+            Button("Show in Finder") { onReveal(rec) }
+            Divider()
+            Button(rec.deletedAt == nil ? "Move to Trash" : "Delete Permanently", role: .destructive) {
+                onDelete(rec)
+            }
+        }
+        .onTapGesture {
+            selectedRecordingID = rec.id
+            onSelect(rec.id)
+        }
     }
 }
 

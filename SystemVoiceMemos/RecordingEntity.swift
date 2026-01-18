@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class RecordingEntity {
+final class RecordingEntity: Identifiable {
     var id: UUID
     var title: String
     var createdAt: Date

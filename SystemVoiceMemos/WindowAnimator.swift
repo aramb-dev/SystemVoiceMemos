@@ -39,22 +39,8 @@ final class WindowAnimator: ObservableObject {
         savedFrame = window.frame
         isMinimized = true  // Set immediately, not after animation
 
-        let barSize = NSSize(width: 360, height: 52)
-        let screen = window.screen ?? NSScreen.main!
-        let newOrigin = NSPoint(
-            x: screen.visibleFrame.midX - barSize.width / 2,
-            y: screen.visibleFrame.minY + 80
-        )
-        let newFrame = NSRect(origin: newOrigin, size: barSize)
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.4
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            window.animator().setFrame(newFrame, display: true)
-            window.animator().alphaValue = 0
-        } completionHandler: {
-            window.orderOut(nil)
-        }
+        // Just minimize the window instead of hiding it
+        window.miniaturize(nil)
     }
 
     func expandToFull() {
@@ -65,41 +51,21 @@ final class WindowAnimator: ObservableObject {
             return
         }
 
-        // If we don't have a saved frame, use a default centered frame
-        let defaultFrame: NSRect = {
-            let screen = NSScreen.main ?? NSScreen.screens.first!
-            let size = NSSize(width: 960, height: 700)
-            let origin = NSPoint(
-                x: screen.visibleFrame.midX - size.width / 2,
-                y: screen.visibleFrame.midY - size.height / 2
-            )
-            return NSRect(origin: origin, size: size)
-        }()
-        let targetFrame = savedFrame ?? defaultFrame
-
-        window.setFrame(NSRect(
-            x: targetFrame.midX - 180,
-            y: targetFrame.minY,
-            width: 360,
-            height: 52
-        ), display: false)
-        window.alphaValue = 0
-        window.orderFront(nil)
-        window.makeKey()
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.4
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            window.animator().setFrame(targetFrame, display: true)
-            window.animator().alphaValue = 1
-        } completionHandler: { [weak self] in
-            Task { @MainActor in
-                self?.isMinimized = false
-                self?.savedFrame = nil
-                // Activate app so window gets keyboard focus
-                NSApp.activate(ignoringOtherApps: true)
-            }
+        // Deminiaturize if minimized
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
         }
+        
+        // Restore saved frame if available
+        if let targetFrame = savedFrame {
+            window.setFrame(targetFrame, display: true, animate: true)
+        }
+        
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        
+        isMinimized = false
+        savedFrame = nil
     }
 
     func restoreWithoutAnimation() {

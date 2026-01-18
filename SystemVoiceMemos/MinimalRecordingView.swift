@@ -42,36 +42,8 @@ struct MinimalRecordingView: View {
         .background(
             Capsule()
                 .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         )
-        .overlay {
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.08),
-                            Color.clear,
-                            Color.black.opacity(0.02)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-        }
-        .overlay {
-            Capsule()
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.15),
-                            Color.white.opacity(0.05)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 0.5
-                )
-        }
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
     }
     
     private var recordingIndicator: some View {
@@ -146,6 +118,7 @@ struct MinimalRecordingView: View {
                     )
             }
             .buttonStyle(.plain)
+            .contentShape(Circle())
             .help(recorder.isPaused ? "Resume" : "Pause")
 
             // Stop button
@@ -181,6 +154,7 @@ struct MinimalRecordingView: View {
                     )
             }
             .buttonStyle(.plain)
+            .contentShape(Circle())
             .help("Stop Recording")
 
             // Restart button
@@ -201,6 +175,7 @@ struct MinimalRecordingView: View {
                     )
             }
             .buttonStyle(.plain)
+            .contentShape(Circle())
             .help("Restart Recording")
         }
     }

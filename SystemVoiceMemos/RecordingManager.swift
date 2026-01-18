@@ -26,6 +26,8 @@ class RecordingManager {
         hideFromScreenSharing: Bool,
         onComplete: @escaping () -> Void
     ) async {
+        // Prevent concurrent executions - check manager state first
+        guard !isRecording else { return }
         guard !recorder.isRecording else { return }
         
         await startNewRecording(modelContext: modelContext)
@@ -103,6 +105,9 @@ class RecordingManager {
     // MARK: - Private
     
     private func startNewRecording(modelContext: ModelContext) async {
+        // Guard against concurrent calls
+        guard !isRecording else { return }
+        
         do {
             let dir = try AppDirectories.recordingsDir()
             let formatter = DateFormatter()
@@ -123,7 +128,7 @@ class RecordingManager {
             try? modelContext.save()
 
             pendingRecording = entity
-            isRecording = true
+            // Note: isRecording is set to true in startRecordingFlow, not here
         } catch {
             print("startRecording error:", error)
         }

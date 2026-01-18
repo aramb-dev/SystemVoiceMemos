@@ -17,28 +17,37 @@ extension Notification.Name {
 struct SystemVoiceMemosApp: App {
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @StateObject private var playbackManager = PlaybackManager()
+    @State private var showOnboarding = false
 
     var body: some Scene {
-        WindowGroup {
-            Group {
-                if hasCompletedOnboarding {
-                    ContentView()
-                        .environmentObject(playbackManager)
-                        .transition(.opacity)
-                } else {
+        WindowGroup(id: "main") {
+            ContentView()
+                .environmentObject(playbackManager)
+                .onAppear {
+                    // Set main window identifier for WindowAnimator
+                    if let window = NSApp.windows.first(where: { !($0 is NSPanel) }) {
+                        window.identifier = NSUserInterfaceItemIdentifier("main_window")
+                    }
+                    
+                    // Show onboarding window if not completed
+                    if !hasCompletedOnboarding {
+                        showOnboarding = true
+                    }
+                }
+                .sheet(isPresented: $showOnboarding) {
                     OnboardingView()
-                        .transition(.opacity)
+                        .frame(width: 800, height: 600)
+                        .interactiveDismissDisabled(!hasCompletedOnboarding)
                 }
-            }
-            .onAppear {
-                // Set main window identifier for WindowAnimator
-                if let window = NSApp.windows.first(where: { !($0 is NSPanel) }) {
-                    window.identifier = NSUserInterfaceItemIdentifier("main_window")
-                }
-            }
         }
         .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
         .modelContainer(for: RecordingEntity.self)
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                // Remove "New Window" command to prevent multiple windows
+            }
+        }
         .commands {
             CommandMenu("Playback") {
                 Button(playbackManager.isPlaying ? "Pause" : "Play") {
@@ -70,7 +79,7 @@ struct SystemVoiceMemosApp: App {
             
             CommandMenu("Help") {
                 Button("Show Welcome Guide") {
-                    hasCompletedOnboarding = false
+                    showOnboarding = true
                 }
                 .keyboardShortcut("?", modifiers: [.command])
 

@@ -69,6 +69,7 @@ struct ContentView: View {
             .padding(.bottom, 24)
         }
         .task(id: recordingsHash) { await refreshDurationsIfNeeded() }
+        .task { await recoverIncompleteRecordings() }
         .alert(item: Binding(get: { playbackManager.error }, set: { playbackManager.error = $0 })) { error in
             Alert(title: Text("Playback Error"), message: Text(error.message), dismissButton: .default(Text("OK")))
         }
@@ -369,5 +370,52 @@ struct ContentView: View {
             window.sharingType = exclude ? .none : .readOnly
         }
         recordingManager.setScreenCaptureExclusion(exclude)
+    }
+    
+    // MARK: - Crash Recovery
+    
+    private func recoverIncompleteRecordings() async {
+        // Find recordings with duration = 0 (incomplete/crashed)
+        let incompleteRecordings = recordings.filter { $0.duration == 0 && $0.deletedAt == nil }
+        
+        for recording in incompleteRecordings {
+            guard let url = try? url(for: recording) else {
+                // File doesn't exist, delete the entity
+                modelContext.delete(recording)
+                continue
+            }
+            
+            // Check if file exists and has content
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                // File doesn't exist, delete the entity
+                modelContext.delete(recording)
+                continue
+            }
+            
+            // Try to get actual duration from the file
+            let asset = AVURLAsset(url: url)
+            do {
+                let cmDuration = try await asset.load(.duration)
+                let seconds = CMTimeGetSeconds(cmDuration)
+                
+                if seconds > 0 {
+                    // File is valid, update the duration
+                    recording.duration = seconds
+                    print("✅ Recovered recording: \(recording.title) (\(seconds)s)")
+                } else {
+                    // File is empty or invalid, delete it
+                    try? FileManager.default.removeItem(at: url)
+                    modelContext.delete(recording)
+                    print("🗑️ Removed empty recording: \(recording.title)")
+                }
+            } catch {
+                // Couldn't read file, delete it
+                try? FileManager.default.removeItem(at: url)
+                modelContext.delete(recording)
+                print("🗑️ Removed invalid recording: \(recording.title)")
+            }
+        }
+        
+        try? modelContext.save()
     }
 }

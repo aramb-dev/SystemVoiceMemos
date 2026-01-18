@@ -1,13 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git *)", "Bash(gh *)", "Bash(npm *)", "Bash(npx *)",
-      "Bash(node *)", "Bash(cat *)", "Bash(ls *)", "Bash(grep *)",
-      "Bash(find *)", "Bash(curl *)", "Bash(mkdir *)", "Bash(jq *)",
+      "Bash(git :*)", "Bash(gh :*)", "Bash(npm :*)", "Bash(npx :*)",
+      "Bash(node :*)", "Bash(cat :*)", "Bash(ls :*)", "Bash(grep :*)",
+      "Bash(find :*)", "Bash(curl :*)", "Bash(mkdir :*)", "Bash(jq :*)",
       "Read(*)", "Edit(*)", "Write(*)", "Glob(*)", "Grep(*)", "Task(*)"
     ],
     "deny": [
-      "Bash(rm -rf /)", "Bash(sudo rm *)", "Bash(chmod 777 *)",
+      "Bash(rm -rf /)", "Bash(sudo rm :*)", "Bash(chmod 777 :*)",
       "Bash(git push --force origin main)", "Read(.env)", "Read(**/*.key)"
     ]
   },

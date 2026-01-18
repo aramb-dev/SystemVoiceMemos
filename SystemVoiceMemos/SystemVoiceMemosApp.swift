@@ -20,13 +20,21 @@ struct SystemVoiceMemosApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                ContentView()
-                    .environmentObject(playbackManager)
-                    .transition(.opacity)
-            } else {
-                OnboardingView()
-                    .transition(.opacity)
+            Group {
+                if hasCompletedOnboarding {
+                    ContentView()
+                        .environmentObject(playbackManager)
+                        .transition(.opacity)
+                } else {
+                    OnboardingView()
+                        .transition(.opacity)
+                }
+            }
+            .onAppear {
+                // Set main window identifier for WindowAnimator
+                if let window = NSApp.windows.first(where: { !($0 is NSPanel) }) {
+                    window.identifier = NSUserInterfaceItemIdentifier("main_window")
+                }
             }
         }
         .windowStyle(.hiddenTitleBar)

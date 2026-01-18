@@ -148,6 +148,30 @@ struct ContentView: View {
         .frame(minWidth: 300)
     }
     
+    // MARK: - Detail Panel
+    
+    private var detailPanel: some View {
+        Group {
+            if let recording = selectedRecording {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        detailHeader(for: recording)
+                        
+                        if recording.deletedAt != nil {
+                            deletedMessage(for: recording)
+                        } else {
+                            playbackControls(for: recording)
+                        }
+                    }
+                    .padding(20)
+                }
+            } else {
+                emptyDetailState
+            }
+        }
+        .frame(minWidth: 350)
+    }
+    
     private var sidebarTitle: String {
         guard let item = selectedSidebarItem else { return "Library" }
         switch item {
@@ -324,7 +348,7 @@ struct ContentView: View {
     
     private func startRecordingFlow() async {
         // Prevent concurrent executions - similar guard to stopRecordingFlow()
-        guard !isRecording else { return }
+        guard !recorder.isRecording else { return }
         
         await startNewRecording()
         isRecording = true
@@ -789,6 +813,78 @@ private struct RecordingRow: View {
         if recording.deletedAt != nil { return .secondary }
         if recording.isFavorite { return .yellow }
         return isActive ? .accentColor : .secondary
+    }
+}
+
+// MARK: - Playback Controls
+
+private struct PlaybackControlsView: View {
+    @EnvironmentObject private var playbackManager: PlaybackManager
+    let recording: RecordingEntity
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Progress slider
+            VStack(spacing: 4) {
+                Slider(value: sliderBinding, in: 0...max(playbackManager.duration, 1))
+                    .disabled(!playbackManager.hasActivePlayer)
+                
+                HStack {
+                    Text(formatTime(playbackManager.currentTime))
+                    Spacer()
+                    Text(formatTime(playbackManager.duration))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            
+            // Playback controls
+            HStack(spacing: 24) {
+                Button {
+                    playbackManager.skip(by: -15)
+                } label: {
+                    Image(systemName: "gobackward.15")
+                        .font(.title2)
+                }
+                .disabled(!playbackManager.hasActivePlayer)
+                .buttonStyle(.plain)
+                
+                Button {
+                    playbackManager.togglePlayPause()
+                } label: {
+                    Image(systemName: playbackManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(Color.accentColor)
+                }
+                .disabled(!playbackManager.hasSelection)
+                .buttonStyle(.plain)
+                
+                Button {
+                    playbackManager.skip(by: 15)
+                } label: {
+                    Image(systemName: "goforward.15")
+                        .font(.title2)
+                }
+                .disabled(!playbackManager.hasActivePlayer)
+                .buttonStyle(.plain)
+            }
+        }
+        .padding()
+    }
+
+    private var sliderBinding: Binding<Double> {
+        Binding(
+            get: { playbackManager.currentTime },
+            set: { playbackManager.seek(to: $0) }
+        )
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
+        let total = Int(seconds.rounded())
+        let minutes = total / 60
+        let secs = total % 60
+        return String(format: "%d:%02d", minutes, secs)
     }
 }
 

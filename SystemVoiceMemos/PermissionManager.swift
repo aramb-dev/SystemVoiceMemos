@@ -45,9 +45,6 @@ final class PermissionManager: ObservableObject {
         // Note: It doesn't return a bool immediately in a way that's useful for 'await' 
         // because the user has to go to System Settings.
         _ = CGRequestScreenCaptureAccess()
-        
-        // Re-check after a short delay or when the app becomes active
-        checkScreenRecordingPermission()
     }
     
     func openSystemSettings() {

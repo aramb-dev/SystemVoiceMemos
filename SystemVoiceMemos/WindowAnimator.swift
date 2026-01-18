@@ -15,12 +15,10 @@ final class WindowAnimator: ObservableObject {
             }
         }
 
-        // Fallback to searching windows
-        let found = NSApp.windows.first {
-            $0.contentView?.subviews.first is NSHostingView<AnyView> ||
-            $0.title.isEmpty && $0.styleMask.contains(.fullSizeContentView)
+        // Filter for the specific main application window more strictly
+        let found = NSApp.windows.first { window in
+            !(window is NSPanel) && window.isVisible && window.identifier?.rawValue == "main_window"
         } ?? NSApp.mainWindow
-        ?? NSApp.windows.first { !($0 is NSPanel) }
 
         // Cache the found window for future use
         weakWindow = found

@@ -110,6 +110,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         recordingStartDate = Date()
         currentRecordingDuration = 0
         pausedDuration = 0
+        // Ensure timer starts after state is fully initialized
         startDurationTimer()
     }
     
@@ -148,9 +149,11 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
     private func startDurationTimer() {
         // Update duration every 0.1 seconds for smooth UI updates
-        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { @MainActor [weak self] _ in
-            guard let self = self, let startDate = self.recordingStartDate else { return }
-            self.currentRecordingDuration = Date().timeIntervalSince(startDate) - self.pausedDuration
+        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self, let startDate = self.recordingStartDate else { return }
+                self.currentRecordingDuration = Date().timeIntervalSince(startDate) - self.pausedDuration
+            }
         }
     }
 
@@ -180,11 +183,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         }
 
         // Detach output to avoid stray buffers during teardown
-        do {
-            try stream?.removeStreamOutput(self, type: .audio)
-        } catch {
-            // Non-fatal: log and continue
-            print("removeStreamOutput error:", error)
+        if let stream = stream {
+            do {
+                try stream.removeStreamOutput(self, type: .audio)
+            } catch {
+                print("removeStreamOutput error:", error)
+            }
         }
 
         // Finish writing cleanly

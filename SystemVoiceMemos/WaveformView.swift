@@ -281,7 +281,7 @@ struct OverviewWaveformView: View {
             .frame(height: overviewHeight)
 
             // Duration label
-            Text(formatTime(duration))
+            Text(TimeFormatter.formatPlayback(duration))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.leading, 8)
@@ -359,14 +359,6 @@ struct OverviewWaveformView: View {
         }
         .position(x: xPosition, y: overviewHeight / 2)
         .animation(.easeInOut(duration: 0.08), value: playbackProgress)
-    }
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
-        let total = Int(seconds.rounded())
-        let minutes = total / 60
-        let secs = total % 60
-        return String(format: "%d:%02d", minutes, secs)
     }
 }
 

@@ -21,9 +21,9 @@ struct PlaybackControlsView: View {
             
             // Time labels
             HStack {
-                Text(formatTime(playbackManager.currentTime))
+                Text(TimeFormatter.formatPlayback(playbackManager.currentTime))
                 Spacer()
-                Text(formatTime(playbackManager.duration))
+                Text(TimeFormatter.formatPlayback(playbackManager.duration))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -107,12 +107,5 @@ struct PlaybackControlsView: View {
             set: { playbackManager.seek(to: $0) }
         )
     }
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
-        let total = Int(seconds.rounded())
-        let minutes = total / 60
-        let secs = total % 60
-        return String(format: "%d:%02d", minutes, secs)
-    }
 }
+

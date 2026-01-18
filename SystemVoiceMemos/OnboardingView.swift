@@ -11,11 +11,12 @@ struct OnboardingView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @StateObject private var permissionManager = PermissionManager.shared
     @State private var currentStep: OnboardingStep = .welcome
+    @State private var isNavigatingForward = true
     
-    enum OnboardingStep {
-        case welcome
-        case permissions
-        case completion
+    enum OnboardingStep: Int {
+        case welcome = 0
+        case permissions = 1
+        case completion = 2
     }
     
     var body: some View {
@@ -166,6 +167,7 @@ struct OnboardingView: View {
             
             Button {
                 withAnimation(.spring()) {
+                    isNavigatingForward = true
                     currentStep = .permissions
                 }
             } label: {
@@ -208,7 +210,10 @@ struct OnboardingView: View {
             Spacer()
                 .frame(height: 40)
         }
-        .transition(.asymmetric(insertion: .opacity.combined(with: .scale), removal: .opacity.combined(with: .move(edge: .leading))))
+        .transition(.asymmetric(
+            insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+            removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+        ))
     }
     
     // MARK: - Permissions View
@@ -243,6 +248,7 @@ struct OnboardingView: View {
             
             Button {
                 withAnimation(.spring()) {
+                    isNavigatingForward = true
                     currentStep = .completion
                 }
             } label: {
@@ -295,7 +301,10 @@ struct OnboardingView: View {
             }
         }
         .padding(.vertical, 60)
-        .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+        .transition(.asymmetric(
+            insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+            removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+        ))
     }
     
     // MARK: - Completion View
@@ -366,7 +375,10 @@ struct OnboardingView: View {
             Spacer()
                 .frame(height: 40)
         }
-        .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .opacity))
+        .transition(.asymmetric(
+            insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+            removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+        ))
     }
 }
 

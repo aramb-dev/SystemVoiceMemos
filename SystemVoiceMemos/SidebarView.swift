@@ -2,11 +2,14 @@
 //  SidebarView.swift
 //  SystemVoiceMemos
 //
+//  Sidebar navigation for library categories and custom folders.
+//
 
 import SwiftUI
 
 // MARK: - Sidebar Types
 
+/// Represents an item in the sidebar navigation
 enum SidebarItem: Hashable, Identifiable {
     case library(LibraryCategory)
     case folder(String)
@@ -14,6 +17,7 @@ enum SidebarItem: Hashable, Identifiable {
     var id: Self { self }
 }
 
+/// Built-in library categories
 enum LibraryCategory: String, CaseIterable, Identifiable {
     case all
     case favorites
@@ -40,6 +44,7 @@ enum LibraryCategory: String, CaseIterable, Identifiable {
 
 // MARK: - Sidebar View
 
+/// Sidebar navigation view with library categories and folders
 struct SidebarView: View {
     @Binding var selectedItem: SidebarItem?
     let folders: [String]

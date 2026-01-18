@@ -24,3 +24,6 @@ xcuserdata/
 # Claude Boris
 .claude/audit/
 .claude/settings.local.json
+
+# Sparkle
+.sparkle_private_key

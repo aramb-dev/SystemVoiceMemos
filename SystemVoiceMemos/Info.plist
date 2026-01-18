@@ -2,22 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- 🔐 Required for system audio recording -->
-    <key>NSAudioCaptureUsageDescription</key>
-    <string>This app captures system audio to save as memos.</string>
-    
-    <key>NSMicrophoneUsageDescription</key>
-    <string>We need microphone access if you want to record external audio alongside system audio.</string>
-    
-    <key>NSScreenCaptureUsageDescription</key>
-    <string>Required to capture the system audio stream from your displays.</string>
-
-    <!-- 🧾 Required for notarization -->
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.utilities</string>
-
-    <!-- 🖼 Required if you're providing an ICNS icon -->
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>This app captures system audio to save as memos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need microphone access if you want to record external audio alongside system audio.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>Required to capture the system audio stream from your displays.</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/aramb-dev/SystemVoiceMemos/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>fIQpxkBHPL0KJxy+PQkIHmndQ+Li9jBc/wOVvm8erzo=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>

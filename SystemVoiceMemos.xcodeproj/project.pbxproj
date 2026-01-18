@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		130377A82F1D60F400B70F97 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 130377A72F1D60F400B70F97 /* Sparkle */; };
 		348D934C2E97E2130044655A /* SystemAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348D934B2E97E2130044655A /* SystemAudioRecorder.swift */; };
 		348D93522E97EA2E0044655A /* SystemAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348D93512E97EA2E0044655A /* SystemAudioPlayer.swift */; };
 		348D93592E9806070044655A /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 348D93582E9806070044655A /* MediaPlayer.framework */; };
@@ -36,7 +37,6 @@
 		348D934B2E97E2130044655A /* SystemAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioRecorder.swift; sourceTree = "<group>"; };
 		348D93512E97EA2E0044655A /* SystemAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioPlayer.swift; sourceTree = "<group>"; };
 		348D93582E9806070044655A /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
-		3490A9F32F00000000000001 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -76,6 +76,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				348D93592E9806070044655A /* MediaPlayer.framework in Frameworks */,
+				130377A82F1D60F400B70F97 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,6 +148,7 @@
 			);
 			name = SystemVoiceMemos;
 			packageProductDependencies = (
+				130377A72F1D60F400B70F97 /* Sparkle */,
 			);
 			productName = SystemVoiceMemos;
 			productReference = 346BD3022E974213001D2758 /* SystemVoiceMemos.app */;
@@ -230,6 +232,9 @@
 			);
 			mainGroup = 346BD2F92E974213001D2758;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				130377A62F1D60F400B70F97 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 346BD3032E974213001D2758 /* Products */;
 			projectDirPath = "";
@@ -632,6 +637,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		130377A62F1D60F400B70F97 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		130377A72F1D60F400B70F97 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 130377A62F1D60F400B70F97 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 346BD2FA2E974213001D2758 /* Project object */;
 }

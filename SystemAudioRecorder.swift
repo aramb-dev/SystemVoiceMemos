@@ -290,7 +290,7 @@ extension SystemAudioRecorder: SCStreamOutput {
             allocator: kCFAllocatorDefault,
             sampleBuffer: sampleBuffer,
             sampleTimingEntryCount: 1,
-            timingArray: &timingInfo,
+            sampleTimingArray: &timingInfo,
             sampleBufferOut: &adjustedBuffer
         )
         

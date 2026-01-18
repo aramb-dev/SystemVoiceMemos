@@ -21,6 +21,28 @@ struct LoadingWaveformView: View {
         }
         .frame(height: 100)
         .frame(maxWidth: .infinity)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.thinMaterial)
+
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.05),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            }
+        )
     }
 }
 
@@ -134,11 +156,20 @@ struct WaveformView: View {
     private func playheadView(in geometry: GeometryProxy) -> some View {
         let xPosition = playbackProgress * geometry.size.width
 
-        return Rectangle()
-            .fill(Color.accentColor)
-            .frame(width: 2)
-            .position(x: xPosition, y: waveformHeight / 2)
-            .animation(.easeInOut(duration: 0.08), value: playbackProgress)
+        return ZStack {
+            // Glow effect
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.3))
+                .frame(width: 6)
+                .blur(radius: 4)
+
+            // Core playhead
+            Rectangle()
+                .fill(Color.accentColor)
+                .frame(width: 2)
+        }
+        .position(x: xPosition, y: waveformHeight / 2)
+        .animation(.easeInOut(duration: 0.08), value: playbackProgress)
     }
     
     private var timelineView: some View {
@@ -314,11 +345,20 @@ struct OverviewWaveformView: View {
     private func playheadIndicator(in geometry: GeometryProxy) -> some View {
         let xPosition = playbackProgress * geometry.size.width
 
-        return Rectangle()
-            .fill(Color.accentColor)
-            .frame(width: 2)
-            .position(x: xPosition, y: overviewHeight / 2)
-            .animation(.easeInOut(duration: 0.08), value: playbackProgress)
+        return ZStack {
+            // Glow effect
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.3))
+                .frame(width: 5)
+                .blur(radius: 3)
+
+            // Core playhead
+            Rectangle()
+                .fill(Color.accentColor)
+                .frame(width: 2)
+        }
+        .position(x: xPosition, y: overviewHeight / 2)
+        .animation(.easeInOut(duration: 0.08), value: playbackProgress)
     }
 
     private func formatTime(_ seconds: Double) -> String {

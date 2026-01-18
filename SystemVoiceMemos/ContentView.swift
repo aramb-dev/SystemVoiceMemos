@@ -94,7 +94,8 @@ struct ContentView: View {
         .frame(maxHeight: .infinity)
         .background(panelBackground())
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
+        .shadow(color: Color.white.opacity(0.05), radius: 1, y: -1)
     }
 
     // MARK: - Recordings Column
@@ -108,15 +109,59 @@ struct ContentView: View {
         .frame(minWidth: 320, idealWidth: 360)
         .background(panelBackground())
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
+        .shadow(color: Color.white.opacity(0.05), radius: 1, y: -1)
     }
 
     private var searchField: some View {
-        TextField("Search recordings", text: $searchText)
-            .textFieldStyle(.roundedBorder)
-            .onChange(of: searchText) { _, _ in
-                recalcSelection(keepExisting: true)
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField("Search recordings", text: $searchText)
+                .textFieldStyle(.plain)
+                .onChange(of: searchText) { _, _ in
+                    recalcSelection(keepExisting: true)
+                }
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
             }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            ZStack {
+                // Base material
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(.ultraThinMaterial)
+
+                // Subtle inner shadow
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.black.opacity(0.05), lineWidth: 1)
+            }
+        )
+        .overlay {
+            // Top highlight
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.2),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+        }
     }
 
     private var recordingsList: some View {
@@ -159,13 +204,72 @@ struct ContentView: View {
     }
 
     private func rowBackground(for recording: RecordingEntity) -> some View {
-        Group {
-            if selectedRecordingID == recording.id {
-                RoundedRectangle(cornerRadius: 8)
-                    .foregroundStyle(Color.accentColor.opacity(0.15))
+        let isSelected = selectedRecordingID == recording.id
+        return Group {
+            if isSelected {
+                // Selected state: enhanced glass with accent tint
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(.thinMaterial)
+
+                    // Accent color tint
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.15))
+
+                    // Inner highlight for glass depth
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.12),
+                                    Color.clear,
+                                    Color.black.opacity(0.02)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay {
+                    // Gradient border for selected state
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.25),
+                                    Color.accentColor.opacity(0.3),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                }
             } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .foregroundStyle(Color.clear)
+                // Unselected state: subtle glass effect
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(.regularMaterial.opacity(0.5))
+
+                    // Subtle inner highlight
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.05),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                }
+                .overlay {
+                    // Very subtle border
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                }
             }
         }
         .padding(.vertical, 2)
@@ -192,7 +296,8 @@ struct ContentView: View {
         .frame(minWidth: 320, idealWidth: 360, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(panelBackground())
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
+        .shadow(color: Color.white.opacity(0.05), radius: 1, y: -1)
     }
 
     private func detailHeader(for recording: RecordingEntity) -> some View {
@@ -265,11 +370,44 @@ struct ContentView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(
-                Capsule()
-                    .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
+                ZStack {
+                    // Main gradient fill
+                    Capsule()
+                        .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
+
+                    // Subtle inner highlight
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.2),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                }
             )
             .foregroundStyle(Color.white)
-            .shadow(radius: 6, y: 3)
+            .overlay {
+                // Border with gradient
+                Capsule()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.3),
+                                Color.white.opacity(0.1),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: isRecording ? Color.red.opacity(0.3) : Color.accentColor.opacity(0.3), radius: 8, y: 4)
+            .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
         }
         .buttonStyle(.plain)
     }
@@ -584,8 +722,41 @@ struct ContentView: View {
     }
 
     private func panelBackground() -> some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(.ultraThinMaterial)
+        ZStack {
+            // Base material with subtle gradient
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+
+            // Inner highlight for depth
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.08),
+                            Color.clear,
+                            Color.black.opacity(0.02)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay {
+            // Subtle border highlight
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.15),
+                            Color.white.opacity(0.03),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
     }
 
     private func applyScreenSharingPreference(_ exclude: Bool) {
@@ -639,21 +810,60 @@ private struct RecordingRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: iconName)
-                .foregroundStyle(iconColor)
-            VStack(alignment: .leading, spacing: 2) {
+            // Icon with glass circle for active state
+            ZStack {
+                if isActive {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.15))
+                        .frame(width: 28, height: 28)
+                }
+                Image(systemName: iconName)
+                    .font(.system(size: 14, weight: isActive ? .semibold : .regular))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 28, height: 28)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(recording.title)
-                    .fontWeight(isSelected ? .semibold : .regular)
+                    .fontWeight(isSelected ? .semibold : .medium)
+                    .font(.system(size: 13))
                 Text(recording.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+
             Spacer()
+
+            // Duration badge with glass pill
             Text(durationString)
-                .font(.caption)
+                .font(.system(size: 11, design: .rounded))
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    ZStack {
+                        Capsule()
+                            .fill(.thinMaterial)
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.1),
+                                        Color.clear
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                    }
+                )
+                .overlay {
+                    Capsule()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
     }
 
     private var iconName: String {
@@ -774,8 +984,12 @@ private struct PlaybackControlsView: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color.gray.opacity(0.2))
+                            .fill(.regularMaterial)
                             .frame(width: 50, height: 50)
+                            .overlay {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            }
                         HStack(spacing: 2) {
                             Image(systemName: "gobackward")
                                 .font(.system(size: 16, weight: .medium))
@@ -792,9 +1006,29 @@ private struct PlaybackControlsView: View {
                     playbackManager.togglePlayPause()
                 } label: {
                     ZStack {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 60, height: 60)
+                        ZStack {
+                            Circle()
+                                .fill(Color.accentColor)
+
+                            // Inner highlight for glass effect
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.25),
+                                            Color.clear
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
+                        .frame(width: 60, height: 60)
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        }
+
                         Image(systemName: playbackManager.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 20, weight: .medium))
                             .foregroundColor(.white)
@@ -809,8 +1043,12 @@ private struct PlaybackControlsView: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color.gray.opacity(0.2))
+                            .fill(.regularMaterial)
                             .frame(width: 50, height: 50)
+                            .overlay {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            }
                         HStack(spacing: 2) {
                             Text("15")
                                 .font(.system(size: 12, weight: .medium))
@@ -838,8 +1076,28 @@ private struct PlaybackControlsView: View {
         }
         .padding()
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.thinMaterial)
+
+                // Subtle gradient overlay for depth
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.06),
+                                Color.clear,
+                                Color.black.opacity(0.02)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            }
         )
         .task {
             // Analyze waveform when recording changes

@@ -20,42 +20,72 @@ struct OnboardingView: View {
     
     var body: some View {
         ZStack {
-            // Animated Gradient Background
-            LinearGradient(
-                colors: [
-                    Color(red: 0.0, green: 0.1, blue: 0.05),
-                    Color(red: 0.0, green: 0.3, blue: 0.2),
-                    Color(red: 0.1, green: 0.2, blue: 0.4)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            // Decorative shapes for the "Blocs" aesthetic
-            Group {
-                Circle()
-                    .fill(Color.green.opacity(0.3))
-                    .frame(width: 500, height: 500)
-                    .blur(radius: 100)
-                    .offset(x: -250, y: -250)
-                
-                Circle()
-                    .fill(Color.cyan.opacity(0.2))
-                    .frame(width: 500, height: 500)
-                    .blur(radius: 100)
-                    .offset(x: 250, y: 250)
-                
-                // Streaks
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: 0))
-                    path.addLine(to: CGPoint(x: 800, y: 600))
+            // Animated Gradient Background with liquid-like effect
+            ZStack {
+                // Base gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.05, green: 0.1, blue: 0.15),
+                        Color(red: 0.1, green: 0.15, blue: 0.2)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                // Liquid glass ambient orbs
+                Group {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.blue.opacity(0.15),
+                                    Color.clear
+                                ],
+                                center: .topLeading,
+                                startRadius: 0,
+                                endRadius: 300
+                            )
+                        )
+                        .frame(width: 400, height: 400)
+                        .blur(radius: 80)
+                        .offset(x: -150, y: -100)
+
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.cyan.opacity(0.12),
+                                    Color.clear
+                                ],
+                                center: .bottomTrailing,
+                                startRadius: 0,
+                                endRadius: 250
+                            )
+                        )
+                        .frame(width: 350, height: 350)
+                        .blur(radius: 70)
+                        .offset(x: 150, y: 100)
+
+                    // Subtle streak
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.clear,
+                                    Color.white.opacity(0.03),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 200, height: 600)
+                        .blur(radius: 60)
+                        .offset(x: 100, y: 0)
                 }
-                .stroke(LinearGradient(colors: [.clear, .green.opacity(0.1), .clear], startPoint: .leading, endPoint: .trailing), lineWidth: 100)
-                .rotationEffect(.degrees(-15))
-                .blur(radius: 50)
             }
-            
+
             VStack(spacing: 0) {
                 switch currentStep {
                 case .welcome:
@@ -68,15 +98,44 @@ struct OnboardingView: View {
             }
             .frame(maxWidth: 800, maxHeight: 600)
             .background(
-                RoundedRectangle(cornerRadius: 32)
-                    .fill(.black.opacity(0.4))
-                    .background(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 32)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                    )
+                ZStack {
+                    // Main glass card
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(.ultraThinMaterial)
+
+                    // Inner highlight for depth
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.1),
+                                    Color.clear,
+                                    Color.black.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay {
+                    // Border with gradient
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.2),
+                                    Color.white.opacity(0.05),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                }
             )
-            .shadow(color: .black.opacity(0.5), radius: 40)
+            .shadow(color: .black.opacity(0.3), radius: 40, y: 20)
+            .shadow(color: .white.opacity(0.05), radius: 1, y: -1)
             .padding(40)
         }
         .preferredColorScheme(.dark)
@@ -116,10 +175,33 @@ struct OnboardingView: View {
                     .padding(.horizontal, 40)
                     .padding(.vertical, 16)
                     .background(
-                        Capsule()
-                            .fill(LinearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing))
+                        ZStack {
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+
+                            // Inner highlight
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.2), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
                     )
-                    .shadow(color: .green.opacity(0.3), radius: 10, y: 5)
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    }
+                    .shadow(color: Color.accentColor.opacity(0.25), radius: 12, y: 6)
+                    .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
             }
             .buttonStyle(.plain)
             
@@ -170,16 +252,38 @@ struct OnboardingView: View {
                     .padding(.horizontal, 60)
                     .padding(.vertical, 16)
                     .background(
-                        Group {
-                            if permissionManager.isScreenRecordingAuthorized {
-                                Capsule()
-                                    .fill(LinearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing))
-                            } else {
-                                Capsule()
-                                    .fill(Color.gray)
-                            }
+                        ZStack {
+                            Capsule()
+                                .fill(
+                                    permissionManager.isScreenRecordingAuthorized
+                                        ? LinearGradient(
+                                            colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [Color.gray.opacity(0.5), Color.gray.opacity(0.4)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                )
+
+                            // Inner highlight
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.15), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
                         }
                     )
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    }
+                    .shadow(color: permissionManager.isScreenRecordingAuthorized ? Color.accentColor.opacity(0.2) : .clear, radius: 10, y: 5)
             }
             .buttonStyle(.plain)
             .disabled(!permissionManager.isScreenRecordingAuthorized)
@@ -229,9 +333,33 @@ struct OnboardingView: View {
                     .padding(.horizontal, 60)
                     .padding(.vertical, 16)
                     .background(
-                        Capsule()
-                            .fill(LinearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing))
+                        ZStack {
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+
+                            // Inner highlight
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.2), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
                     )
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    }
+                    .shadow(color: Color.accentColor.opacity(0.25), radius: 12, y: 6)
+                    .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
             }
             .buttonStyle(.plain)
             
@@ -248,14 +376,14 @@ struct PermissionCard: View {
     let icon: String
     let isAuthorized: Bool
     let action: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 20) {
             Image(systemName: icon)
                 .font(.system(size: 30))
                 .foregroundStyle(isAuthorized ? .green : .blue)
                 .frame(width: 60)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
@@ -263,9 +391,9 @@ struct PermissionCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             Spacer()
-            
+
             if isAuthorized {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
@@ -278,12 +406,37 @@ struct PermissionCard: View {
         }
         .padding(24)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.05))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(isAuthorized ? Color.green.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.thinMaterial)
+
+                // Subtle inner highlight
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.08),
+                                Color.clear,
+                                Color.black.opacity(0.02)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: isAuthorized
+                                ? [Color.green.opacity(0.3), Color.green.opacity(0.15)]
+                                : [Color.white.opacity(0.15), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
         )
     }
 }

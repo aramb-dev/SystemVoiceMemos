@@ -19,48 +19,103 @@ struct MinimalRecordingView: View {
     var body: some View {
         HStack(spacing: 12) {
             recordingIndicator
-            
+
             Text(formattedDuration)
                 .font(.system(size: 18, weight: .medium, design: .monospaced))
                 .foregroundColor(.primary)
                 .frame(width: 60)
-            
+
             Divider()
                 .frame(height: 24)
-            
+
             controlButtons
-            
+
             Divider()
                 .frame(height: 24)
-            
+
             pinButton
-            
+
             expandButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
+            ZStack {
+                // Main glass material
+                Capsule()
+                    .fill(.ultraThinMaterial)
+
+                // Subtle inner highlight
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.12),
+                                Color.clear,
+                                Color.black.opacity(0.03)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
         )
-        .clipShape(Capsule())
-        .overlay(
+        .overlay {
+            // Border with gradient
             Capsule()
-                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.2),
+                            Color.white.opacity(0.05),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 5)
+        .shadow(color: .white.opacity(0.05), radius: 1, y: -1)
     }
     
     private var recordingIndicator: some View {
-        Circle()
-            .fill(indicatorColor)
-            .frame(width: 12, height: 12)
-            .overlay(
+        ZStack {
+            // Outer glow effect
+            Circle()
+                .fill(indicatorColor.opacity(0.3))
+                .frame(width: 22, height: 22)
+                .blur(radius: 4)
+                .opacity(recorder.recordingState == .recording ? 1 : 0)
+
+            // Pulsing ring
+            Circle()
+                .stroke(indicatorColor.opacity(0.5), lineWidth: 1)
+                .frame(width: 18, height: 18)
+                .opacity(recorder.recordingState == .recording ? 1 : 0)
+                .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: recorder.recordingState)
+
+            // Core indicator
+            ZStack {
                 Circle()
-                    .fill(indicatorColor.opacity(0.4))
-                    .frame(width: 18, height: 18)
-                    .opacity(recorder.recordingState == .recording ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: recorder.recordingState)
-            )
+                    .fill(indicatorColor)
+
+                // Inner highlight for glass effect
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.4),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+            .frame(width: 12, height: 12)
+        }
     }
     
     private var indicatorColor: Color {
@@ -87,11 +142,18 @@ struct MinimalRecordingView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                     .frame(width: 32, height: 32)
-                    .background(Circle().fill(Color.primary.opacity(0.1)))
+                    .background(
+                        Circle()
+                            .fill(.regularMaterial)
+                            .overlay {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            }
+                    )
             }
             .buttonStyle(.plain)
             .help(recorder.isPaused ? "Resume" : "Pause")
-            
+
             // Stop button
             Button {
                 onStop()
@@ -100,11 +162,33 @@ struct MinimalRecordingView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 32, height: 32)
-                    .background(Circle().fill(Color.red))
+                    .background(
+                        ZStack {
+                            Circle()
+                                .fill(Color.red)
+
+                            // Inner highlight
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.3),
+                                            Color.clear
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        }
+                    )
             }
             .buttonStyle(.plain)
             .help("Stop Recording")
-            
+
             // Restart button
             Button {
                 onRestart()
@@ -113,7 +197,14 @@ struct MinimalRecordingView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                     .frame(width: 32, height: 32)
-                    .background(Circle().fill(Color.primary.opacity(0.1)))
+                    .background(
+                        Circle()
+                            .fill(.regularMaterial)
+                            .overlay {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            }
+                    )
             }
             .buttonStyle(.plain)
             .help("Restart Recording")

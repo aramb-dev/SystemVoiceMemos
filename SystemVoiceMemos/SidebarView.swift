@@ -44,6 +44,8 @@ struct SidebarView: View {
     @Binding var selectedItem: SidebarItem?
     let folders: [String]
     let width: CGFloat
+    var onDeleteFolder: ((String) -> Void)?
+    var onRenameFolder: ((String) -> Void)?
 
     var body: some View {
         List(selection: $selectedItem) {
@@ -83,6 +85,21 @@ struct SidebarView: View {
                                 .foregroundStyle(.blue)
                         }
                         .tag(SidebarItem.folder(folder))
+                        .contextMenu {
+                            Button {
+                                onRenameFolder?(folder)
+                            } label: {
+                                Label("Rename", systemImage: "pencil")
+                            }
+                            
+                            Divider()
+                            
+                            Button(role: .destructive) {
+                                onDeleteFolder?(folder)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             } header: {

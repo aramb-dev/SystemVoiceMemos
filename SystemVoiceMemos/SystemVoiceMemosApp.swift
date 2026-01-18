@@ -46,7 +46,7 @@ struct SystemVoiceMemosApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .modelContainer(for: RecordingEntity.self)
+        .modelContainer(for: [RecordingEntity.self, FolderEntity.self])
         .commands {
             CommandGroup(replacing: .newItem) {
                 // Remove "New Window" command to prevent multiple windows

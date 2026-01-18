@@ -8,6 +8,8 @@ struct ContentView: View {
     @EnvironmentObject private var playbackManager: PlaybackManager
     @Query(sort: \RecordingEntity.createdAt, order: .reverse)
     private var recordings: [RecordingEntity]
+    @Query(sort: \FolderEntity.sortOrder)
+    private var folders: [FolderEntity]
 
     @State private var recordingManager = RecordingManager()
     @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing) private var hideFromScreenSharing = true
@@ -21,6 +23,10 @@ struct ContentView: View {
     @State private var newFolderName = ""
     @State private var renamingRecording: RecordingEntity?
     @State private var renameText = ""
+    @State private var renamingFolder: String?
+    @State private var renameFolderText = ""
+    @State private var folderPendingDeletion: String?
+    @State private var isShowingFolderDeleteConfirmation = false
 
     private let sidebarWidth: CGFloat = 220
 
@@ -31,7 +37,9 @@ struct ContentView: View {
                     SidebarView(
                         selectedItem: $selectedSidebarItem,
                         folders: userFolders,
-                        width: sidebarWidth
+                        width: sidebarWidth,
+                        onDeleteFolder: confirmFolderDeletion,
+                        onRenameFolder: startRenamingFolder
                     )
                     Divider()
                 }
@@ -86,6 +94,12 @@ struct ContentView: View {
         } message: { recording in
             Text("Are you sure you want to delete \(recording.title)?")
         }
+        .confirmationDialog("Delete Folder?", isPresented: $isShowingFolderDeleteConfirmation, presenting: folderPendingDeletion) { folderName in
+            Button("Delete", role: .destructive) { performFolderDeletion(folderName) }
+            Button("Cancel", role: .cancel) { folderPendingDeletion = nil }
+        } message: { folderName in
+            Text("Are you sure you want to delete the folder '\(folderName)'? Recordings in this folder will not be deleted.")
+        }
         .sheet(isPresented: $isCreatingFolder) {
             CreateFolderSheet(folderName: $newFolderName) { name in
                 createFolder(name: name)
@@ -102,6 +116,15 @@ struct ContentView: View {
             } onCancel: {
                 renamingRecording = nil
                 renameText = ""
+            }
+        }
+        .sheet(item: Binding(get: { renamingFolder.map { FolderWrapper(name: $0) } }, set: { renamingFolder = $0?.name })) { wrapper in
+            RenameFolderSheet(folderName: wrapper.name, newName: $renameFolderText) { newName in
+                renameFolder(from: wrapper.name, to: newName)
+                renamingFolder = nil
+            } onCancel: {
+                renamingFolder = nil
+                renameFolderText = ""
             }
         }
         .onChange(of: selectedSidebarItem) { _, _ in
@@ -303,8 +326,10 @@ struct ContentView: View {
     }
 
     private var userFolders: [String] {
-        let names = recordings.compactMap { $0.folder?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        return Array(Set(names.filter { !$0.isEmpty })).sorted()
+        let persistedFolders = folders.map { $0.name }
+        let recordingFolders = recordings.compactMap { $0.folder?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let allFolders = Set(persistedFolders + recordingFolders.filter { !$0.isEmpty })
+        return Array(allFolders).sorted()
     }
 
     private var recordingsHash: Int {
@@ -468,9 +493,20 @@ struct ContentView: View {
     private func createFolder(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        // Folder is created by just having the name in userFolders
-        // User can assign recordings to it
+        
+        // Check if folder already exists
+        guard !folders.contains(where: { $0.name == trimmed }) else {
+            selectedSidebarItem = .folder(trimmed)
+            return
+        }
+        
+        // Create and persist new folder
+        let newFolder = FolderEntity(name: trimmed, sortOrder: folders.count)
+        modelContext.insert(newFolder)
+        try? modelContext.save()
+        
         selectedSidebarItem = .folder(trimmed)
+        newFolderName = ""
     }
     
     private func clearAllDeletedRecordings() {
@@ -534,4 +570,73 @@ struct ContentView: View {
         
         try? modelContext.save()
     }
+    
+    // MARK: - Folder Management
+    
+    private func startRenamingFolder(_ folderName: String) {
+        renameFolderText = folderName
+        renamingFolder = folderName
+    }
+    
+    private func renameFolder(from oldName: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != oldName else { return }
+        
+        // Update folder entity if it exists
+        if let folderEntity = folders.first(where: { $0.name == oldName }) {
+            folderEntity.name = trimmed
+        }
+        
+        // Update all recordings that reference this folder
+        for recording in recordings where recording.folder == oldName {
+            recording.folder = trimmed
+        }
+        
+        try? modelContext.save()
+        
+        // Update selection if the renamed folder was selected
+        if selectedSidebarItem == .folder(oldName) {
+            selectedSidebarItem = .folder(trimmed)
+        }
+        
+        renameFolderText = ""
+    }
+    
+    private func confirmFolderDeletion(_ folderName: String) {
+        folderPendingDeletion = folderName
+        isShowingFolderDeleteConfirmation = true
+    }
+    
+    private func performFolderDeletion(_ folderName: String) {
+        defer {
+            folderPendingDeletion = nil
+            isShowingFolderDeleteConfirmation = false
+        }
+        
+        // Delete folder entity if it exists
+        if let folderEntity = folders.first(where: { $0.name == folderName }) {
+            modelContext.delete(folderEntity)
+        }
+        
+        // Remove folder reference from all recordings
+        for recording in recordings where recording.folder == folderName {
+            recording.folder = nil
+        }
+        
+        try? modelContext.save()
+        
+        // Update selection if the deleted folder was selected
+        if selectedSidebarItem == .folder(folderName) {
+            selectedSidebarItem = .library(.all)
+        }
+        
+        recalcSelection()
+    }
+}
+
+// MARK: - Helper Types
+
+struct FolderWrapper: Identifiable {
+    let name: String
+    var id: String { name }
 }

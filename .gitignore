@@ -20,3 +20,7 @@ xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcworkspace/xcshareddata/SwiftPM/Package.resolved
 *.xcworkspace/xcshareddata/xcbaselines
+
+# Claude Boris
+.claude/audit/
+.claude/settings.local.json

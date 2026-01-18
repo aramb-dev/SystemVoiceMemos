@@ -10,7 +10,7 @@ import AVFoundation
 @MainActor
 @Observable
 class RecordingManager {
-    private(set) var isRecording = false
+    var isRecording = false
     private(set) var pendingRecording: RecordingEntity?
     
     private let recorder = SystemAudioRecorder()

@@ -25,12 +25,13 @@ struct ContentView: View {
 
     var body: some View {
        ZStack(alignment: .bottomLeading) {
-            HStack(alignment: .top, spacing: 16) {
+            HStack(alignment: .top, spacing: 0) {
                 sidebar
+                Divider()
                 recordingsColumn
+                Divider()
                 detailPanel
             }
-            .padding(24)
             .frame(minWidth: 960, minHeight: 600)
 
             recordButton
@@ -70,56 +71,101 @@ struct ContentView: View {
 
     private var sidebar: some View {
         List(selection: $selectedSidebarItem) {
-            Section("Library") {
+            Section {
                 ForEach(LibraryCategory.allCases) { category in
-                    Label(category.title, systemImage: category.icon)
-                        .tag(SidebarItem.library(category))
+                    Label {
+                        Text(category.title)
+                            .font(.system(size: 13))
+                    } icon: {
+                        Image(systemName: category.icon)
+                            .font(.system(size: 14))
+                            .foregroundStyle(category == .all ? .blue : .secondary)
+                    }
+                    .tag(SidebarItem.library(category))
                 }
+            } header: {
+                Text("Library")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
             }
-            Section("My Folders") {
+            
+            Section {
                 let folders = userFolders
                 if folders.isEmpty {
-                    Text("No folders yet")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(folders, id: \.self) { folder in
-                    Label(folder, systemImage: "folder")
+                    Text("No folders")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 20)
+                } else {
+                    ForEach(folders, id: \.self) { folder in
+                        Label {
+                            Text(folder)
+                                .font(.system(size: 13))
+                        } icon: {
+                            Image(systemName: "folder.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.blue)
+                        }
                         .tag(SidebarItem.folder(folder))
+                    }
                 }
+            } header: {
+                Text("Folders")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
             }
         }
         .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
         .frame(width: sidebarWidth)
         .frame(maxHeight: .infinity)
-        .background(panelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
-        .shadow(color: Color.white.opacity(0.05), radius: 1, y: -1)
     }
 
     // MARK: - Recordings Column
 
     private var recordingsColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            searchField
+        VStack(spacing: 0) {
+            // Toolbar with search
+            VStack(spacing: 12) {
+                HStack {
+                    Text(sidebarTitle)
+                        .font(.system(size: 20, weight: .bold))
+                    Spacer()
+                    Text("\(filteredRecordings.count)")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+                searchField
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            
+            Divider()
+            
             recordingsList
         }
-        .padding(16)
-        .frame(minWidth: 320, idealWidth: 360)
-        .background(panelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
-        .shadow(color: Color.white.opacity(0.05), radius: 1, y: -1)
+        .frame(minWidth: 300)
     }
-
+    
+    private var sidebarTitle: String {
+        guard let item = selectedSidebarItem else { return "Library" }
+        switch item {
+        case .library(let category):
+            return category.title
+        case .folder(let name):
+            return name
+        }
+    }
+    
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.secondary)
-            TextField("Search recordings", text: $searchText)
+                .font(.system(size: 13))
+                .foregroundStyle(.tertiary)
+            TextField("Search", text: $searchText)
                 .textFieldStyle(.plain)
+                .font(.system(size: 13))
                 .onChange(of: searchText) { _, _ in
                     recalcSelection(keepExisting: true)
                 }
@@ -128,40 +174,18 @@ struct ContentView: View {
                     searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(
-            ZStack {
-                // Base material
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(.ultraThinMaterial)
-
-                // Subtle inner shadow
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.black.opacity(0.05), lineWidth: 1)
-            }
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color(nsColor: .textBackgroundColor))
         )
-        .overlay {
-            // Top highlight
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.2),
-                            Color.clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 1
-                )
-        }
     }
 
     private var recordingsList: some View {
@@ -172,18 +196,18 @@ struct ContentView: View {
                              isSelected: selectedRecordingID == rec.id,
                              durationString: formatTime(rec.duration))
                     .tag(rec.id)
-                    .contentShape(Rectangle())
-                    .listRowBackground(rowBackground(for: rec))
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                     .contextMenu {
-                        Button(rec.isFavorite ? "Remove Favorite" : "Add to Favorites") {
+                        Button(rec.isFavorite ? "Remove from Favorites" : "Add to Favorites") {
                             toggleFavorite(rec)
                         }
                         if rec.deletedAt == nil {
-                            Button("Assign Folder") { promptForFolder(rec) }
+                            Button("Move to Folder...") { promptForFolder(rec) }
                         }
                         Button("Show in Finder") { reveal(rec) }
                         Divider()
-                        Button(rec.deletedAt == nil ? "Delete" : "Remove Permanently", role: .destructive) {
+                        Button(rec.deletedAt == nil ? "Move to Trash" : "Delete Permanently", role: .destructive) {
                             confirmDelete(rec)
                         }
                     }
@@ -199,105 +223,8 @@ struct ContentView: View {
                 items.forEach(confirmDelete)
             }
         }
-        .listStyle(.inset)
+        .listStyle(.plain)
         .scrollContentBackground(.hidden)
-    }
-
-    private func rowBackground(for recording: RecordingEntity) -> some View {
-        let isSelected = selectedRecordingID == recording.id
-        return Group {
-            if isSelected {
-                // Selected state: enhanced glass with accent tint
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(.thinMaterial)
-
-                    // Accent color tint
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.15))
-
-                    // Inner highlight for glass depth
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.12),
-                                    Color.clear,
-                                    Color.black.opacity(0.02)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .overlay {
-                    // Gradient border for selected state
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.25),
-                                    Color.accentColor.opacity(0.3),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.5
-                        )
-                }
-            } else {
-                // Unselected state: subtle glass effect
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(.regularMaterial.opacity(0.5))
-
-                    // Subtle inner highlight
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                }
-                .overlay {
-                    // Very subtle border
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                }
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    // MARK: - Detail Panel
-
-    private var detailPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let recording = selectedRecording,
-               recording.deletedAt == nil {
-                detailHeader(for: recording)
-                playbackControls(for: recording)
-                Spacer()
-            } else if let recording = selectedRecording {
-                deletedMessage(for: recording)
-                Spacer()
-            } else {
-                emptyDetailState
-                Spacer()
-            }
-        }
-        .padding(24)
-        .frame(minWidth: 320, idealWidth: 360, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(panelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
-        .shadow(color: Color.white.opacity(0.05), radius: 1, y: -1)
     }
 
     private func detailHeader(for recording: RecordingEntity) -> some View {
@@ -370,28 +297,11 @@ struct ContentView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(
-                ZStack {
-                    // Main gradient fill
-                    Capsule()
-                        .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
-
-                    // Subtle inner highlight
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.2),
-                                    Color.clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                }
+                Capsule()
+                    .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
             )
             .foregroundStyle(Color.white)
             .overlay {
-                // Border with gradient
                 Capsule()
                     .stroke(
                         LinearGradient(
@@ -413,6 +323,9 @@ struct ContentView: View {
     }
     
     private func startRecordingFlow() async {
+        // Prevent concurrent executions - similar guard to stopRecordingFlow()
+        guard !isRecording else { return }
+        
         await startNewRecording()
         isRecording = true
         
@@ -879,246 +792,154 @@ private struct RecordingRow: View {
     }
 }
 
-// MARK: - Playback Controls
+// MARK: - Detail Panel
 
-private struct PlaybackControlsView: View {
-    @EnvironmentObject private var playbackManager: PlaybackManager
-    @StateObject private var waveformAnalyzer = WaveformAnalyzer()
-    let recording: RecordingEntity
-
-    private var sliderBinding: Binding<Double> {
-        Binding(
-            get: { playbackManager.currentTime },
-            set: { playbackManager.seek(to: $0) }
-        )
-    }
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
-        let total = Int(seconds.rounded())
-        let minutes = total / 60
-        let secs = total % 60
-        return String(format: "%d:%02d", minutes, secs)
-    }
+private struct DetailPanel: View {
+    let recording: RecordingEntity?
+    @EnvironmentObject var playbackManager: PlaybackManager
     
-    private func formatTimeDetailed(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "00:00.00" }
-        let total = Int(seconds * 100) // Convert to centiseconds
-        let minutes = total / 6000
-        let centiseconds = total % 6000
-        let secs = centiseconds / 100
-        let cs = centiseconds % 100
-        return String(format: "%02d:%02d.%02d", minutes, secs, cs)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Title and duration
-            HStack {
-                Text(recording.title)
-                    .font(.headline)
-                Spacer()
-                Text(formatTime(playbackManager.duration))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            // Main waveform visualization
-            if waveformAnalyzer.isAnalyzing {
-                LoadingWaveformView()
-            } else if !waveformAnalyzer.waveformData.isEmpty {
-                VStack(spacing: 12) {
-                    // Detailed waveform
-                    WaveformView(
-                        waveformData: waveformAnalyzer.waveformData,
-                        currentTime: playbackManager.currentTime,
-                        duration: playbackManager.duration,
-                        onSeek: { time in
-                            playbackManager.seek(to: time)
-                        },
-                        isPlaceholder: !waveformAnalyzer.hasRealData
-                    )
-
-                    // Overview waveform scrubber
-                    OverviewWaveformView(
-                        waveformData: waveformAnalyzer.waveformData,
-                        currentTime: playbackManager.currentTime,
-                        duration: playbackManager.duration,
-                        onSeek: { time in
-                            playbackManager.seek(to: time)
-                        },
-                        isPlaceholder: !waveformAnalyzer.hasRealData
-                    )
-                }
-            } else {
-                // Fallback to simple slider if no waveform data
-                VStack(alignment: .leading, spacing: 4) {
-                    Slider(value: sliderBinding,
-                           in: 0...(playbackManager.duration > 0 ? playbackManager.duration : 1))
-                        .disabled(playbackManager.duration <= 0)
-                    HStack {
-                        Text(formatTime(playbackManager.currentTime))
-                        Spacer()
-                        let remaining = max(playbackManager.duration - playbackManager.currentTime, 0)
-                        Text("-" + formatTime(remaining))
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-            }
-
-            // Timer display (matching reference design)
-            HStack {
-                Spacer()
-                Text(formatTimeDetailed(playbackManager.currentTime))
-                    .font(.system(size: 24, weight: .medium, design: .monospaced))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-
-            // Playback controls (matching reference design)
-            HStack(spacing: 20) {
-                // Skip back 15s
-                Button {
-                    playbackManager.skip(by: -15)
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(.regularMaterial)
-                            .frame(width: 50, height: 50)
-                            .overlay {
-                                Circle()
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                            }
-                        HStack(spacing: 2) {
-                            Image(systemName: "gobackward")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("15")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                    }
-                }
-                .disabled(!playbackManager.hasActivePlayer)
-                .buttonStyle(.plain)
-
-                // Play/Pause button
-                Button {
-                    playbackManager.togglePlayPause()
-                } label: {
-                    ZStack {
+        if let recording = recording {
+            VStack(spacing: 20) {
+                // Playback controls (matching reference design)
+                HStack(spacing: 20) {
+                    // Skip back 15s
+                    Button {
+                        playbackManager.skip(by: -15)
+                    } label: {
                         ZStack {
                             Circle()
-                                .fill(Color.accentColor)
-
-                            // Inner highlight for glass effect
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.25),
-                                            Color.clear
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
+                                .fill(.regularMaterial)
+                                .frame(width: 50, height: 50)
+                                .overlay {
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                }
+                            HStack(spacing: 2) {
+                                Image(systemName: "gobackward")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("15")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
                         }
-                        .frame(width: 60, height: 60)
-                        .overlay {
-                            Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        }
-
-                        Image(systemName: playbackManager.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.white)
                     }
-                }
-                .disabled(!playbackManager.hasSelection)
-                .buttonStyle(.plain)
+                    .disabled(!playbackManager.hasActivePlayer)
+                    .buttonStyle(.plain)
 
-                // Skip forward 15s
-                Button {
-                    playbackManager.skip(by: 15)
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(.regularMaterial)
-                            .frame(width: 50, height: 50)
+                    // Play/Pause button
+                    Button {
+                        playbackManager.togglePlayPause()
+                    } label: {
+                        ZStack {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.accentColor)
+
+                                // Inner highlight for glass effect
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.25),
+                                                Color.clear
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                            }
+                            .frame(width: 60, height: 60)
                             .overlay {
                                 Circle()
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             }
-                        HStack(spacing: 2) {
-                            Text("15")
-                                .font(.system(size: 12, weight: .medium))
-                            Image(systemName: "goforward")
-                                .font(.system(size: 16, weight: .medium))
+
+                            Image(systemName: playbackManager.isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
                         }
                     }
+                    .disabled(!playbackManager.hasSelection)
+                    .buttonStyle(.plain)
+
+                    // Skip forward 15s
+                    Button {
+                        playbackManager.skip(by: 15)
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(.regularMaterial)
+                                .frame(width: 50, height: 50)
+                                .overlay {
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                }
+                            HStack(spacing: 2) {
+                                Text("15")
+                                    .font(.system(size: 12, weight: .medium))
+                                Image(systemName: "goforward")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                        }
+                    }
+                    .disabled(!playbackManager.hasActivePlayer)
+                    .buttonStyle(.plain)
                 }
-                .disabled(!playbackManager.hasActivePlayer)
-                .buttonStyle(.plain)
-            }
-            .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
 
-            // Volume control
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Volume")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: Binding(
-                    get: { Double(playbackManager.volume) },
-                    set: { playbackManager.setVolume(Float($0)) }
-                ), in: 0...1)
-                    .frame(width: 140)
+                // Volume control
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Volume")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Slider(value: Binding(
+                        get: { Double(playbackManager.volume) },
+                        set: { playbackManager.setVolume(Float($0)) }
+                    ), in: 0...1)
+                        .frame(width: 140)
+                }
             }
-        }
-        .padding()
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.thinMaterial)
+            .padding()
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.thinMaterial)
 
-                // Subtle gradient overlay for depth
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.06),
-                                Color.clear,
-                                Color.black.opacity(0.02)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                    // Subtle gradient overlay for depth
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.06),
+                                    Color.clear,
+                                    Color.black.opacity(0.02)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            }
-        )
-        .task {
-            // Analyze waveform when recording changes
-            if let url = try? url(for: recording) {
-                await waveformAnalyzer.analyzeAudioFile(at: url, duration: playbackManager.duration)
-            }
-        }
-        .onChange(of: recording.id) { _, _ in
-            // Clear and re-analyze when recording changes
-            waveformAnalyzer.clearData()
-            Task {
-                if let url = try? url(for: recording) {
-                    await waveformAnalyzer.analyzeAudioFile(at: url, duration: playbackManager.duration)
                 }
-            }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                }
+            )
+        } else {
+            emptyDetailState
         }
     }
     
-    private func url(for recording: RecordingEntity) throws -> URL {
-        let dir = try AppDirectories.recordingsDir()
-        return dir.appendingPathComponent(recording.fileName)
+    private var emptyDetailState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: "music.note")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("No Recording Selected")
+                .font(.title3)
+            Text("Choose a recording from the list to see its details and controls.")
+                .foregroundStyle(.secondary)
+        }
+        .padding()
     }
 }
 

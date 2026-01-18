@@ -65,6 +65,56 @@ struct ContentView: View {
         .onChange(of: hideFromScreenSharing) { _, newValue in
             applyScreenSharingPreference(newValue)
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    if isRecording {
+                        Task { await stopRecording() }
+                    } else {
+                        Task { await startRecording() }
+                    }
+                } label: {
+                    Label(isRecording ? "Stop Recording" : "New Recording",
+                          systemImage: isRecording ? "stop.circle.fill" : "record.circle")
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                
+                Button {
+                    playbackManager.togglePlayPause()
+                } label: {
+                    Label(playbackManager.isPlaying ? "Pause" : "Play",
+                          systemImage: playbackManager.isPlaying ? "pause.fill" : "play.fill")
+                }
+                .keyboardShortcut(" ", modifiers: [])
+                .disabled(!playbackManager.hasSelection)
+            }
+            
+            ToolbarItemGroup(placement: .secondaryAction) {
+                if let recording = selectedRecording {
+                    Button {
+                        toggleFavorite(recording)
+                    } label: {
+                        Label(recording.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                              systemImage: recording.isFavorite ? "star.fill" : "star")
+                    }
+                    .keyboardShortcut("f", modifiers: .command)
+                    
+                    Button {
+                        reveal(recording)
+                    } label: {
+                        Label("Show in Finder", systemImage: "folder")
+                    }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
+                    
+                    Button(role: .destructive) {
+                        confirmDelete(recording)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .keyboardShortcut(.delete, modifiers: .command)
+                }
+            }
+        }
     }
 
     // MARK: - Sidebar

@@ -1,9 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git :*)", "Bash(gh :*)", "Bash(npm :*)", "Bash(npx :*)",
-      "Bash(node :*)", "Bash(cat :*)", "Bash(ls :*)", "Bash(grep :*)",
-      "Bash(find :*)", "Bash(curl :*)", "Bash(mkdir :*)", "Bash(jq :*)",
+      "Bash(git :*)", "Bash(gh :*)", "Bash(swift :*)", "Bash(swiftformat :*)",
+      "Bash(swiftlint :*)", "Bash(xcodebuild :*)", "Bash(cat :*)", "Bash(ls :*)", 
+      "Bash(grep :*)", "Bash(find :*)", "Bash(curl :*)", "Bash(mkdir :*)", "Bash(jq :*)",
       "Read(*)", "Edit(*)", "Write(*)", "Glob(*)", "Grep(*)", "Task(*)"
     ],
     "deny": [
@@ -13,11 +13,11 @@
   },
   "hooks": {
     "PostToolUse": [{
-      "matcher": {"tool": ["Edit", "Write"]},
-      "hooks": [{"type": "command", "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true"}]
+      "matcher": {"tools": ["EditTool", "WriteTool"]},
+      "hooks": [{"type": "command", "command": "swiftformat \"$CLAUDE_FILE_PATH\" 2>/dev/null || true"}]
     }],
     "PreToolUse": [{
-      "matcher": {"tool": ["Bash"]},
+      "matcher": {"tools": ["BashTool"]},
       "hooks": [{"type": "command", "command": "mkdir -p .claude/audit && echo \"$(date -u +%FT%TZ) $CLAUDE_TOOL_INPUT\" >> .claude/audit/commands.log 2>/dev/null || true"}]
     }]
   },

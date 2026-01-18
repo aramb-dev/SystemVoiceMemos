@@ -24,6 +24,8 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     private var durationTimer: Timer?
     private var pausedDuration: TimeInterval = 0
     private var pauseStartDate: Date?
+    private var pausedCMTimeDuration: CMTime = .zero
+    private var lastBufferTime: CMTime = .zero
 
     // Published properties for UI state
     @Published var currentRecordingDuration: TimeInterval = 0
@@ -95,6 +97,8 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             throw RecorderError.writerStartFailed
         }
         startTime = .zero
+        pausedCMTimeDuration = .zero
+        lastBufferTime = .zero
         writer.startSession(atSourceTime: .zero)
         print("📝 Writer started")
 
@@ -132,15 +136,17 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         guard isRecording, isPaused else { return }
         
         do {
+            if let pauseStart = pauseStartDate {
+                let pauseInterval = Date().timeIntervalSince(pauseStart)
+                pausedDuration += pauseInterval
+                let pauseCMTime = CMTime(seconds: pauseInterval, preferredTimescale: 44100)
+                pausedCMTimeDuration = CMTimeAdd(pausedCMTimeDuration, pauseCMTime)
+            }
+            pauseStartDate = nil
+            
             try await stream?.startCapture()
             isPaused = false
             recordingState = .recording
-            
-            // Account for paused time
-            if let pauseStart = pauseStartDate {
-                pausedDuration += Date().timeIntervalSince(pauseStart)
-            }
-            pauseStartDate = nil
             startDurationTimer()
         } catch {
             print("Resume error:", error)
@@ -164,6 +170,8 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         currentRecordingDuration = 0
         pausedDuration = 0
         pauseStartDate = nil
+        pausedCMTimeDuration = .zero
+        lastBufferTime = .zero
     }
 
     func stopRecording() async {
@@ -255,8 +263,42 @@ extension SystemAudioRecorder: SCStreamOutput {
             }
 
             if input.isReadyForMoreMediaData {
-                _ = input.append(sampleBuffer)
+                let adjustedBuffer = self.adjustSampleBufferTiming(sampleBuffer)
+                _ = input.append(adjustedBuffer)
             }
+        }
+    }
+    
+    private func adjustSampleBufferTiming(_ sampleBuffer: CMSampleBuffer) -> CMSampleBuffer {
+        let originalTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        lastBufferTime = originalTime
+        
+        if CMTimeCompare(pausedCMTimeDuration, .zero) == 0 {
+            return sampleBuffer
+        }
+        
+        let adjustedTime = CMTimeSubtract(originalTime, pausedCMTimeDuration)
+        
+        var timingInfo = CMSampleTimingInfo(
+            duration: CMSampleBufferGetDuration(sampleBuffer),
+            presentationTimeStamp: adjustedTime,
+            decodeTimeStamp: .invalid
+        )
+        
+        var adjustedBuffer: CMSampleBuffer?
+        let status = CMSampleBufferCreateCopyWithNewTiming(
+            allocator: kCFAllocatorDefault,
+            sampleBuffer: sampleBuffer,
+            sampleTimingEntryCount: 1,
+            timingArray: &timingInfo,
+            sampleBufferOut: &adjustedBuffer
+        )
+        
+        if status == noErr, let adjusted = adjustedBuffer {
+            return adjusted
+        } else {
+            print("⚠️ Failed to adjust sample buffer timing, status: \(status)")
+            return sampleBuffer
         }
     }
 }

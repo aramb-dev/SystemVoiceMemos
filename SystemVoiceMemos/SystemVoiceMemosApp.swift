@@ -105,7 +105,9 @@ struct SystemVoiceMemosApp: App {
             }
             
             CommandMenu("Help") {
-                CheckForUpdatesView(updater: updaterManager.updater)
+                Button("Check for Updates…") {
+                    updaterManager.checkForUpdates()
+                }
                 
                 Divider()
                 

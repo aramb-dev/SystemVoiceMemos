@@ -4,10 +4,16 @@
 //
 //  Manages automatic update checking using Sparkle framework.
 //
+//  NOTE: This file requires the Sparkle package to be added in Xcode.
+//  Until then, it will function as a stub that does nothing.
+//
 
 import Foundation
-import Sparkle
 import Combine
+
+#if canImport(Sparkle)
+import Sparkle
+#endif
 
 /// Manages automatic software updates via Sparkle
 ///
@@ -19,23 +25,23 @@ import Combine
 @MainActor
 final class UpdaterManager: ObservableObject {
     
-    // MARK: - Properties
+    #if canImport(Sparkle)
+    // MARK: - Properties (Sparkle Available)
     
     /// The Sparkle updater controller
-    private let updaterController: SPUStandardUpdaterController
+    private var updaterController: SPUStandardUpdaterController?
     
     /// Cancellable subscriptions
     private var cancellables = Set<AnyCancellable>()
     
     /// Whether the updater can check for updates
     var canCheckForUpdates: Bool {
-        updaterController.updater.canCheckForUpdates
+        updaterController?.updater.canCheckForUpdates ?? false
     }
     
     // MARK: - Initialization
     
     init() {
-        // Initialize Sparkle with default configuration
         updaterController = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,
@@ -60,18 +66,23 @@ final class UpdaterManager: ObservableObject {
     
     /// Manually check for updates
     func checkForUpdates() {
-        updaterController.checkForUpdates(nil)
+        updaterController?.checkForUpdates(nil)
     }
     
     /// Get the updater for menu item binding
-    var updater: SPUUpdater {
-        updaterController.updater
+    var updater: SPUUpdater? {
+        updaterController?.updater
     }
     
     // MARK: - Private Methods
     
     /// Apply current settings to the updater
     private func applySettings() {
+        guard let updaterController = updaterController,
+              updaterController.updater.canCheckForUpdates else {
+            return
+        }
+        
         let automaticChecks = UserDefaults.standard.bool(forKey: "automaticUpdateChecks")
         let interval = UserDefaults.standard.integer(forKey: "updateCheckInterval")
         
@@ -85,11 +96,26 @@ final class UpdaterManager: ObservableObject {
     
     /// Set up observers for settings changes
     private func setupSettingsObservers() {
-        // Observe automatic checks toggle
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .sink { [weak self] _ in
                 self?.applySettings()
             }
             .store(in: &cancellables)
     }
+    
+    #else
+    // MARK: - Stub Implementation (Sparkle Not Available)
+    
+    var canCheckForUpdates: Bool { false }
+    
+    init() {
+        print("⚠️ Sparkle framework not available. Add the Sparkle package dependency in Xcode.")
+        print("   File → Add Package Dependencies → https://github.com/sparkle-project/Sparkle")
+    }
+    
+    func checkForUpdates() {
+        print("⚠️ Cannot check for updates: Sparkle framework not installed")
+    }
+    
+    #endif
 }

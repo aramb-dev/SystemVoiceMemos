@@ -41,16 +41,103 @@ struct GeneralSettingsView: View {
 }
 
 struct RecordingSettingsView: View {
+    @AppStorage("recordingsLocation") private var recordingsLocation = ""
+    @AppStorage("audioQuality") private var audioQuality = "high"
+    @AppStorage("locationBasedNaming") private var locationBasedNaming = false
+    @AppStorage("autoDeleteAfterDays") private var autoDeleteAfterDays = 30
+    @State private var showingLocationPicker = false
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Recording settings will be added here.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            Spacer()
+        Form {
+            Section("Storage") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Recordings Location")
+                            .font(.headline)
+                        Text(recordingsLocationDisplay)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button("Choose...") {
+                        chooseRecordingsLocation()
+                    }
+                }
+                
+                Toggle(isOn: $locationBasedNaming) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Location-based Naming")
+                            .font(.headline)
+                        Text("Include device location in recording names when available")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+            }
+            
+            Section("Quality") {
+                Picker("Audio Quality", selection: $audioQuality) {
+                    Text("Low (64 kbps)").tag("low")
+                    Text("Medium (128 kbps)").tag("medium")
+                    Text("High (192 kbps)").tag("high")
+                    Text("Maximum (320 kbps)").tag("maximum")
+                }
+                .pickerStyle(.menu)
+            }
+            
+            Section("Cleanup") {
+                HStack {
+                    Text("Auto-delete recordings after")
+                    TextField("Days", value: $autoDeleteAfterDays, format: .number)
+                        .frame(width: 60)
+                    Text("days")
+                    Spacer()
+                }
+                
+                Button("Clear All Deleted Recordings") {
+                    clearDeletedRecordings()
+                }
+                .foregroundStyle(.red)
+            }
         }
+        .formStyle(.grouped)
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var recordingsLocationDisplay: String {
+        if recordingsLocation.isEmpty {
+            return "Default (~/Documents/System Voice Memos)"
+        }
+        return recordingsLocation
+    }
+    
+    private func chooseRecordingsLocation() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose where to save recordings"
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            recordingsLocation = url.path
+        }
+    }
+    
+    private func clearDeletedRecordings() {
+        let alert = NSAlert()
+        alert.messageText = "Clear All Deleted Recordings"
+        alert.informativeText = "This will permanently delete all recordings in the trash. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Clear")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            NotificationCenter.default.post(name: .clearDeletedRecordings, object: nil)
+        }
     }
 }
 

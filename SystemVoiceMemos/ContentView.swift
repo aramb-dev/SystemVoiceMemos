@@ -16,18 +16,25 @@ struct ContentView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var searchText = ""
     @State private var selectedSidebarItem: SidebarItem? = .library(.all)
+    @State private var isSidebarVisible = true
+    @State private var isCreatingFolder = false
+    @State private var newFolderName = ""
+    @State private var renamingRecording: RecordingEntity?
+    @State private var renameText = ""
 
     private let sidebarWidth: CGFloat = 220
 
     var body: some View {
        ZStack(alignment: .bottomLeading) {
             HStack(alignment: .top, spacing: 0) {
-                SidebarView(
-                    selectedItem: $selectedSidebarItem,
-                    folders: userFolders,
-                    width: sidebarWidth
-                )
-                Divider()
+                if isSidebarVisible {
+                    SidebarView(
+                        selectedItem: $selectedSidebarItem,
+                        folders: userFolders,
+                        width: sidebarWidth
+                    )
+                    Divider()
+                }
                 RecordingsListView(
                     title: sidebarTitle,
                     recordings: filteredRecordings,
@@ -79,6 +86,24 @@ struct ContentView: View {
         } message: { recording in
             Text("Are you sure you want to delete \(recording.title)?")
         }
+        .sheet(isPresented: $isCreatingFolder) {
+            CreateFolderSheet(folderName: $newFolderName) { name in
+                createFolder(name: name)
+                isCreatingFolder = false
+            } onCancel: {
+                isCreatingFolder = false
+                newFolderName = ""
+            }
+        }
+        .sheet(item: $renamingRecording) { recording in
+            RenameRecordingSheet(recordingTitle: recording.title, newTitle: $renameText) { newTitle in
+                renameRecording(recording, to: newTitle)
+                renamingRecording = nil
+            } onCancel: {
+                renamingRecording = nil
+                renameText = ""
+            }
+        }
         .onChange(of: selectedSidebarItem) { _, _ in
             recalcSelection()
         }
@@ -95,11 +120,57 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
             UserDefaults.standard.set(false, forKey: AppConstants.UserDefaultsKeys.hasCompletedOnboarding)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
+            withAnimation {
+                isSidebarVisible.toggle()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .startRecording)) { _ in
+            guard !recordingManager.isRecording else { return }
+            Task {
+                await recordingManager.startRecordingFlow(
+                    modelContext: modelContext,
+                    hideFromScreenSharing: hideFromScreenSharing
+                ) {
+                    recalcSelection()
+                }
+                selectedSidebarItem = .library(.all)
+                recalcSelection(selectNewest: true)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .stopRecording)) { _ in
+            guard recordingManager.isRecording else { return }
+            Task {
+                await recordingManager.stopRecordingFlow(modelContext: modelContext)
+                recalcSelection()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .clearDeletedRecordings)) { _ in
+            clearAllDeletedRecordings()
+        }
         .onChange(of: hideFromScreenSharing) { _, newValue in
             applyScreenSharingPreference(newValue)
         }
         .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button {
+                    withAnimation {
+                        isSidebarVisible.toggle()
+                    }
+                } label: {
+                    Label("Toggle Sidebar", systemImage: "sidebar.left")
+                }
+                .help("Toggle Sidebar")
+            }
+            
             ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    isCreatingFolder = true
+                } label: {
+                    Label("New Folder", systemImage: "folder.badge.plus")
+                }
+                .help("Create New Folder")
+                
                 Button {
                     Task {
                         if recordingManager.isRecording {
@@ -134,6 +205,13 @@ struct ContentView: View {
             
             ToolbarItemGroup(placement: .secondaryAction) {
                 if let recording = selectedRecording {
+                    Button {
+                        startRenaming(recording)
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
+                    
                     Button {
                         toggleFavorite(recording)
                     } label: {
@@ -370,6 +448,44 @@ struct ContentView: View {
             window.sharingType = exclude ? .none : .readOnly
         }
         recordingManager.setScreenCaptureExclusion(exclude)
+    }
+    
+    // MARK: - Rename & Folders
+    
+    private func startRenaming(_ recording: RecordingEntity) {
+        renameText = recording.title
+        renamingRecording = recording
+    }
+    
+    private func renameRecording(_ recording: RecordingEntity, to newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        recording.title = trimmed
+        try? modelContext.save()
+        recalcSelection(keepExisting: true)
+    }
+    
+    private func createFolder(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        // Folder is created by just having the name in userFolders
+        // User can assign recordings to it
+        selectedSidebarItem = .folder(trimmed)
+    }
+    
+    private func clearAllDeletedRecordings() {
+        let deletedRecordings = recordings.filter { $0.deletedAt != nil }
+        
+        for recording in deletedRecordings {
+            if let dir = try? AppDirectories.recordingsDir() {
+                let url = dir.appendingPathComponent(recording.fileName)
+                try? FileManager.default.removeItem(at: url)
+            }
+            modelContext.delete(recording)
+        }
+        
+        try? modelContext.save()
+        recalcSelection()
     }
     
     // MARK: - Crash Recovery

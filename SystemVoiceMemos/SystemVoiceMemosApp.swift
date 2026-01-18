@@ -11,6 +11,10 @@ import AppKit
 
 extension Notification.Name {
     static let showOnboarding = Notification.Name("showOnboarding")
+    static let startRecording = Notification.Name("startRecording")
+    static let stopRecording = Notification.Name("stopRecording")
+    static let toggleSidebar = Notification.Name("toggleSidebar")
+    static let clearDeletedRecordings = Notification.Name("clearDeletedRecordings")
 }
 
 @main
@@ -46,6 +50,26 @@ struct SystemVoiceMemosApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 // Remove "New Window" command to prevent multiple windows
+            }
+            
+            CommandMenu("Recording") {
+                Button("New Recording") {
+                    // This will trigger via notification
+                    NotificationCenter.default.post(name: .startRecording, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                
+                Button("Stop Recording") {
+                    NotificationCenter.default.post(name: .stopRecording, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
+            
+            CommandMenu("View") {
+                Button("Toggle Sidebar") {
+                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .option])
             }
         }
         .commands {

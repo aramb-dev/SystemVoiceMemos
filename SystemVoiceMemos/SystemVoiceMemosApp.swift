@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import Sparkle
 
 extension Notification.Name {
     static let showOnboarding = Notification.Name("showOnboarding")
@@ -21,6 +22,7 @@ extension Notification.Name {
 struct SystemVoiceMemosApp: App {
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @StateObject private var playbackManager = PlaybackManager()
+    @StateObject private var updaterManager = UpdaterManager()
     @State private var showOnboarding = false
 
     var body: some Scene {
@@ -102,6 +104,10 @@ struct SystemVoiceMemosApp: App {
             }
             
             CommandMenu("Help") {
+                CheckForUpdatesView(updater: updaterManager.updater)
+                
+                Divider()
+                
                 Button("Show Welcome Guide") {
                     showOnboarding = true
                 }
@@ -127,7 +133,7 @@ struct SystemVoiceMemosApp: App {
         let alert = NSAlert()
         alert.messageText = "System Voice Memos"
         alert.informativeText = """
-        Version 1.0.0
+        Version 1.1.0
         
         This app is entirely open source
         Made by aramb-dev

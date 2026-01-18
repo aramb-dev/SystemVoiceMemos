@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>SystemVoiceMemos Updates</title>
+        <link>https://github.com/aramb-dev/SystemVoiceMemos</link>
+        <description>Updates for SystemVoiceMemos</description>
+        <language>en</language>
+        
+        <!-- 
+        Template for new releases:
+        
+        <item>
+            <title>Version X.Y.Z</title>
+            <sparkle:version>X.Y.Z</sparkle:version>
+            <sparkle:shortVersionString>X.Y.Z</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in X.Y.Z</h2>
+                <ul>
+                    <li>Feature 1</li>
+                    <li>Feature 2</li>
+                    <li>Bug fix 3</li>
+                </ul>
+            ]]></description>
+            <pubDate>Day, DD Mon YYYY HH:MM:SS +0000</pubDate>
+            <enclosure 
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/vX.Y.Z/SystemVoiceMemos.zip"
+                sparkle:version="X.Y.Z"
+                sparkle:shortVersionString="X.Y.Z"
+                length="FILE_SIZE_IN_BYTES"
+                type="application/octet-stream"
+                sparkle:edSignature="SIGNATURE_FROM_SIGN_UPDATE_TOOL" />
+        </item>
+        -->
+        
+        <!-- Version 1.1.0 - Initial Sparkle Release -->
+        <item>
+            <title>Version 1.1.0</title>
+            <sparkle:version>1.1.0</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 1.1.0</h2>
+                <h3>✨ New Features</h3>
+                <ul>
+                    <li><strong>Folder Management System</strong> - Create, rename, and delete folders to organize your recordings</li>
+                    <li><strong>Persistent Folders</strong> - Folders now persist independently and can be empty</li>
+                    <li><strong>Automatic Updates</strong> - App now checks for updates automatically via Sparkle</li>
+                </ul>
+                
+                <h3>🐛 Bug Fixes</h3>
+                <ul>
+                    <li><strong>Recording Pause/Resume</strong> - Fixed critical bug where pausing and resuming created silent gaps in recordings</li>
+                    <li><strong>Swift Compiler</strong> - Resolved compiler timeout issues by modularizing ContentView</li>
+                </ul>
+                
+                <h3>📚 Improvements</h3>
+                <ul>
+                    <li>Added comprehensive documentation across entire codebase</li>
+                    <li>Improved code organization with MARK comments</li>
+                    <li>Enhanced onboarding with directional transitions</li>
+                    <li>Better folder context menu integration</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sat, 18 Jan 2026 18:00:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v1.1.0/SystemVoiceMemos.zip"
+                sparkle:version="1.1.0"
+                sparkle:shortVersionString="1.1.0"
+                length="0"
+                type="application/octet-stream"
+                sparkle:edSignature="REPLACE_WITH_SIGNATURE_AFTER_SIGNING" />
+        </item>
+        
+    </channel>
+</rss>

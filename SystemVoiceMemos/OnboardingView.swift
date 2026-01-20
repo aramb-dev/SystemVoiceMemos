@@ -313,30 +313,51 @@ struct OnboardingView: View {
         VStack(spacing: 32) {
             Spacer()
             
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 100))
-                .foregroundStyle(LinearGradient(colors: [.green, .blue], startPoint: .top, endPoint: .bottom))
-                .symbolEffect(.bounce, value: currentStep)
-            
-            VStack(spacing: 16) {
-                Text("You're All Set!")
-                    .font(.system(size: 40, weight: .bold))
+            if permissionManager.isScreenRecordingAuthorized {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 100))
+                    .foregroundStyle(LinearGradient(colors: [.green, .blue], startPoint: .top, endPoint: .bottom))
+                    .symbolEffect(.bounce, value: currentStep)
                 
-                Text("SystemVoiceMemos is ready to capture your world. All recordings are stored locally and privately on your Mac.")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 80)
+                VStack(spacing: 16) {
+                    Text("You're All Set!")
+                        .font(.system(size: 40, weight: .bold))
+                    
+                    Text("SystemVoiceMemos is ready to capture your world. All recordings are stored locally and privately on your Mac.")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                }
+            } else {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 100))
+                    .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
+                
+                VStack(spacing: 16) {
+                    Text("Permission Required")
+                        .font(.system(size: 40, weight: .bold))
+                    
+                    Text("Screen Recording permission is required to capture system audio. Please grant permission in System Settings, then return here.")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                }
             }
             
             Spacer()
             
             Button {
-                withAnimation {
-                    hasCompletedOnboarding = true
+                if permissionManager.isScreenRecordingAuthorized {
+                    withAnimation {
+                        hasCompletedOnboarding = true
+                    }
+                } else {
+                    permissionManager.requestScreenRecordingPermission()
                 }
             } label: {
-                Text("Get Started")
+                Text(permissionManager.isScreenRecordingAuthorized ? "Get Started" : "Open System Settings")
                     .font(.headline)
                     .foregroundColor(.white)
                     .padding(.horizontal, 60)
@@ -345,11 +366,17 @@ struct OnboardingView: View {
                         ZStack {
                             Capsule()
                                 .fill(
-                                    LinearGradient(
-                                        colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
+                                    permissionManager.isScreenRecordingAuthorized
+                                        ? LinearGradient(
+                                            colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [Color.orange.opacity(0.9), Color.orange.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
                                 )
 
                             // Inner highlight
@@ -367,10 +394,24 @@ struct OnboardingView: View {
                         Capsule()
                             .stroke(Color.white.opacity(0.2), lineWidth: 1)
                     }
-                    .shadow(color: Color.accentColor.opacity(0.25), radius: 12, y: 6)
+                    .shadow(color: permissionManager.isScreenRecordingAuthorized ? Color.accentColor.opacity(0.25) : Color.orange.opacity(0.25), radius: 12, y: 6)
                     .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
             }
             .buttonStyle(.plain)
+            
+            if !permissionManager.isScreenRecordingAuthorized {
+                Button {
+                    withAnimation(.spring()) {
+                        isNavigatingForward = false
+                        currentStep = .permissions
+                    }
+                } label: {
+                    Text("Go Back")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
             
             Spacer()
                 .frame(height: 40)

@@ -10,7 +10,7 @@ struct DetailPanel: View {
     @EnvironmentObject var playbackManager: PlaybackManager
     
     var body: some View {
-        if let recording = recording {
+        if recording != nil {
             VStack(spacing: 20) {
                 // Playback controls (matching reference design)
                 HStack(spacing: 20) {

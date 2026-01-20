@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - website
-    paths:
-      - 'website/**'
   workflow_dispatch:
 
 permissions:
@@ -30,7 +28,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './website'
+          path: '.'
 
   deploy:
     environment:

@@ -149,7 +149,7 @@ struct SystemVoiceMemosApp: App {
         
         let response = alert.runModal()
         if response == .alertSecondButtonReturn {
-            if let url = URL(string: "https://github.com/aramb-dev") {
+            if let url = URL(string: "https://github.com/aramb-dev/SystemVoiceMemos") {
                 NSWorkspace.shared.open(url)
             }
         }

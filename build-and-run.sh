@@ -33,10 +33,16 @@ log_success() {
 
 # Build the app
 log_info "Building $APP_NAME ($CONFIGURATION)..."
+
+# Disable code signing for both Debug and Release
+# For GitHub distribution, sign with Sparkle's sign_update tool instead
+CODE_SIGNING_ALLOWED="NO"
+log_info "Code signing disabled (will use Sparkle signing for updates)"
+
 xcodebuild -scheme "$SCHEME" \
     -configuration "$CONFIGURATION" \
     -derivedDataPath "$DERIVED_DATA_PATH" \
-    CODE_SIGNING_ALLOWED=NO || {
+    CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" || {
     log_error "Build failed"
     exit 1
 }

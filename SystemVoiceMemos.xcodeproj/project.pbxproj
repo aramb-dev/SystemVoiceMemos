@@ -430,7 +430,7 @@
 		346BD3272E974216001D2758 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = SystemVoiceMemos.icon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = SystemVoiceMemos;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = SystemVoiceMemos/SystemVoiceMemos.entitlements;
@@ -473,7 +473,7 @@
 		346BD3282E974216001D2758 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = SystemVoiceMemos.icon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = SystemVoiceMemos;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = SystemVoiceMemos/SystemVoiceMemos.entitlements;

@@ -43,7 +43,7 @@ final class UpdaterManager: ObservableObject {
     
     init() {
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: false,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
@@ -86,8 +86,8 @@ final class UpdaterManager: ObservableObject {
         let automaticChecks = UserDefaults.standard.bool(forKey: "automaticUpdateChecks")
         let interval = UserDefaults.standard.integer(forKey: "updateCheckInterval")
         
-        // Default to enabled with daily checks if not set
-        let shouldCheck = UserDefaults.standard.object(forKey: "automaticUpdateChecks") == nil ? true : automaticChecks
+        // Use the user's preference (defaults to false via @AppStorage)
+        let shouldCheck = automaticChecks
         let checkInterval = interval > 0 ? TimeInterval(interval) : 86400
         
         updaterController.updater.automaticallyChecksForUpdates = shouldCheck

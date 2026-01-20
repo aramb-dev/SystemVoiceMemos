@@ -1,313 +1,244 @@
+//
+//  ContentView.swift
+//  SystemVoiceMemos
+//
+//  Main application view that manages recordings, folders, and playback.
+//  Implements a three-column layout with sidebar, recordings list, and detail panel.
+//
+
 import SwiftUI
 import AppKit
 import SwiftData
 import AVFoundation
 
+/// Main application view coordinating recordings, folders, and playback
+/// 
+/// This view manages:
+/// - Sidebar navigation with library categories and custom folders
+/// - Recordings list with search and filtering
+/// - Detail panel with playback controls and recording information
+/// - Recording management (create, rename, delete, organize)
+/// - Folder management (create, rename, delete)
 struct ContentView: View {
+    // MARK: - Environment & Data
+    
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var playbackManager: PlaybackManager
+    
+    /// All recordings sorted by creation date (newest first)
     @Query(sort: \RecordingEntity.createdAt, order: .reverse)
     private var recordings: [RecordingEntity]
+    
+    /// All folders sorted by custom sort order
+    @Query(sort: \FolderEntity.sortOrder)
+    private var folders: [FolderEntity]
 
-    @StateObject private var recorder = SystemAudioRecorder()
-    @State private var isRecording = false
+    // MARK: - State Management
+    
+    /// Manages recording lifecycle and floating panel
+    @State private var recordingManager = RecordingManager()
+    
+    /// User preference for hiding app from screen sharing
+    @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing) private var hideFromScreenSharing = true
+    
+    /// Currently selected recording in the list
     @State private var selectedRecordingID: RecordingEntity.ID?
-    @State private var pendingRecording: RecordingEntity?
+    
+    /// Recording awaiting deletion confirmation
     @State private var recordingPendingDeletion: RecordingEntity?
+    
+    /// Shows delete recording confirmation dialog
     @State private var isShowingDeleteConfirmation = false
+    
+    /// Search text for filtering recordings
     @State private var searchText = ""
+    
+    /// Currently selected sidebar item (library category or folder)
     @State private var selectedSidebarItem: SidebarItem? = .library(.all)
-    @State private var isShowingOnboarding = false
+    
+    /// Controls sidebar visibility
+    @State private var isSidebarVisible = true
+    
+    /// Shows create folder sheet
+    @State private var isCreatingFolder = false
+    
+    /// Name for new folder being created
+    @State private var newFolderName = ""
+    
+    /// Recording being renamed
+    @State private var renamingRecording: RecordingEntity?
+    
+    /// New name for recording being renamed
+    @State private var renameText = ""
+    
+    /// Folder name being renamed
+    @State private var renamingFolder: String?
+    
+    /// New name for folder being renamed
+    @State private var renameFolderText = ""
+    
+    /// Folder awaiting deletion confirmation
+    @State private var folderPendingDeletion: String?
+    
+    /// Shows delete folder confirmation dialog
+    @State private var isShowingFolderDeleteConfirmation = false
 
+    // MARK: - Constants
+    
+    /// Fixed width for the sidebar
     private let sidebarWidth: CGFloat = 220
+    
+    // MARK: - Computed Properties
+    
+    /// Wraps the renaming folder name for sheet presentation
+    private var renamingFolderWrapper: FolderWrapper? {
+        renamingFolder.map { FolderWrapper(name: $0) }
+    }
 
     var body: some View {
-       ZStack(alignment: .bottomLeading) {
-            HStack(alignment: .top, spacing: 16) {
-                sidebar
-                recordingsColumn
-                detailPanel
-            }
-            .padding(24)
-            .frame(minWidth: 960, minHeight: 600)
-
+        mainContent
+            .sheet(isPresented: $isCreatingFolder, content: createFolderSheet)
+            .sheet(item: $renamingRecording, content: renameRecordingSheet)
+            .sheet(item: .constant(renamingFolderWrapper), content: renameFolderSheet)
+            .alert(item: playbackErrorBinding, content: playbackErrorAlert)
+            .confirmationDialog("Delete Recording?", isPresented: $isShowingDeleteConfirmation, presenting: recordingPendingDeletion, actions: deleteRecordingActions, message: deleteRecordingMessage)
+            .confirmationDialog("Delete Folder?", isPresented: $isShowingFolderDeleteConfirmation, presenting: folderPendingDeletion, actions: deleteFolderActions, message: deleteFolderMessage)
+            .task(id: recordingsHash) { await refreshDurationsIfNeeded() }
+            .task { await recoverIncompleteRecordings() }
+            .onChange(of: selectedSidebarItem) { _, _ in recalcSelection() }
+            .onChange(of: recordingsHash) { _, _ in recalcSelection(keepExisting: true) }
+            .onChange(of: searchText) { _, _ in recalcSelection(keepExisting: true) }
+            .onChange(of: hideFromScreenSharing) { _, newValue in applyScreenSharingPreference(newValue) }
+            .onAppear(perform: handleAppear)
+            .onReceive(NotificationCenter.default.publisher(for: .showOnboarding), perform: handleShowOnboarding)
+            .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar), perform: handleToggleSidebar)
+            .onReceive(NotificationCenter.default.publisher(for: .startRecording), perform: handleStartRecording)
+            .onReceive(NotificationCenter.default.publisher(for: .stopRecording), perform: handleStopRecording)
+            .onReceive(NotificationCenter.default.publisher(for: .clearDeletedRecordings), perform: handleClearDeleted)
+            .toolbar(content: toolbarContent)
+    }
+    
+    // MARK: - Main Content
+    
+    private var mainContent: some View {
+        ZStack(alignment: .bottomLeading) {
+            contentLayout
             recordButton
-                .padding(.leading, 24)
-                .padding(.bottom, 24)
-        }
-        .task(id: recordingsHash) { await refreshDurationsIfNeeded() }
-        .alert(item: Binding(get: { playbackManager.error }, set: { playbackManager.error = $0 })) { error in
-            Alert(title: Text("Playback Error"), message: Text(error.message), dismissButton: .default(Text("OK")))
-        }
-        .confirmationDialog("Delete Recording?", isPresented: $isShowingDeleteConfirmation, presenting: recordingPendingDeletion) { recording in
-            Button("Delete", role: .destructive) { performDeletion(recording) }
-            Button("Cancel", role: .cancel) { recordingPendingDeletion = nil }
-        } message: { recording in
-            Text("Are you sure you want to delete \(recording.title)?")
-        }
-        .onChange(of: selectedSidebarItem) { _, _ in
-            recalcSelection()
-        }
-        .onChange(of: recordingsHash) { _, _ in
-            recalcSelection(keepExisting: true)
-        }
-        .onAppear {
-            recalcSelection()
-            checkFirstLaunch()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showOnboarding)) { _ in
-            isShowingOnboarding = true
-        }
-        .sheet(isPresented: $isShowingOnboarding) {
-            OnboardingView(isPresented: $isShowingOnboarding)
-                .interactiveDismissDisabled()
         }
     }
-
-    // MARK: - Sidebar
-
-    private var sidebar: some View {
-        List(selection: $selectedSidebarItem) {
-            Section("Library") {
-                ForEach(LibraryCategory.allCases) { category in
-                    Label(category.title, systemImage: category.icon)
-                        .tag(SidebarItem.library(category))
-                }
+    
+    private var contentLayout: some View {
+        HStack(alignment: .top, spacing: 0) {
+            if isSidebarVisible {
+                sidebarSection
             }
-            Section("My Folders") {
-                let folders = userFolders
-                if folders.isEmpty {
-                    Text("No folders yet")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(folders, id: \.self) { folder in
-                    Label(folder, systemImage: "folder")
-                        .tag(SidebarItem.folder(folder))
-                }
-            }
+            recordingsSection
+            detailPanel
         }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
-        .frame(width: sidebarWidth)
-        .frame(maxHeight: .infinity)
-        .background(panelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
+        .frame(minWidth: 960, minHeight: 600)
     }
-
-    // MARK: - Recordings Column
-
-    private var recordingsColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            searchField
-            recordingsList
-        }
-        .padding(16)
-        .frame(minWidth: 320, idealWidth: 360)
-        .background(panelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
-    }
-
-    private var searchField: some View {
-        TextField("Search recordings", text: $searchText)
-            .textFieldStyle(.roundedBorder)
-            .onChange(of: searchText) { _, _ in
-                recalcSelection(keepExisting: true)
-            }
-    }
-
-    private var recordingsList: some View {
-        List(selection: $selectedRecordingID) {
-            ForEach(filteredRecordings) { rec in
-                RecordingRow(recording: rec,
-                             isActive: playbackManager.activeRecordingID == rec.id,
-                             isSelected: selectedRecordingID == rec.id,
-                             durationString: formatTime(rec.duration))
-                    .tag(rec.id)
-                    .contentShape(Rectangle())
-                    .listRowBackground(rowBackground(for: rec))
-                    .contextMenu {
-                        Button(rec.isFavorite ? "Remove Favorite" : "Add to Favorites") {
-                            toggleFavorite(rec)
-                        }
-                        if rec.deletedAt == nil {
-                            Button("Assign Folder") { promptForFolder(rec) }
-                        }
-                        Button("Show in Finder") { reveal(rec) }
-                        Divider()
-                        Button(rec.deletedAt == nil ? "Delete" : "Remove Permanently", role: .destructive) {
-                            confirmDelete(rec)
-                        }
-                    }
-                    .onTapGesture {
-                        selectedRecordingID = rec.id
-                        handleSelectionChange(newValue: rec.id)
-                    }
-            }
-            .onDelete { offsets in
-                let items = offsets.compactMap { index in
-                    filteredRecordings[safe: index]
-                }
-                items.forEach(confirmDelete)
-            }
-        }
-        .listStyle(.inset)
-        .scrollContentBackground(.hidden)
-    }
-
-    private func rowBackground(for recording: RecordingEntity) -> some View {
+    
+    private var sidebarSection: some View {
         Group {
-            if selectedRecordingID == recording.id {
-                RoundedRectangle(cornerRadius: 8)
-                    .foregroundStyle(Color.accentColor.opacity(0.15))
-            } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .foregroundStyle(Color.clear)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    // MARK: - Detail Panel
-
-    private var detailPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let recording = selectedRecording,
-               recording.deletedAt == nil {
-                detailHeader(for: recording)
-                playbackControls(for: recording)
-                Spacer()
-            } else if let recording = selectedRecording {
-                deletedMessage(for: recording)
-                Spacer()
-            } else {
-                emptyDetailState
-                Spacer()
-            }
-        }
-        .padding(24)
-        .frame(minWidth: 320, idealWidth: 360, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(panelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
-    }
-
-    private func detailHeader(for recording: RecordingEntity) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(recording.title)
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text(recording.createdAt.formatted(date: .long, time: .shortened))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 12) {
-                Label(formatTime(recording.duration), systemImage: "clock")
-                if recording.isFavorite {
-                    Label("Favorite", systemImage: "star.fill")
-                }
-                if let folder = recording.folder, !folder.isEmpty {
-                    Label(folder, systemImage: "folder")
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            SidebarView(
+                selectedItem: $selectedSidebarItem,
+                folders: userFolders,
+                width: sidebarWidth,
+                onDeleteFolder: confirmFolderDeletion,
+                onRenameFolder: startRenamingFolder
+            )
+            Divider()
         }
     }
-
-    private func playbackControls(for recording: RecordingEntity) -> some View {
-        PlaybackControlsView(recording: recording)
-            .environmentObject(playbackManager)
-    }
-
-    private func deletedMessage(for recording: RecordingEntity) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(recording.title)
-                .font(.title3)
-            Text("This recording was moved to the Trash on \(recording.deletedAt?.formatted(date: .abbreviated, time: .shortened) ?? "unknown date").")
-                .foregroundStyle(.secondary)
-            Text("Playback is unavailable.")
-                .foregroundStyle(.secondary)
+    
+    private var recordingsSection: some View {
+        Group {
+            RecordingsListView(
+                title: sidebarTitle,
+                recordings: filteredRecordings,
+                selectedRecordingID: $selectedRecordingID,
+                searchText: $searchText,
+                activeRecordingID: playbackManager.activeRecordingID,
+                onSelect: handleSelectionChange,
+                onToggleFavorite: toggleFavorite,
+                onMoveToFolder: promptForFolder,
+                onReveal: reveal,
+                onDelete: confirmDelete
+            )
+            Divider()
         }
     }
-
-    private var emptyDetailState: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: "music.note")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("No Recording Selected")
-                .font(.title3)
-            Text("Choose a recording from the list to see its details and controls.")
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    // MARK: - Record Button
-
+    
     private var recordButton: some View {
-        Button {
+        RecordButtonView(isRecording: recordingManager.isRecording) {
             Task {
-                if isRecording {
-                    await recorder.stopRecording()
-                    isRecording = false
-                    await finalizePendingRecording()
+                if recordingManager.isRecording {
+                    await recordingManager.stopRecordingFlow(modelContext: modelContext)
                     recalcSelection()
                 } else {
-                    await startNewRecording()
+                    await recordingManager.startRecordingFlow(
+                        modelContext: modelContext,
+                        hideFromScreenSharing: hideFromScreenSharing
+                    ) {
+                        recalcSelection()
+                    }
+                    selectedSidebarItem = .library(.all)
+                    if let pending = recordingManager.pendingRecording {
+                        selectedRecordingID = pending.id
+                    }
                     recalcSelection(selectNewest: true)
                 }
             }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(isRecording ? "Stop Recording" : "Start Recording")
-                        .font(.title3)
-                    if isRecording {
-                        Text(formatRecordingDuration(recorder.currentRecordingDuration))
-                            .font(.caption)
-                            .opacity(0.9)
-                    }
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(
-                Capsule()
-                    .fill(isRecording ? Color.red.opacity(0.85) : Color.accentColor.opacity(0.85))
-            )
-            .foregroundStyle(Color.white)
-            .shadow(radius: 6, y: 3)
         }
-        .buttonStyle(.plain)
+        .padding(.leading, 24)
+        .padding(.bottom, 24)
+    }
+    
+    // MARK: - Detail Panel
+    
+    private var detailPanel: some View {
+        Group {
+            if let recording = selectedRecording {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        RecordingDetailHeader(recording: recording)
+                        
+                        if recording.deletedAt != nil {
+                            DeletedRecordingMessage(recording: recording)
+                        } else {
+                            PlaybackControlsView(recording: recording)
+                                .environmentObject(playbackManager)
+                        }
+                    }
+                    .padding(20)
+                }
+            } else {
+                EmptyDetailState()
+            }
+        }
+        .frame(minWidth: 350)
+    }
+    
+    /// Title for the recordings list based on selected sidebar item
+    private var sidebarTitle: String {
+        guard let item = selectedSidebarItem else { return "Library" }
+        switch item {
+        case .library(let category):
+            return category.title
+        case .folder(let name):
+            return name
+        }
     }
 
-    private func formatRecordingDuration(_ duration: TimeInterval) -> String {
-        let totalSeconds = Int(duration)
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        let centiseconds = Int((duration.truncatingRemainder(dividingBy: 1)) * 100)
-        return String(format: "%02d:%02d.%02d", minutes, seconds, centiseconds)
-    }
+    // MARK: - Selection Management
 
-    // MARK: - Helpers
-
+    /// The currently selected recording entity
     private var selectedRecording: RecordingEntity? {
         guard let id = selectedRecordingID else { return nil }
         return recordings.first(where: { $0.id == id })
     }
 
-    private func checkFirstLaunch() {
-        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
-        if !hasCompletedOnboarding {
-            // Delay showing onboarding slightly for smooth presentation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isShowingOnboarding = true
-            }
-        }
-    }
-
+    /// Recordings filtered by selected sidebar item and search text
     private var filteredRecordings: [RecordingEntity] {
         let selection = selectedSidebarItem ?? .library(.all)
 
@@ -330,17 +261,25 @@ struct ContentView: View {
         }
     }
 
+    /// Combined list of persisted folders and folders referenced by recordings
     private var userFolders: [String] {
-        let names = recordings.compactMap { $0.folder?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        return Array(Set(names.filter { !$0.isEmpty })).sorted()
+        let persistedFolders = folders.map { $0.name }
+        let recordingFolders = recordings.compactMap { $0.folder?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let allFolders = Set(persistedFolders + recordingFolders.filter { !$0.isEmpty })
+        return Array(allFolders).sorted()
     }
 
+    /// Hash of all recording IDs for change detection
     private var recordingsHash: Int {
         recordings.reduce(into: 0) { partial, rec in
             partial = partial &+ rec.id.hashValue
         }
     }
 
+    /// Recalculates the selected recording based on current filters
+    /// - Parameters:
+    ///   - keepExisting: If true, keeps current selection if it's still visible
+    ///   - selectNewest: If true, selects the newest recording
     private func recalcSelection(keepExisting: Bool = false, selectNewest: Bool = false) {
         if selectNewest, let newest = filteredRecordings.first {
             selectedRecordingID = newest.id
@@ -364,55 +303,8 @@ struct ContentView: View {
         }
     }
 
-    private func startNewRecording() async {
-        do {
-            let dir = try AppDirectories.recordingsDir()
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
-            let base = formatter.string(from: .now)
-            let fileName = "\(base).m4a"
-            let url = dir.appendingPathComponent(fileName)
-
-            try await recorder.startRecording(to: url)
-
-            let entity = RecordingEntity(
-                title: base,
-                createdAt: .now,
-                duration: 0,
-                fileName: fileName
-            )
-            modelContext.insert(entity)
-            try? modelContext.save()
-
-            pendingRecording = entity
-            isRecording = true
-            selectedSidebarItem = .library(.all)
-            selectedRecordingID = entity.id
-        } catch {
-            print("startRecording error:", error)
-        }
-    }
-
-    private func finalizePendingRecording() async {
-        guard let recording = pendingRecording,
-              let url = try? url(for: recording) else {
-            pendingRecording = nil
-            return
-        }
-        let asset = AVURLAsset(url: url)
-        do {
-            let cmDuration = try await asset.load(.duration)
-            let seconds = CMTimeGetSeconds(cmDuration)
-            if seconds.isFinite && seconds > 0.01 {
-                recording.duration = seconds
-                try? modelContext.save()
-            }
-        } catch {
-            print("duration load error:", error)
-        }
-        pendingRecording = nil
-    }
-
+    /// Handles recording selection changes and updates playback manager
+    /// - Parameter newValue: The newly selected recording ID
     private func handleSelectionChange(newValue: RecordingEntity.ID?) {
         guard let newValue,
               let rec = recordings.first(where: { $0.id == newValue }) else {
@@ -426,6 +318,9 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Duration Management
+    
+    /// Refreshes durations for recordings with missing or zero duration
     private func refreshDurationsIfNeeded() async {
         var didUpdate = false
         for recording in recordings where recording.duration <= 0 {
@@ -447,11 +342,17 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Recording Actions
+    
+    /// Shows confirmation dialog before deleting a recording
+    /// - Parameter rec: The recording to delete
     private func confirmDelete(_ rec: RecordingEntity) {
         recordingPendingDeletion = rec
         isShowingDeleteConfirmation = true
     }
 
+    /// Performs the actual deletion of a recording
+    /// - Parameter rec: The recording to delete
     private func performDeletion(_ rec: RecordingEntity) {
         defer {
             recordingPendingDeletion = nil
@@ -482,12 +383,16 @@ struct ContentView: View {
         recalcSelection()
     }
 
+    /// Toggles the favorite status of a recording
+    /// - Parameter rec: The recording to toggle
     private func toggleFavorite(_ rec: RecordingEntity) {
         rec.isFavorite.toggle()
         try? modelContext.save()
         recalcSelection(keepExisting: true)
     }
 
+    /// Shows a dialog to assign a folder to a recording
+    /// - Parameter rec: The recording to organize
     private func promptForFolder(_ rec: RecordingEntity) {
         let alert = NSAlert()
         alert.messageText = "Assign Folder"
@@ -508,6 +413,8 @@ struct ContentView: View {
         }
     }
 
+    /// Reveals the recording file in Finder
+    /// - Parameter rec: The recording to reveal
     private func reveal(_ rec: RecordingEntity) {
         if let dir = try? AppDirectories.recordingsDir() {
             let url = dir.appendingPathComponent(rec.fileName)
@@ -515,296 +422,443 @@ struct ContentView: View {
         }
     }
 
+    /// Gets the file URL for a recording
+    /// - Parameter recording: The recording entity
+    /// - Returns: The file URL
+    /// - Throws: Error if recordings directory cannot be accessed
     private func url(for recording: RecordingEntity) throws -> URL {
         let dir = try AppDirectories.recordingsDir()
         return dir.appendingPathComponent(recording.fileName)
     }
 
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "--:--" }
-        let total = Int(seconds.rounded())
-        let minutes = total / 60
-        let secs = total % 60
-        return String(format: "%d:%02d", minutes, secs)
-    }
-
-    private func panelBackground() -> some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(.ultraThinMaterial)
-    }
-}
-
-// MARK: - Sidebar Types
-
-private enum SidebarItem: Hashable, Identifiable {
-    case library(LibraryCategory)
-    case folder(String)
-
-    var id: Self { self }
-}
-
-private enum LibraryCategory: String, CaseIterable, Identifiable {
-    case all
-    case favorites
-    case recentlyDeleted
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .all: return "All Recordings"
-        case .favorites: return "Favorites"
-        case .recentlyDeleted: return "Recently Deleted"
+    /// Applies screen sharing exclusion preference to all windows
+    /// - Parameter exclude: Whether to exclude from screen sharing
+    private func applyScreenSharingPreference(_ exclude: Bool) {
+        NSApp.windows.forEach { window in
+            window.sharingType = exclude ? .none : .readOnly
         }
-    }
-
-    var icon: String {
-        switch self {
-        case .all: return "rectangle.stack"
-        case .favorites: return "star"
-        case .recentlyDeleted: return "trash"
-        }
-    }
-}
-
-// MARK: - Recording Row
-
-private struct RecordingRow: View {
-    let recording: RecordingEntity
-    let isActive: Bool
-    let isSelected: Bool
-    let durationString: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: iconName)
-                .foregroundStyle(iconColor)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recording.title)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                Text(recording.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Text(durationString)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var iconName: String {
-        if recording.deletedAt != nil { return "trash" }
-        if recording.isFavorite { return "star.fill" }
-        return "waveform"
-    }
-
-    private var iconColor: Color {
-        if recording.deletedAt != nil { return .secondary }
-        if recording.isFavorite { return .yellow }
-        return isActive ? .accentColor : .secondary
-    }
-}
-
-// MARK: - Playback Controls
-
-private struct PlaybackControlsView: View {
-    @EnvironmentObject private var playbackManager: PlaybackManager
-    @StateObject private var waveformAnalyzer = WaveformAnalyzer()
-    let recording: RecordingEntity
-
-    private var sliderBinding: Binding<Double> {
-        Binding(
-            get: { playbackManager.currentTime },
-            set: { playbackManager.seek(to: $0) }
-        )
-    }
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
-        let total = Int(seconds.rounded())
-        let minutes = total / 60
-        let secs = total % 60
-        return String(format: "%d:%02d", minutes, secs)
+        recordingManager.setScreenCaptureExclusion(exclude)
     }
     
-    private func formatTimeDetailed(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "00:00.00" }
-        let total = Int(seconds * 100) // Convert to centiseconds
-        let minutes = total / 6000
-        let centiseconds = total % 6000
-        let secs = centiseconds / 100
-        let cs = centiseconds % 100
-        return String(format: "%02d:%02d.%02d", minutes, secs, cs)
+    // MARK: - Rename Operations
+    
+    /// Initiates renaming flow for a recording
+    /// - Parameter recording: The recording to rename
+    private func startRenaming(_ recording: RecordingEntity) {
+        renameText = recording.title
+        renamingRecording = recording
     }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Title and duration
-            HStack {
-                Text(recording.title)
-                    .font(.headline)
-                Spacer()
-                Text(formatTime(playbackManager.duration))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+    
+    /// Renames a recording with validation
+    /// - Parameters:
+    ///   - recording: The recording to rename
+    ///   - newTitle: The new title
+    private func renameRecording(_ recording: RecordingEntity, to newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        recording.title = trimmed
+        try? modelContext.save()
+        recalcSelection(keepExisting: true)
+    }
+    
+    /// Creates a new folder or selects existing one
+    /// - Parameter name: The folder name
+    private func createFolder(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        // Check if folder already exists
+        guard !folders.contains(where: { $0.name == trimmed }) else {
+            selectedSidebarItem = .folder(trimmed)
+            return
+        }
+        
+        // Create and persist new folder
+        let newFolder = FolderEntity(name: trimmed, sortOrder: folders.count)
+        modelContext.insert(newFolder)
+        try? modelContext.save()
+        
+        selectedSidebarItem = .folder(trimmed)
+        newFolderName = ""
+    }
+    
+    /// Permanently deletes all recordings in the trash
+    private func clearAllDeletedRecordings() {
+        let deletedRecordings = recordings.filter { $0.deletedAt != nil }
+        
+        for recording in deletedRecordings {
+            if let dir = try? AppDirectories.recordingsDir() {
+                let url = dir.appendingPathComponent(recording.fileName)
+                try? FileManager.default.removeItem(at: url)
             }
-
-            // Main waveform visualization
-            if !waveformAnalyzer.waveformData.isEmpty {
-                VStack(spacing: 12) {
-                    // Detailed waveform
-                    WaveformView(
-                        waveformData: waveformAnalyzer.waveformData,
-                        currentTime: playbackManager.currentTime,
-                        duration: playbackManager.duration,
-                        onSeek: { time in
-                            playbackManager.seek(to: time)
-                        },
-                        isPlaceholder: !waveformAnalyzer.hasRealData
-                    )
-                    
-                    // Overview waveform scrubber
-                    OverviewWaveformView(
-                        waveformData: waveformAnalyzer.waveformData,
-                        currentTime: playbackManager.currentTime,
-                        duration: playbackManager.duration,
-                        onSeek: { time in
-                            playbackManager.seek(to: time)
-                        },
-                        isPlaceholder: !waveformAnalyzer.hasRealData
-                    )
-                }
-            } else {
-                // Fallback to simple slider if no waveform data
-                VStack(alignment: .leading, spacing: 4) {
-                    Slider(value: sliderBinding,
-                           in: 0...(playbackManager.duration > 0 ? playbackManager.duration : 1))
-                        .disabled(playbackManager.duration <= 0)
-                    HStack {
-                        Text(formatTime(playbackManager.currentTime))
-                        Spacer()
-                        let remaining = max(playbackManager.duration - playbackManager.currentTime, 0)
-                        Text("-" + formatTime(remaining))
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
+            modelContext.delete(recording)
+        }
+        
+        try? modelContext.save()
+        recalcSelection()
+    }
+    
+    // MARK: - Crash Recovery
+    
+    /// Recovers or cleans up incomplete recordings from previous sessions
+    /// 
+    /// This method:
+    /// - Finds recordings with zero duration (incomplete/crashed)
+    /// - Attempts to read actual duration from the file
+    /// - Deletes recordings with missing or invalid files
+    private func recoverIncompleteRecordings() async {
+        // Find recordings with duration = 0 (incomplete/crashed)
+        let incompleteRecordings = recordings.filter { $0.duration == 0 && $0.deletedAt == nil }
+        
+        for recording in incompleteRecordings {
+            guard let url = try? url(for: recording) else {
+                // File doesn't exist, delete the entity
+                modelContext.delete(recording)
+                continue
             }
-
-            // Timer display (matching reference design)
-            HStack {
-                Spacer()
-                Text(formatTimeDetailed(playbackManager.currentTime))
-                    .font(.system(size: 24, weight: .medium, design: .monospaced))
-                    .foregroundColor(.primary)
-                Spacer()
+            
+            // Check if file exists and has content
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                // File doesn't exist, delete the entity
+                modelContext.delete(recording)
+                continue
             }
-
-            // Playback controls (matching reference design)
-            HStack(spacing: 20) {
-                // Skip back 15s
-                Button {
-                    playbackManager.skip(by: -15)
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(width: 50, height: 50)
-                        HStack(spacing: 2) {
-                            Image(systemName: "gobackward")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("15")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                    }
+            
+            // Try to get actual duration from the file
+            let asset = AVURLAsset(url: url)
+            do {
+                let cmDuration = try await asset.load(.duration)
+                let seconds = CMTimeGetSeconds(cmDuration)
+                
+                if seconds > 0 {
+                    // File is valid, update the duration
+                    recording.duration = seconds
+                    print("✅ Recovered recording: \(recording.title) (\(seconds)s)")
+                } else {
+                    // File is empty or invalid, delete it
+                    try? FileManager.default.removeItem(at: url)
+                    modelContext.delete(recording)
+                    print("🗑️ Removed empty recording: \(recording.title)")
                 }
-                .disabled(!playbackManager.hasActivePlayer)
-                .buttonStyle(.plain)
-
-                // Play/Pause button
-                Button {
-                    playbackManager.togglePlayPause()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 60, height: 60)
-                        Image(systemName: playbackManager.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.white)
-                    }
-                }
-                .disabled(!playbackManager.hasSelection)
-                .buttonStyle(.plain)
-
-                // Skip forward 15s
-                Button {
-                    playbackManager.skip(by: 15)
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(width: 50, height: 50)
-                        HStack(spacing: 2) {
-                            Text("15")
-                                .font(.system(size: 12, weight: .medium))
-                            Image(systemName: "goforward")
-                                .font(.system(size: 16, weight: .medium))
-                        }
-                    }
-                }
-                .disabled(!playbackManager.hasActivePlayer)
-                .buttonStyle(.plain)
-            }
-            .frame(maxWidth: .infinity)
-
-            // Volume control
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Volume")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: Binding(
-                    get: { Double(playbackManager.volume) },
-                    set: { playbackManager.setVolume(Float($0)) }
-                ), in: 0...1)
-                    .frame(width: 140)
+            } catch {
+                // Couldn't read file, delete it
+                try? FileManager.default.removeItem(at: url)
+                modelContext.delete(recording)
+                print("🗑️ Removed invalid recording: \(recording.title)")
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-        )
-        .task {
-            // Analyze waveform when recording changes
-            if let url = try? url(for: recording) {
-                await waveformAnalyzer.analyzeAudioFile(at: url, duration: playbackManager.duration)
-            }
-        }
-        .onChange(of: recording.id) { _, _ in
-            // Clear and re-analyze when recording changes
-            waveformAnalyzer.clearData()
-            Task {
-                if let url = try? url(for: recording) {
-                    await waveformAnalyzer.analyzeAudioFile(at: url, duration: playbackManager.duration)
-                }
-            }
+        
+        try? modelContext.save()
+    }
+    
+    // MARK: - View Helpers
+    
+    /// Binding for playback error alerts
+    private var playbackErrorBinding: Binding<PlaybackManager.PlaybackError?> {
+        Binding(get: { playbackManager.error }, set: { playbackManager.error = $0 })
+    }
+    
+    /// Sheet for creating a new folder
+    @ViewBuilder
+    private func createFolderSheet() -> some View {
+        CreateFolderSheet(folderName: $newFolderName) { name in
+            createFolder(name: name)
+            isCreatingFolder = false
+        } onCancel: {
+            isCreatingFolder = false
+            newFolderName = ""
         }
     }
     
-    private func url(for recording: RecordingEntity) throws -> URL {
-        let dir = try AppDirectories.recordingsDir()
-        return dir.appendingPathComponent(recording.fileName)
+    /// Sheet for renaming a recording
+    /// - Parameter recording: The recording to rename
+    @ViewBuilder
+    private func renameRecordingSheet(_ recording: RecordingEntity) -> some View {
+        RenameRecordingSheet(recordingTitle: recording.title, newTitle: $renameText) { newTitle in
+            renameRecording(recording, to: newTitle)
+            renamingRecording = nil
+        } onCancel: {
+            renamingRecording = nil
+            renameText = ""
+        }
+    }
+    
+    /// Sheet for renaming a folder
+    /// - Parameter wrapper: The folder wrapper containing the name
+    @ViewBuilder
+    private func renameFolderSheet(_ wrapper: FolderWrapper) -> some View {
+        RenameFolderSheet(folderName: wrapper.name, newName: $renameFolderText) { newName in
+            renameFolder(from: wrapper.name, to: newName)
+            renamingFolder = nil
+        } onCancel: {
+            renamingFolder = nil
+            renameFolderText = ""
+        }
+    }
+    
+    /// Creates an alert for playback errors
+    /// - Parameter error: The playback error
+    /// - Returns: Configured alert
+    private func playbackErrorAlert(_ error: PlaybackManager.PlaybackError) -> Alert {
+        Alert(title: Text("Playback Error"), message: Text(error.message), dismissButton: .default(Text("OK")))
+    }
+    
+    /// Action buttons for delete recording confirmation
+    /// - Parameter recording: The recording to delete
+    @ViewBuilder
+    private func deleteRecordingActions(_ recording: RecordingEntity) -> some View {
+        Button("Delete", role: .destructive) { performDeletion(recording) }
+        Button("Cancel", role: .cancel) { recordingPendingDeletion = nil }
+    }
+    
+    /// Message for delete recording confirmation
+    /// - Parameter recording: The recording to delete
+    /// - Returns: Confirmation message
+    private func deleteRecordingMessage(_ recording: RecordingEntity) -> Text {
+        Text("Are you sure you want to delete \(recording.title)?")
+    }
+    
+    /// Action buttons for delete folder confirmation
+    /// - Parameter folderName: The folder to delete
+    @ViewBuilder
+    private func deleteFolderActions(_ folderName: String) -> some View {
+        Button("Delete", role: .destructive) { performFolderDeletion(folderName) }
+        Button("Cancel", role: .cancel) { folderPendingDeletion = nil }
+    }
+    
+    /// Message for delete folder confirmation
+    /// - Parameter folderName: The folder to delete
+    /// - Returns: Confirmation message
+    private func deleteFolderMessage(_ folderName: String) -> Text {
+        Text("Are you sure you want to delete the folder '\(folderName)'? Recordings in this folder will not be deleted.")
+    }
+    
+    // MARK: - Lifecycle Handlers
+    
+    /// Handles view appearance
+    private func handleAppear() {
+        recalcSelection()
+        applyScreenSharingPreference(hideFromScreenSharing)
+    }
+    
+    /// Handles show onboarding notification
+    /// - Parameter notification: The notification
+    private func handleShowOnboarding(_ notification: Notification) {
+        UserDefaults.standard.set(false, forKey: AppConstants.UserDefaultsKeys.hasCompletedOnboarding)
+    }
+    
+    /// Handles toggle sidebar notification
+    /// - Parameter notification: The notification
+    private func handleToggleSidebar(_ notification: Notification) {
+        withAnimation {
+            isSidebarVisible.toggle()
+        }
+    }
+    
+    /// Handles start recording notification
+    /// - Parameter notification: The notification
+    private func handleStartRecording(_ notification: Notification) {
+        guard !recordingManager.isRecording else { return }
+        Task {
+            await recordingManager.startRecordingFlow(
+                modelContext: modelContext,
+                hideFromScreenSharing: hideFromScreenSharing
+            ) {
+                recalcSelection()
+            }
+            selectedSidebarItem = .library(.all)
+            recalcSelection(selectNewest: true)
+        }
+    }
+    
+    /// Handles stop recording notification
+    /// - Parameter notification: The notification
+    private func handleStopRecording(_ notification: Notification) {
+        guard recordingManager.isRecording else { return }
+        Task {
+            await recordingManager.stopRecordingFlow(modelContext: modelContext)
+            recalcSelection()
+        }
+    }
+    
+    /// Handles clear deleted recordings notification
+    /// - Parameter notification: The notification
+    private func handleClearDeleted(_ notification: Notification) {
+        clearAllDeletedRecordings()
+    }
+    
+    // MARK: - Toolbar
+    
+    /// Builds the main toolbar content
+    /// - Returns: Toolbar items for navigation, primary actions, and secondary actions
+    @ToolbarContentBuilder
+    private func toolbarContent() -> some ToolbarContent {
+        ToolbarItemGroup(placement: .navigation) {
+            Button {
+                withAnimation {
+                    isSidebarVisible.toggle()
+                }
+            } label: {
+                Label("Toggle Sidebar", systemImage: "sidebar.left")
+            }
+            .help("Toggle Sidebar")
+        }
+        
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                isCreatingFolder = true
+            } label: {
+                Label("New Folder", systemImage: "folder.badge.plus")
+            }
+            .help("Create New Folder")
+            
+            Button {
+                Task {
+                    if recordingManager.isRecording {
+                        await recordingManager.stopRecordingFlow(modelContext: modelContext)
+                        recalcSelection()
+                    } else {
+                        await recordingManager.startRecordingFlow(
+                            modelContext: modelContext,
+                            hideFromScreenSharing: hideFromScreenSharing
+                        ) {
+                            recalcSelection()
+                        }
+                        selectedSidebarItem = .library(.all)
+                        recalcSelection(selectNewest: true)
+                    }
+                }
+            } label: {
+                Label(recordingManager.isRecording ? "Stop Recording" : "New Recording",
+                      systemImage: recordingManager.isRecording ? "stop.circle.fill" : "record.circle")
+            }
+            .keyboardShortcut("r", modifiers: .command)
+            
+            Button {
+                playbackManager.togglePlayPause()
+            } label: {
+                Label(playbackManager.isPlaying ? "Pause" : "Play",
+                      systemImage: playbackManager.isPlaying ? "pause.fill" : "play.fill")
+            }
+            .keyboardShortcut(" ", modifiers: [])
+            .disabled(!playbackManager.hasSelection)
+        }
+        
+        ToolbarItemGroup(placement: .secondaryAction) {
+            if let recording = selectedRecording {
+                Button {
+                    startRenaming(recording)
+                } label: {
+                    Label("Rename", systemImage: "pencil")
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                
+                Button {
+                    toggleFavorite(recording)
+                } label: {
+                    Label(recording.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                          systemImage: recording.isFavorite ? "star.fill" : "star")
+                }
+                .keyboardShortcut("f", modifiers: .command)
+                
+                Button {
+                    reveal(recording)
+                } label: {
+                    Label("Show in Finder", systemImage: "folder")
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+                
+                Button(role: .destructive) {
+                    confirmDelete(recording)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .keyboardShortcut(.delete, modifiers: .command)
+            }
+        }
+    }
+    
+    // MARK: - Folder Management
+    
+    /// Initiates renaming flow for a folder
+    /// - Parameter folderName: The folder to rename
+    private func startRenamingFolder(_ folderName: String) {
+        renameFolderText = folderName
+        renamingFolder = folderName
+    }
+    
+    /// Renames a folder and updates all references
+    /// - Parameters:
+    ///   - oldName: The current folder name
+    ///   - newName: The new folder name
+    private func renameFolder(from oldName: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != oldName else { return }
+        
+        // Update folder entity if it exists
+        if let folderEntity = folders.first(where: { $0.name == oldName }) {
+            folderEntity.name = trimmed
+        }
+        
+        // Update all recordings that reference this folder
+        for recording in recordings where recording.folder == oldName {
+            recording.folder = trimmed
+        }
+        
+        try? modelContext.save()
+        
+        // Update selection if the renamed folder was selected
+        if selectedSidebarItem == .folder(oldName) {
+            selectedSidebarItem = .folder(trimmed)
+        }
+        
+        renameFolderText = ""
+    }
+    
+    /// Shows confirmation dialog before deleting a folder
+    /// - Parameter folderName: The folder to delete
+    private func confirmFolderDeletion(_ folderName: String) {
+        folderPendingDeletion = folderName
+        isShowingFolderDeleteConfirmation = true
+    }
+    
+    /// Performs the actual deletion of a folder
+    /// 
+    /// Note: This removes the folder but preserves recordings,
+    /// simply clearing their folder reference.
+    /// 
+    /// - Parameter folderName: The folder to delete
+    private func performFolderDeletion(_ folderName: String) {
+        defer {
+            folderPendingDeletion = nil
+            isShowingFolderDeleteConfirmation = false
+        }
+        
+        // Delete folder entity if it exists
+        if let folderEntity = folders.first(where: { $0.name == folderName }) {
+            modelContext.delete(folderEntity)
+        }
+        
+        // Remove folder reference from all recordings
+        for recording in recordings where recording.folder == folderName {
+            recording.folder = nil
+        }
+        
+        try? modelContext.save()
+        
+        // Update selection if the deleted folder was selected
+        if selectedSidebarItem == .folder(folderName) {
+            selectedSidebarItem = .library(.all)
+        }
+        
+        recalcSelection()
     }
 }
 
-// MARK: - Collection Safe Index
+// MARK: - Helper Types
 
-private extension Collection {
-    subscript(safe index: Index) -> Element? {
-        guard indices.contains(index) else { return nil }
-        return self[index]
-    }
+/// Wrapper for folder names to make them Identifiable for sheet presentation
+struct FolderWrapper: Identifiable {
+    let name: String
+    var id: String { name }
 }

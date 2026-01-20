@@ -7,45 +7,77 @@
 
 import SwiftUI
 
+// MARK: - Loading State View
+
+struct LoadingWaveformView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .scaleEffect(1.2)
+
+            Text("Analyzing audio...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(height: 100)
+        .frame(maxWidth: .infinity)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.thinMaterial)
+
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.05),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            }
+        )
+    }
+}
+
+// MARK: - Main Waveform View
+
 struct WaveformView: View {
     let waveformData: [Float]
     let currentTime: TimeInterval
     let duration: TimeInterval
     let onSeek: (TimeInterval) -> Void
     let isPlaceholder: Bool
-    
+
     @State private var isDragging = false
-    
-    private let waveformHeight: CGFloat = 120
+
+    private let waveformHeight: CGFloat = 100
     private let timelineHeight: CGFloat = 20
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Main waveform display
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Waveform background
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.1))
+                    // Unplayed portion (full waveform, dimmed)
+                    filledWaveform(progress: 1.0, color: waveformUnplayedColor)
                         .frame(height: waveformHeight)
-                    
-                    // Waveform bars
-                    if !waveformData.isEmpty {
-                        HStack(spacing: 1) {
-                            ForEach(Array(waveformData.enumerated()), id: \.offset) { index, amplitude in
-                                RoundedRectangle(cornerRadius: 0.5)
-                                    .fill(waveformColor(for: index))
-                                    .frame(width: 2, height: max(1, CGFloat(amplitude) * waveformHeight))
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    
+
+                    // Played portion (overlay, brighter)
+                    filledWaveform(progress: playbackProgress, color: waveformPlayedColor)
+                        .frame(height: waveformHeight)
+
                     // Playhead
                     playheadView(in: geometry)
                 }
                 .frame(height: waveformHeight)
-                .clipped()
+                .contentShape(Rectangle())
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -60,21 +92,84 @@ struct WaveformView: View {
                 )
             }
             .frame(height: waveformHeight)
-            
+
             // Timeline with time markers
             timelineView
         }
     }
-    
+
+    private var playbackProgress: CGFloat {
+        duration > 0 ? min(1, currentTime / duration) : 0
+    }
+
+    private func filledWaveform(progress: CGFloat, color: Color) -> some View {
+        GeometryReader { geometry in
+            let dataCount = max(1, waveformData.count)
+            let barWidth = geometry.size.width / CGFloat(dataCount)
+
+            // Create a filled waveform path (always full width)
+            let path = Path { path in
+                let halfHeight = waveformHeight / 2
+
+                // Start at bottom-left
+                path.move(to: CGPoint(x: 0, y: waveformHeight))
+
+                // Draw the top edge of the waveform
+                for i in 0..<dataCount {
+                    let amplitude = CGFloat(waveformData[i])
+                    let x = CGFloat(i) * barWidth + barWidth / 2
+                    let barHeight = max(2, amplitude * halfHeight * 1.8)
+                    let y = halfHeight - barHeight / 2
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+
+                // Draw the bottom edge back to start (mirrored)
+                for i in stride(from: dataCount - 1, through: 0, by: -1) {
+                    let amplitude = CGFloat(waveformData[i])
+                    let x = CGFloat(i) * barWidth + barWidth / 2
+                    let barHeight = max(2, amplitude * halfHeight * 1.8)
+                    let y = halfHeight + barHeight / 2
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+
+                // Close the path
+                path.closeSubpath()
+            }
+
+            // Clip to the progress width
+            path.fill(color)
+                .clipShape(
+                    Rectangle()
+                        .size(width: geometry.size.width * progress, height: waveformHeight)
+                )
+        }
+    }
+
+    private var waveformPlayedColor: Color {
+        isPlaceholder ? Color.white.opacity(0.7) : Color.white
+    }
+
+    private var waveformUnplayedColor: Color {
+        isPlaceholder ? Color.white.opacity(0.25) : Color.white.opacity(0.3)
+    }
+
     private func playheadView(in geometry: GeometryProxy) -> some View {
-        let progress = duration > 0 ? currentTime / duration : 0
-        let xPosition = progress * geometry.size.width
-        
-        return Rectangle()
-            .fill(Color.blue)
-            .frame(width: 2)
-            .position(x: xPosition, y: geometry.size.height / 2)
-            .animation(.easeInOut(duration: 0.1), value: currentTime)
+        let xPosition = playbackProgress * geometry.size.width
+
+        return ZStack {
+            // Glow effect
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.3))
+                .frame(width: 6)
+                .blur(radius: 4)
+
+            // Core playhead
+            Rectangle()
+                .fill(Color.accentColor)
+                .frame(width: 2)
+        }
+        .position(x: xPosition, y: waveformHeight / 2)
+        .animation(.easeInOut(duration: 0.08), value: playbackProgress)
     }
     
     private var timelineView: some View {
@@ -142,21 +237,6 @@ struct WaveformView: View {
         }
     }
     
-    private func waveformColor(for index: Int) -> Color {
-        let progress = duration > 0 ? currentTime / duration : 0
-        let dataIndex = Int(progress * Double(waveformData.count))
-
-        // Use consistent colors for both placeholder and real data
-        // Only difference: slightly dimmed when placeholder for subtle indication
-        let playedOpacity: Double = isPlaceholder ? 0.8 : 1.0
-        let unplayedOpacity: Double = isPlaceholder ? 0.5 : 0.6
-
-        if index <= dataIndex {
-            return Color.white.opacity(playedOpacity)
-        } else {
-            return Color.gray.opacity(unplayedOpacity)
-        }
-    }
 }
 
 struct OverviewWaveformView: View {
@@ -165,36 +245,26 @@ struct OverviewWaveformView: View {
     let duration: TimeInterval
     let onSeek: (TimeInterval) -> Void
     let isPlaceholder: Bool
-    
+
     @State private var isDragging = false
-    
+
+    private let overviewHeight: CGFloat = 32
+
     var body: some View {
         HStack(spacing: 0) {
             // Waveform overview
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Background
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 30)
-                    
-                    // Waveform bars
-                    if !waveformData.isEmpty {
-                        HStack(spacing: 0) {
-                            ForEach(Array(waveformData.enumerated()), id: \.offset) { index, amplitude in
-                                RoundedRectangle(cornerRadius: 0.5)
-                                    .fill(waveformColor(for: index))
-                                    .frame(width: 1, height: max(2, CGFloat(amplitude) * 26))
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    
+                    // Unplayed portion (dimmed)
+                    filledWaveform(progress: 1.0, color: waveformUnplayedColor)
+
+                    // Played portion (brighter)
+                    filledWaveform(progress: playbackProgress, color: waveformPlayedColor)
+
                     // Playhead indicator
                     playheadIndicator(in: geometry)
                 }
-                .frame(height: 30)
-                .clipped()
+                .contentShape(Rectangle())
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -208,70 +278,112 @@ struct OverviewWaveformView: View {
                         }
                 )
             }
-            
+            .frame(height: overviewHeight)
+
             // Duration label
-            Text(formatTime(duration))
+            Text(TimeFormatter.formatPlayback(duration))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.leading, 8)
         }
     }
-    
-    private func playheadIndicator(in geometry: GeometryProxy) -> some View {
-        let progress = duration > 0 ? currentTime / duration : 0
-        let xPosition = progress * geometry.size.width
-        
-        return Rectangle()
-            .fill(Color.blue)
-            .frame(width: 2, height: 30)
-            .position(x: xPosition, y: geometry.size.height / 2)
-            .animation(.easeInOut(duration: 0.1), value: currentTime)
+
+    private var playbackProgress: CGFloat {
+        duration > 0 ? min(1, currentTime / duration) : 0
     }
-    
-    private func waveformColor(for index: Int) -> Color {
-        let progress = duration > 0 ? currentTime / duration : 0
-        let dataIndex = Int(progress * Double(waveformData.count))
 
-        // Use consistent colors for both placeholder and real data
-        // Only difference: slightly dimmed when placeholder for subtle indication
-        let playedOpacity: Double = isPlaceholder ? 0.8 : 1.0
-        let unplayedOpacity: Double = isPlaceholder ? 0.5 : 0.6
+    private func filledWaveform(progress: CGFloat, color: Color) -> some View {
+        GeometryReader { geometry in
+            let dataCount = max(1, waveformData.count)
+            let barWidth = geometry.size.width / CGFloat(dataCount)
 
-        if index <= dataIndex {
-            return Color.white.opacity(playedOpacity)
-        } else {
-            return Color.gray.opacity(unplayedOpacity)
+            // Create a filled waveform path (always full width)
+            let path = Path { path in
+                let halfHeight = overviewHeight / 2
+
+                // Start at bottom-left
+                path.move(to: CGPoint(x: 0, y: overviewHeight))
+
+                // Draw the top edge
+                for i in 0..<dataCount {
+                    let amplitude = CGFloat(waveformData[i])
+                    let x = CGFloat(i) * barWidth + barWidth / 2
+                    let barHeight = max(1, amplitude * halfHeight * 1.6)
+                    let y = halfHeight - barHeight / 2
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+
+                // Draw the bottom edge back to start (mirrored)
+                for i in stride(from: dataCount - 1, through: 0, by: -1) {
+                    let amplitude = CGFloat(waveformData[i])
+                    let x = CGFloat(i) * barWidth + barWidth / 2
+                    let barHeight = max(1, amplitude * halfHeight * 1.6)
+                    let y = halfHeight + barHeight / 2
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+
+                path.closeSubpath()
+            }
+
+            // Clip to the progress width
+            path.fill(color)
+                .clipShape(
+                    Rectangle()
+                        .size(width: geometry.size.width * progress, height: overviewHeight)
+                )
         }
     }
-    
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
-        let total = Int(seconds.rounded())
-        let minutes = total / 60
-        let secs = total % 60
-        return String(format: "%d:%02d", minutes, secs)
+
+    private var waveformPlayedColor: Color {
+        isPlaceholder ? Color.white.opacity(0.7) : Color.white
+    }
+
+    private var waveformUnplayedColor: Color {
+        isPlaceholder ? Color.white.opacity(0.25) : Color.white.opacity(0.3)
+    }
+
+    private func playheadIndicator(in geometry: GeometryProxy) -> some View {
+        let xPosition = playbackProgress * geometry.size.width
+
+        return ZStack {
+            // Glow effect
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.3))
+                .frame(width: 5)
+                .blur(radius: 3)
+
+            // Core playhead
+            Rectangle()
+                .fill(Color.accentColor)
+                .frame(width: 2)
+        }
+        .position(x: xPosition, y: overviewHeight / 2)
+        .animation(.easeInOut(duration: 0.08), value: playbackProgress)
     }
 }
 
 #Preview {
     VStack(spacing: 20) {
+        LoadingWaveformView()
+            .frame(height: 100)
+
         WaveformView(
-            waveformData: Array(0..<100).map { _ in Float.random(in: 0...1) },
+            waveformData: Array(0..<100).map { _ in Float.random(in: 0.2...1) },
             currentTime: 15.5,
             duration: 60.0,
             onSeek: { _ in },
             isPlaceholder: false
         )
-        .frame(height: 140)
-        
+        .frame(height: 120)
+
         OverviewWaveformView(
-            waveformData: Array(0..<100).map { _ in Float.random(in: 0...1) },
+            waveformData: Array(0..<100).map { _ in Float.random(in: 0.2...1) },
             currentTime: 15.5,
             duration: 60.0,
             onSeek: { _ in },
             isPlaceholder: false
         )
-        .frame(height: 30)
+        .frame(height: 32)
     }
     .padding()
     .background(Color.black)

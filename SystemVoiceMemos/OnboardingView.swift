@@ -2,172 +2,518 @@
 //  OnboardingView.swift
 //  SystemVoiceMemos
 //
-//  Created by aramb-dev on 11/13/25.
+//  Created by aramb-dev on 01/13/26.
 //
 
 import SwiftUI
 
 struct OnboardingView: View {
-    @Binding var isPresented: Bool
-    @State private var currentPage = 0
-
-    private let pages: [OnboardingPage] = [
-        OnboardingPage(
-            icon: "waveform.circle.fill",
-            title: "Welcome to SystemVoiceMemos",
-            description: "Record your Mac's system audio with ease. Capture music, calls, streaming audio, and more—all in high quality.",
-            accentColor: .blue
-        ),
-        OnboardingPage(
-            icon: "lock.shield.fill",
-            title: "Screen Recording Permission Required",
-            description: "To capture system audio, macOS requires Screen Recording permission. Don't worry—we only record audio, never video.\n\nYou'll be prompted when you start your first recording.",
-            accentColor: .orange,
-            isPermissionPage: true
-        ),
-        OnboardingPage(
-            icon: "play.circle.fill",
-            title: "Simple & Powerful",
-            description: "• Click the red button to start recording\n• Organize with folders and favorites\n• Visualize with beautiful waveforms\n• Control playback with media keys\n• All recordings stored locally & private",
-            accentColor: .green
-        )
-    ]
-
+    @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
+    @StateObject private var permissionManager = PermissionManager.shared
+    @State private var currentStep: OnboardingStep = .welcome
+    @State private var isNavigatingForward = true
+    
+    enum OnboardingStep: Int {
+        case welcome = 0
+        case permissions = 1
+        case completion = 2
+    }
+    
     var body: some View {
         ZStack {
-            // Background
-            Color.black.opacity(0.5)
+            // Animated Gradient Background with liquid-like effect
+            ZStack {
+                // Base gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.05, green: 0.1, blue: 0.15),
+                        Color(red: 0.1, green: 0.15, blue: 0.2)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
                 .ignoresSafeArea()
 
-            // Main content
-            VStack(spacing: 0) {
-                // Page content
-                TabView(selection: $currentPage) {
-                    ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                        OnboardingPageView(page: page)
-                            .tag(index)
-                    }
+                // Liquid glass ambient orbs
+                Group {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.blue.opacity(0.15),
+                                    Color.clear
+                                ],
+                                center: .topLeading,
+                                startRadius: 0,
+                                endRadius: 300
+                            )
+                        )
+                        .frame(width: 400, height: 400)
+                        .blur(radius: 80)
+                        .offset(x: -150, y: -100)
+
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.cyan.opacity(0.12),
+                                    Color.clear
+                                ],
+                                center: .bottomTrailing,
+                                startRadius: 0,
+                                endRadius: 250
+                            )
+                        )
+                        .frame(width: 350, height: 350)
+                        .blur(radius: 70)
+                        .offset(x: 150, y: 100)
+
+                    // Subtle streak
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.clear,
+                                    Color.white.opacity(0.03),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 200, height: 600)
+                        .blur(radius: 60)
+                        .offset(x: 100, y: 0)
                 }
-                .tabViewStyle(.page)
-                .indexViewStyle(.page(backgroundDisplayMode: .always))
-                .frame(maxWidth: 600, maxHeight: 500)
-
-                // Bottom actions
-                HStack(spacing: 16) {
-                    if currentPage > 0 {
-                        Button("Back") {
-                            withAnimation {
-                                currentPage -= 1
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    Spacer()
-
-                    if currentPage < pages.count - 1 {
-                        Button("Next") {
-                            withAnimation {
-                                currentPage += 1
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .keyboardShortcut(.defaultAction)
-                    } else {
-                        Button("Get Started") {
-                            completeOnboarding()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .keyboardShortcut(.defaultAction)
-                    }
-                }
-                .padding(32)
-                .frame(maxWidth: 600)
             }
+
+            VStack(spacing: 0) {
+                switch currentStep {
+                case .welcome:
+                    welcomeView
+                case .permissions:
+                    permissionsView
+                case .completion:
+                    completionView
+                }
+            }
+            .frame(maxWidth: 800, maxHeight: 600)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(.ultraThinMaterial)
-                    .shadow(radius: 30)
+                ZStack {
+                    // Main glass card
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(.ultraThinMaterial)
+
+                    // Inner highlight for depth
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.1),
+                                    Color.clear,
+                                    Color.black.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay {
+                    // Border with gradient
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.2),
+                                    Color.white.opacity(0.05),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                }
             )
+            .shadow(color: .black.opacity(0.3), radius: 40, y: 20)
+            .shadow(color: .white.opacity(0.05), radius: 1, y: -1)
             .padding(40)
         }
-    }
-
-    private func completeOnboarding() {
-        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-        withAnimation(.easeInOut(duration: 0.3)) {
-            isPresented = false
+        .preferredColorScheme(.dark)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            permissionManager.checkPermissions()
         }
+    }
+    
+    // MARK: - Welcome View
+    
+    private var welcomeView: some View {
+        VStack(spacing: 32) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Text("Welcome to SystemVoiceMemos")
+                    .font(.system(size: 48, weight: .bold))
+                    .multilineTextAlignment(.center)
+                
+                Text("Capture your Mac's system audio with professional quality and ease.")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 60)
+            }
+            
+            Spacer()
+            
+            Button {
+                withAnimation(.spring()) {
+                    isNavigatingForward = true
+                    currentStep = .permissions
+                }
+            } label: {
+                Text("Begin Setup")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 40)
+                    .padding(.vertical, 16)
+                    .background(
+                        ZStack {
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+
+                            // Inner highlight
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.2), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
+                    )
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    }
+                    .shadow(color: Color.accentColor.opacity(0.25), radius: 12, y: 6)
+                    .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
+            }
+            .buttonStyle(.plain)
+            
+            Spacer()
+                .frame(height: 40)
+        }
+        .transition(.asymmetric(
+            insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+            removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+        ))
+    }
+    
+    // MARK: - Permissions View
+    
+    private var permissionsView: some View {
+        VStack(spacing: 40) {
+            Text("Permissions")
+                .font(.system(size: 36, weight: .bold))
+            
+            VStack(spacing: 20) {
+                PermissionCard(
+                    title: "Screen Recording",
+                    description: "Required to capture system audio stream (no video is recorded).",
+                    icon: "record.circle",
+                    isAuthorized: permissionManager.isScreenRecordingAuthorized,
+                    action: { permissionManager.requestScreenRecordingPermission() }
+                )
+                
+                PermissionCard(
+                    title: "Microphone Access",
+                    description: "Required if you wish to record external audio devices.",
+                    icon: "mic.fill",
+                    isAuthorized: permissionManager.isAudioAuthorized,
+                    action: {
+                        Task {
+                            await permissionManager.requestAudioPermission()
+                        }
+                    }
+                )
+            }
+            .padding(.horizontal, 60)
+            
+            Button {
+                withAnimation(.spring()) {
+                    isNavigatingForward = true
+                    currentStep = .completion
+                }
+            } label: {
+                Text("Continue")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 16)
+                    .background(
+                        ZStack {
+                            Capsule()
+                                .fill(
+                                    permissionManager.isScreenRecordingAuthorized
+                                        ? LinearGradient(
+                                            colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [Color.gray.opacity(0.5), Color.gray.opacity(0.4)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                )
+
+                            // Inner highlight
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.15), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
+                    )
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    }
+                    .shadow(color: permissionManager.isScreenRecordingAuthorized ? Color.accentColor.opacity(0.2) : .clear, radius: 10, y: 5)
+            }
+            .buttonStyle(.plain)
+            .disabled(!permissionManager.isScreenRecordingAuthorized)
+            
+            if !permissionManager.isScreenRecordingAuthorized {
+                Text("Screen Recording permission is essential for capturing system audio.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 60)
+        .transition(.asymmetric(
+            insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+            removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+        ))
+    }
+    
+    // MARK: - Completion View
+    
+    private var completionView: some View {
+        VStack(spacing: 32) {
+            Spacer()
+            
+            if permissionManager.isScreenRecordingAuthorized {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 100))
+                    .foregroundStyle(LinearGradient(colors: [.green, .blue], startPoint: .top, endPoint: .bottom))
+                    .symbolEffect(.bounce, value: currentStep)
+                
+                VStack(spacing: 16) {
+                    Text("You're All Set!")
+                        .font(.system(size: 40, weight: .bold))
+                    
+                    Text("SystemVoiceMemos is ready to capture your world. All recordings are stored locally and privately on your Mac.")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                }
+            } else {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 100))
+                    .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
+                
+                VStack(spacing: 16) {
+                    Text("Permission Required")
+                        .font(.system(size: 40, weight: .bold))
+                    
+                    Text("Screen Recording permission is required to capture system audio. Please grant permission in System Settings, then return here.")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                }
+            }
+            
+            Spacer()
+            
+            Button {
+                if permissionManager.isScreenRecordingAuthorized {
+                    withAnimation {
+                        hasCompletedOnboarding = true
+                    }
+                } else {
+                    permissionManager.requestScreenRecordingPermission()
+                }
+            } label: {
+                Text(permissionManager.isScreenRecordingAuthorized ? "Get Started" : "Open System Settings")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 16)
+                    .background(
+                        ZStack {
+                            Capsule()
+                                .fill(
+                                    permissionManager.isScreenRecordingAuthorized
+                                        ? LinearGradient(
+                                            colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [Color.orange.opacity(0.9), Color.orange.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                )
+
+                            // Inner highlight
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.2), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        }
+                    )
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    }
+                    .shadow(color: permissionManager.isScreenRecordingAuthorized ? Color.accentColor.opacity(0.25) : Color.orange.opacity(0.25), radius: 12, y: 6)
+                    .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
+            }
+            .buttonStyle(.plain)
+            
+            if !permissionManager.isScreenRecordingAuthorized {
+                Button {
+                    withAnimation(.spring()) {
+                        isNavigatingForward = false
+                        currentStep = .permissions
+                    }
+                } label: {
+                    Text("Go Back")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Spacer()
+                .frame(height: 40)
+        }
+        .transition(.asymmetric(
+            insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+            removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+        ))
     }
 }
 
-struct OnboardingPageView: View {
-    let page: OnboardingPage
+struct PermissionCard: View {
+    let title: String
+    let description: String
+    let icon: String
+    let isAuthorized: Bool
+    let action: () -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        HStack(spacing: 20) {
+            Image(systemName: icon)
+                .font(.system(size: 30))
+                .foregroundStyle(isAuthorized ? .green : .blue)
+                .frame(width: 60)
 
-            // Icon
-            Image(systemName: page.icon)
-                .font(.system(size: 80))
-                .foregroundStyle(page.accentColor)
-                .symbolEffect(.bounce, value: page.icon)
-
-            // Title
-            Text(page.title)
-                .font(.system(size: 32, weight: .bold))
-                .multilineTextAlignment(.center)
-
-            // Description
-            Text(page.description)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 40)
-
-            // Permission hint
-            if page.isPermissionPage {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "gear")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("How to enable manually:")
-                                .font(.headline)
-                            Text("System Settings → Privacy & Security → Screen Recording")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.orange.opacity(0.1))
-                    )
-                }
-                .padding(.horizontal, 40)
-                .padding(.top, 8)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
+
+            if isAuthorized {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.title2)
+            } else {
+                Button("Grant", action: action)
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
+            }
         }
-        .padding(.vertical, 40)
+        .padding(24)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.thinMaterial)
+
+                // Subtle inner highlight
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.08),
+                                Color.clear,
+                                Color.black.opacity(0.02)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: isAuthorized
+                                ? [Color.green.opacity(0.3), Color.green.opacity(0.15)]
+                                : [Color.white.opacity(0.15), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+        )
     }
 }
 
-struct OnboardingPage {
-    let icon: String
-    let title: String
-    let description: String
-    let accentColor: Color
-    var isPermissionPage: Bool = false
+struct HexagonShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        let x = rect.minX
+        let y = rect.minY
+        
+        path.move(to: CGPoint(x: x + width * 0.5, y: y))
+        path.addLine(to: CGPoint(x: x + width, y: y + height * 0.25))
+        path.addLine(to: CGPoint(x: x + width, y: y + height * 0.75))
+        path.addLine(to: CGPoint(x: x + width * 0.5, y: y + height))
+        path.addLine(to: CGPoint(x: x, y: y + height * 0.75))
+        path.addLine(to: CGPoint(x: x, y: y + height * 0.25))
+        path.closeSubpath()
+        
+        return path
+    }
 }
 
 #Preview {
-    OnboardingView(isPresented: .constant(true))
-        .frame(width: 800, height: 600)
+    OnboardingView()
 }

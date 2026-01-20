@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>SystemVoiceMemos Updates</title>
+        <link>https://github.com/aramb-dev/SystemVoiceMemos</link>
+        <description>Updates for SystemVoiceMemos</description>
+        <language>en</language>
+        
+        <!-- 
+        Template for new releases:
+        
+        <item>
+            <title>Version X.Y.Z</title>
+            <sparkle:version>X.Y.Z</sparkle:version>
+            <sparkle:shortVersionString>X.Y.Z</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in X.Y.Z</h2>
+                <ul>
+                    <li>Feature 1</li>
+                    <li>Feature 2</li>
+                    <li>Bug fix 3</li>
+                </ul>
+            ]]></description>
+            <pubDate>Day, DD Mon YYYY HH:MM:SS +0000</pubDate>
+            <enclosure 
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/vX.Y.Z/SystemVoiceMemos.zip"
+                sparkle:version="X.Y.Z"
+                sparkle:shortVersionString="X.Y.Z"
+                length="FILE_SIZE_IN_BYTES"
+                type="application/octet-stream"
+                sparkle:edSignature="SIGNATURE_FROM_SIGN_UPDATE_TOOL" />
+        </item>
+        -->
+        
+        <!-- Version 0.4.0 - Sparkle Integration Release -->
+        <item>
+            <title>Version 0.4.0</title>
+            <sparkle:version>0.4.0</sparkle:version>
+            <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.4.0</h2>
+                <h3>✨ New Features</h3>
+                <ul>
+                    <li><strong>Automatic Updates</strong> - App now checks for updates automatically via Sparkle</li>
+                    <li><strong>Improved Onboarding</strong> - Better permission flow and user experience</li>
+                </ul>
+                
+                <h3>🐛 Bug Fixes</h3>
+                <ul>
+                    <li>Fixed compiler warnings in DetailPanel</li>
+                    <li>Improved permission handling in onboarding flow</li>
+                </ul>
+                
+                <h3>📚 Improvements</h3>
+                <ul>
+                    <li>Added Sparkle framework integration for GitHub distribution</li>
+                    <li>Enhanced app sandbox entitlements for security</li>
+                    <li>Better code organization and documentation</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 20 Jan 2026 12:00:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.4.0/SystemVoiceMemos-0.4.0.dmg"
+                sparkle:version="0.4.0"
+                sparkle:shortVersionString="0.4.0"
+                length="4458320"
+                type="application/octet-stream"
+                sparkle:edSignature="je13XQ+9ISZ0hALpY6QS9k7OfaQ2ew4nJklqEe9YzpOKOMPKhtgmT53NVilp2AqcaWfrNLSF8B96cYJcwuVdBw==" />
+        </item>
+        
+    </channel>
+</rss>

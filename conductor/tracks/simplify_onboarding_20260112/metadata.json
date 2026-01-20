@@ -1,0 +1,8 @@
+{
+  "track_id": "simplify_onboarding_20260112",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-12T21:05:00Z",
+  "updated_at": "2026-01-12T21:05:00Z",
+  "description": "Simplify the Onboarding: Update OnboardingView to use a more modern SwiftUI design with better visual cues for granting permissions."
+}

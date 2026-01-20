@@ -136,7 +136,7 @@ struct SystemVoiceMemosApp: App {
         let alert = NSAlert()
         alert.messageText = "System Voice Memos"
         alert.informativeText = """
-        Version 1.1.0
+        Version 0.4.0
         
         This app is entirely open source
         Made by aramb-dev

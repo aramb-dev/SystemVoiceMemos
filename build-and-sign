@@ -130,14 +130,18 @@ require_command() {
 
 bump_versions() {
     local kind="$1"
-    require_command xcrun
+    local pbxproj="SystemVoiceMemos.xcodeproj/project.pbxproj"
 
-    local current raw major minor patch new_version
-    raw="$(xcrun agvtool what-marketing-version -terse1 2>/dev/null | tail -n 1 | tr -d '[:space:]')"
-    current="$raw"
+    if [[ ! -f "$pbxproj" ]]; then
+        log_error "Project file not found: $pbxproj"
+        exit 1
+    fi
+
+    local current major minor patch new_version
+    current="$(grep 'MARKETING_VERSION = ' "$pbxproj" | head -n 1 | sed 's/.*= *//;s/ *;.*//' | tr -d '[:space:]')"
 
     if [[ -z "$current" ]]; then
-        log_error "Could not read MARKETING_VERSION via agvtool."
+        log_error "Could not read MARKETING_VERSION from $pbxproj."
         exit 1
     fi
 
@@ -168,10 +172,13 @@ bump_versions() {
     new_version="${major}.${minor}.${patch}"
 
     log_info "Bumping MARKETING_VERSION: $current -> $new_version"
-    xcrun agvtool new-marketing-version "$new_version" >/dev/null
+    sed -i '' "s/MARKETING_VERSION = ${current}/MARKETING_VERSION = ${new_version}/g" "$pbxproj"
 
-    log_info "Incrementing CURRENT_PROJECT_VERSION"
-    xcrun agvtool next-version -all >/dev/null
+    local build_num new_build_num
+    build_num="$(grep 'CURRENT_PROJECT_VERSION = ' "$pbxproj" | head -n 1 | sed 's/.*= *//;s/ *;.*//' | tr -d '[:space:]')"
+    new_build_num=$((build_num + 1))
+    log_info "Incrementing CURRENT_PROJECT_VERSION: $build_num -> $new_build_num"
+    sed -i '' "s/CURRENT_PROJECT_VERSION = ${build_num}/CURRENT_PROJECT_VERSION = ${new_build_num}/g" "$pbxproj"
 
     log_success "Version bump complete"
 }
@@ -183,12 +190,16 @@ find_sparkle_sign_tool() {
     fi
 
     local found
-    found="$(find "$HOME/Library/Developer/Xcode/DerivedData" \
-        -path "*/SourcePackages/checkouts/Sparkle/bin/sign_update" \
-        -type f 2>/dev/null | head -n 1 || true)"
-    if [[ -n "$found" ]]; then
-        echo "$found"
-    fi
+    # Check the build's derived data first, then Xcode's default location
+    for search_dir in "$DERIVED_DATA_PATH" "$HOME/Library/Developer/Xcode/DerivedData"; do
+        found="$(find "$search_dir" \
+            -path "*/Sparkle/bin/sign_update" -not -path "*/old_dsa_scripts/*" \
+            -type f 2>/dev/null | head -n 1 || true)"
+        if [[ -n "$found" ]]; then
+            echo "$found"
+            return
+        fi
+    done
 }
 
 notarize_and_staple() {
@@ -302,24 +313,24 @@ mkdir -p "$DIST_DIR"
 VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
-STAGING_DIR="$(mktemp -d "/tmp/${APP_NAME}-release.XXXXXX")"
-
-log_info "Preparing DMG staging folder"
-cp -R "$APP_PATH" "$STAGING_DIR/"
 
 log_info "Creating DMG with create-dmg"
-create-dmg \
-    --overwrite \
-    --volname "$APP_NAME" \
-    --window-size 640 420 \
-    --icon-size 110 \
-    --icon "$APP_NAME.app" 180 190 \
-    --hide-extension "$APP_NAME.app" \
-    --app-drop-link 450 190 \
-    "$DMG_PATH" \
-    "$STAGING_DIR"
+create-dmg --overwrite --dmg-title "$APP_NAME" "$APP_PATH" "$DIST_DIR"
 
-rm -rf "$STAGING_DIR"
+# create-dmg uses the app's display name; find whatever .dmg it created and rename
+GENERATED_DMG="$(find "$DIST_DIR" -maxdepth 1 -name "*.dmg" -newer "$APP_PATH" | head -n 1)"
+if [[ -z "$GENERATED_DMG" ]]; then
+    # Fallback: find any .dmg containing the version
+    GENERATED_DMG="$(find "$DIST_DIR" -maxdepth 1 -name "*${VERSION}*.dmg" | head -n 1)"
+fi
+if [[ -n "$GENERATED_DMG" && "$GENERATED_DMG" != "$DMG_PATH" ]]; then
+    mv "$GENERATED_DMG" "$DMG_PATH"
+fi
+
+if [[ ! -f "$DMG_PATH" ]]; then
+    log_error "DMG not found at expected path: $DMG_PATH"
+    exit 1
+fi
 log_success "DMG created: $DMG_PATH"
 
 notarize_and_staple "$DMG_PATH"
@@ -337,7 +348,7 @@ if [[ -z "${SIGN_TOOL:-}" ]]; then
 fi
 
 log_info "Signing DMG for Sparkle using: $SIGN_TOOL"
-SIGN_OUTPUT="$("$SIGN_TOOL" "$DMG_PATH" "$SPARKLE_PRIVATE_KEY" 2>&1)"
+SIGN_OUTPUT="$("$SIGN_TOOL" "$DMG_PATH" --ed-key-file "$SPARKLE_PRIVATE_KEY" 2>&1)"
 SPARKLE_SIGNATURE="$(extract_sparkle_signature "$SIGN_OUTPUT")"
 
 if [[ -z "$SPARKLE_SIGNATURE" ]]; then

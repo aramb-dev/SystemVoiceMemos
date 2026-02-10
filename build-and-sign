@@ -218,13 +218,17 @@ notarize_and_staple() {
             --wait
     else
         log_warn "Notarization credentials not configured; skipping notarization and stapling."
-        return
+        log_warn "Set NOTARY_PROFILE or (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID) to enable."
+        return 1
     fi
 
     log_info "Stapling notarization ticket"
+    # NODE_TLS_REJECT_UNAUTHORIZED can break stapler's TLS trust evaluation
+    unset NODE_TLS_REJECT_UNAUTHORIZED 2>/dev/null || true
     xcrun stapler staple "$file_path"
     xcrun stapler validate "$file_path"
     log_success "Notarization and stapling complete"
+    return 0
 }
 
 extract_sparkle_signature() {
@@ -356,7 +360,10 @@ if [[ ! -f "$DMG_PATH" ]]; then
 fi
 log_success "DMG created: $DMG_PATH"
 
-notarize_and_staple "$DMG_PATH"
+NOTARIZED="false"
+if notarize_and_staple "$DMG_PATH"; then
+    NOTARIZED="true"
+fi
 
 if [[ ! -f "$SPARKLE_PRIVATE_KEY" ]]; then
     log_error "Sparkle private key not found: $SPARKLE_PRIVATE_KEY"
@@ -415,6 +422,20 @@ ${RELEASE_NOTES_HTML}
 EOF
 
 log_success "Sparkle signature generated."
-log_info "Appcast snippet written to: $APPCAST_SNIPPET_PATH"
-log_info "Release artifact: $DMG_PATH"
-log_info "Signature: $SPARKLE_SIGNATURE"
+echo ""
+log_success "=== Release Summary ==="
+log_info "Version:    $VERSION"
+log_info "Artifact:   $DMG_PATH"
+log_info "Size:       $FILE_SIZE bytes"
+log_info "Signature:  $SPARKLE_SIGNATURE"
+if [[ "$NOTARIZED" == "true" ]]; then
+    log_success "Notarized:  Yes (stapled)"
+else
+    log_warn "Notarized:  No (set NOTARY_PROFILE to enable)"
+fi
+log_info "Appcast:    $APPCAST_SNIPPET_PATH"
+echo ""
+log_info "Next steps:"
+log_info "  1. Copy appcast snippet into appcast.xml"
+log_info "  2. gh release create v${VERSION} \"$DMG_PATH\" -t \"v${VERSION}\" -n \"Release notes\""
+log_info "  3. git push"

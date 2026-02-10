@@ -113,11 +113,11 @@ struct SystemVoiceMemosApp: App {
                     showOnboarding = true
                 }
                 .keyboardShortcut("?", modifiers: [.command])
+            }
 
-                Divider()
-
+            CommandGroup(replacing: .appInfo) {
                 Button("About System Voice Memos") {
-                    showAboutWindow()
+                    AboutWindowController.shared.show()
                 }
             }
 
@@ -133,29 +133,83 @@ struct SystemVoiceMemosApp: App {
             }
         }
     }
+}
 
-    private func showAboutWindow() {
-        let alert = NSAlert()
-        alert.messageText = "System Voice Memos"
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        alert.informativeText = """
-        Version \(version) (\(build))
+// MARK: - About Window
 
-        This app is entirely open source
-        Made by aramb-dev
+private struct AboutView: View {
+    let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
 
-        GitHub: github.com/aramb-dev
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Visit GitHub")
-
-        let response = alert.runModal()
-        if response == .alertSecondButtonReturn {
-            if let url = URL(string: "https://github.com/aramb-dev/SystemVoiceMemos") {
-                NSWorkspace.shared.open(url)
+    var body: some View {
+        VStack(spacing: 16) {
+            if let appIcon = NSApp.applicationIconImage {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .frame(width: 96, height: 96)
             }
+
+            Text("System Voice Memos")
+                .font(.system(size: 20, weight: .bold))
+
+            Text("Version \(version) (\(build))")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Divider()
+                .padding(.horizontal, 24)
+
+            VStack(spacing: 6) {
+                Text("Capture system audio as voice memos")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Made by aramb-dev")
+                    .font(.subheadline)
+
+                Text("This app is entirely open source")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button("View on GitHub") {
+                if let url = URL(string: "https://github.com/aramb-dev/SystemVoiceMemos") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .buttonStyle(.link)
         }
+        .padding(32)
+        .frame(width: 300)
+    }
+}
+
+@MainActor
+final class AboutWindowController {
+    static let shared = AboutWindowController()
+    private var window: NSWindow?
+
+    func show() {
+        if let existing = window, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let aboutView = AboutView()
+        let hostingView = NSHostingView(rootView: aboutView)
+        hostingView.setFrameSize(hostingView.fittingSize)
+
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: hostingView.fittingSize),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        window.title = "About System Voice Memos"
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
     }
 }

@@ -32,6 +32,37 @@
         </item>
         -->
         
+        <!-- Version 0.5.1 -->
+        <item>
+            <title>Version 0.5.1</title>
+            <sparkle:version>0.5.1</sparkle:version>
+            <sparkle:shortVersionString>0.5.1</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.5.1</h2>
+                <h3>Bug Fixes</h3>
+                <ul>
+                    <li><strong>Fixed automatic update checks</strong> - Sparkle updater now starts on launch so background update checks work correctly</li>
+                    <li><strong>Fixed crash on launch</strong> - Resolved infinite recursion between update settings observer and Sparkle</li>
+                    <li><strong>About window</strong> - Now shows the correct version number dynamically</li>
+                </ul>
+
+                <h3>Improvements</h3>
+                <ul>
+                    <li><strong>Menu bar recording indicator</strong> - A status icon appears when recording is active</li>
+                    <li><strong>Stay alive while recording</strong> - App no longer quits when closing windows during a recording</li>
+                    <li>Automatic update checks default to enabled for new installations</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 10 Feb 2026 20:23:14 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.1/SystemVoiceMemos-0.5.1.dmg"
+                sparkle:version="0.5.1"
+                sparkle:shortVersionString="0.5.1"
+                length="4529397"
+                type="application/octet-stream"
+                sparkle:edSignature="a7E/LeKJGfr7WyFsNrulO0asrCaKjmJXDFuNXMBeAFzge+XEcBkz0leY5XgOKrneGhu91GIdSKAGFjqJPgv5Cg==" />
+        </item>
+
         <!-- Version 0.5.0 -->
         <item>
             <title>Version 0.5.0</title>

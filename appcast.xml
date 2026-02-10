@@ -70,9 +70,9 @@
                 url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.0/SystemVoiceMemos-0.5.0.dmg"
                 sparkle:version="0.5.0"
                 sparkle:shortVersionString="0.5.0"
-                length="4502909"
+                length="4520612"
                 type="application/octet-stream"
-                sparkle:edSignature="87NJwB1+f9B7IPSUm9lIPSqMI9kYiwHM2qdR7iMeeBsgbyFWLvJsgK7mbja2pZ8YgUEZsSzRMcujudgC8qbJAQ==" />
+                sparkle:edSignature="Ry668nbQ1ouGfCJR/eJMxCF94X7SMMJlZSdtRkYw+VWAQoXAoRBJtGulgqnOGwQw2xfJzlkZt2UsJ0vPIYsGBg==" />
         </item>
 
         <!-- Version 0.4.0 - Sparkle Integration Release -->

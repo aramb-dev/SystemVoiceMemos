@@ -29,6 +29,7 @@ final class AppState {
     // MARK: - Menu Bar Status Item
 
     private var statusItem: NSStatusItem?
+    private let menuActions = AppStateMenuActions()
 
     func requestStartRecording() { startRecordingTrigger &+= 1 }
     func requestStopRecording() { stopRecordingTrigger &+= 1 }
@@ -49,11 +50,13 @@ final class AppState {
             let menu = NSMenu()
             menu.addItem(withTitle: "Recording in progress…", action: nil, keyEquivalent: "")
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Stop Recording", action: #selector(NSApp.sendAction(_:to:from:)), keyEquivalent: "")
-            menu.items.last?.target = nil
-            menu.items.last?.action = #selector(AppStateMenuActions.stopRecording)
+            let stopItem = NSMenuItem(title: "Stop Recording", action: #selector(AppStateMenuActions.stopRecording), keyEquivalent: "")
+            stopItem.target = menuActions
+            menu.addItem(stopItem)
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Show Window", action: #selector(AppStateMenuActions.showMainWindow), keyEquivalent: "")
+            let showItem = NSMenuItem(title: "Show Window", action: #selector(AppStateMenuActions.showMainWindow), keyEquivalent: "")
+            showItem.target = menuActions
+            menu.addItem(showItem)
             statusItem?.menu = menu
         } else {
             if let item = statusItem {
@@ -66,13 +69,13 @@ final class AppState {
     private init() {}
 }
 
-/// Responder-chain actions for the menu bar status item
+/// Target for menu bar status item actions
 @objc final class AppStateMenuActions: NSObject {
-    @MainActor @objc static func stopRecording() {
+    @MainActor @objc func stopRecording() {
         AppState.shared.requestStopRecording()
     }
 
-    @MainActor @objc static func showMainWindow() {
+    @MainActor @objc func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
         for window in NSApp.windows where window.identifier?.rawValue == "main_window" {
             window.makeKeyAndOrderFront(nil)

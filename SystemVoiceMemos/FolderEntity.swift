@@ -16,16 +16,20 @@ import SwiftData
 final class FolderEntity: Identifiable {
     /// Unique identifier
     var id: UUID
-    
+
     /// Folder name
     var name: String
-    
+
     /// Creation timestamp
     var createdAt: Date
-    
+
     /// Custom sort order for sidebar display
     var sortOrder: Int
-    
+
+    /// Recordings assigned to this folder (inverse of RecordingEntity.folderRef)
+    @Relationship(deleteRule: .nullify, inverse: \RecordingEntity.folderRef)
+    var recordings: [RecordingEntity]
+
     init(id: UUID = UUID(),
          name: String,
          createdAt: Date = .now,
@@ -34,5 +38,6 @@ final class FolderEntity: Identifiable {
         self.name = name
         self.createdAt = createdAt
         self.sortOrder = sortOrder
+        self.recordings = []
     }
 }

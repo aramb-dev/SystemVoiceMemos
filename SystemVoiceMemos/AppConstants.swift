@@ -13,5 +13,11 @@ enum AppConstants {
     enum UserDefaultsKeys {
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let hideFromScreenSharing = "hideFromScreenSharing"
+        static let audioQuality = "audioQuality"
+        static let locationBasedNaming = "locationBasedNaming"
+
+        static let shareClickedCount = "shareClickedCount"
+        static let shareCompletedCount = "shareCompletedCount"
+        static let lastShareCompletedAt = "lastShareCompletedAt"
     }
 }

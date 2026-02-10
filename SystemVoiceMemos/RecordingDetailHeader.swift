@@ -21,7 +21,7 @@ struct RecordingDetailHeader: View {
                 if recording.isFavorite {
                     Label("Favorite", systemImage: "star.fill")
                 }
-                if let folder = recording.folder, !folder.isEmpty {
+                if let folder = recording.folderName, !folder.isEmpty {
                     Label(folder, systemImage: "folder")
                 }
             }

@@ -89,7 +89,7 @@ struct UpdatesSettingsView: View {
     }
     
     private func checkForUpdatesNow() {
-        NotificationCenter.default.post(name: .checkForUpdates, object: nil)
+        AppState.shared.requestCheckForUpdates()
     }
 }
 
@@ -231,7 +231,7 @@ struct RecordingSettingsView: View {
         alert.addButton(withTitle: "Cancel")
         
         if alert.runModal() == .alertFirstButtonReturn {
-            NotificationCenter.default.post(name: .clearDeletedRecordings, object: nil)
+            AppState.shared.requestClearDeletedRecordings()
         }
     }
 }

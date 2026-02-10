@@ -36,12 +36,15 @@ final class RecordingEntity: Identifiable {
     
     /// Whether marked as favorite
     var isFavorite: Bool
-    
-    /// Optional folder for organization
-    var folder: String?
-    
+
+    /// Folder this recording belongs to (relationship managed by SwiftData)
+    var folderRef: FolderEntity?
+
     /// Soft delete timestamp (nil if not deleted)
     var deletedAt: Date?
+
+    /// Convenience accessor for the folder name
+    var folderName: String? { folderRef?.name }
 
     init(id: UUID = UUID(),
          title: String,
@@ -49,7 +52,7 @@ final class RecordingEntity: Identifiable {
          duration: Double = 0,
          fileName: String,
          isFavorite: Bool = false,
-         folder: String? = nil,
+         folderRef: FolderEntity? = nil,
          deletedAt: Date? = nil) {
         self.id = id
         self.title = title
@@ -57,7 +60,7 @@ final class RecordingEntity: Identifiable {
         self.duration = duration
         self.fileName = fileName
         self.isFavorite = isFavorite
-        self.folder = folder
+        self.folderRef = folderRef
         self.deletedAt = deletedAt
     }
 }

@@ -53,13 +53,6 @@ final class UpdaterManager: ObservableObject {
         
         // Listen for settings changes
         setupSettingsObservers()
-        
-        // Listen for manual update check requests
-        NotificationCenter.default.publisher(for: .checkForUpdates)
-            .sink { [weak self] _ in
-                self?.checkForUpdates()
-            }
-            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods

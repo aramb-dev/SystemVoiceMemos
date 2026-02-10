@@ -10,15 +10,6 @@ import SwiftData
 import AppKit
 import Sparkle
 
-extension Notification.Name {
-    static let showOnboarding = Notification.Name("showOnboarding")
-    static let startRecording = Notification.Name("startRecording")
-    static let stopRecording = Notification.Name("stopRecording")
-    static let toggleSidebar = Notification.Name("toggleSidebar")
-    static let clearDeletedRecordings = Notification.Name("clearDeletedRecordings")
-    static let checkForUpdates = Notification.Name("checkForUpdates")
-}
-
 @main
 struct SystemVoiceMemosApp: App {
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
@@ -26,17 +17,17 @@ struct SystemVoiceMemosApp: App {
     @StateObject private var updaterManager = UpdaterManager()
     @State private var showOnboarding = false
 
+    private var appState: AppState { AppState.shared }
+
     var body: some Scene {
         WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(playbackManager)
                 .onAppear {
-                    // Set main window identifier for WindowAnimator
                     if let window = NSApp.windows.first(where: { !($0 is NSPanel) }) {
                         window.identifier = NSUserInterfaceItemIdentifier("main_window")
                     }
-                    
-                    // Show onboarding window if not completed
+
                     if !hasCompletedOnboarding {
                         showOnboarding = true
                     }
@@ -46,31 +37,31 @@ struct SystemVoiceMemosApp: App {
                         .frame(width: 800, height: 600)
                         .interactiveDismissDisabled(!hasCompletedOnboarding)
                 }
+                .onChange(of: appState.checkForUpdatesTrigger) { _, _ in
+                    updaterManager.checkForUpdates()
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .modelContainer(for: [RecordingEntity.self, FolderEntity.self])
         .commands {
-            CommandGroup(replacing: .newItem) {
-                // Remove "New Window" command to prevent multiple windows
-            }
-            
+            CommandGroup(replacing: .newItem) { }
+
             CommandMenu("Recording") {
                 Button("New Recording") {
-                    // This will trigger via notification
-                    NotificationCenter.default.post(name: .startRecording, object: nil)
+                    AppState.shared.requestStartRecording()
                 }
                 .keyboardShortcut("r", modifiers: .command)
-                
+
                 Button("Stop Recording") {
-                    NotificationCenter.default.post(name: .stopRecording, object: nil)
+                    AppState.shared.requestStopRecording()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
             }
-            
+
             CommandMenu("View") {
                 Button("Toggle Sidebar") {
-                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
+                    AppState.shared.requestToggleSidebar()
                 }
                 .keyboardShortcut("s", modifiers: [.command, .option])
             }
@@ -103,14 +94,14 @@ struct SystemVoiceMemosApp: App {
                 .keyboardShortcut(.rightArrow, modifiers: [.option])
                 .disabled(!playbackManager.hasActivePlayer)
             }
-            
+
             CommandMenu("Help") {
                 Button("Check for Updates…") {
                     updaterManager.checkForUpdates()
                 }
-                
+
                 Divider()
-                
+
                 Button("Show Welcome Guide") {
                     showOnboarding = true
                 }
@@ -131,22 +122,22 @@ struct SystemVoiceMemosApp: App {
             }
         }
     }
-    
+
     private func showAboutWindow() {
         let alert = NSAlert()
         alert.messageText = "System Voice Memos"
         alert.informativeText = """
         Version 0.4.0
-        
+
         This app is entirely open source
         Made by aramb-dev
-        
+
         GitHub: github.com/aramb-dev
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Visit GitHub")
-        
+
         let response = alert.runModal()
         if response == .alertSecondButtonReturn {
             if let url = URL(string: "https://github.com/aramb-dev/SystemVoiceMemos") {

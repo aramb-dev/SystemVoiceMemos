@@ -1,0 +1,386 @@
+#!/bin/bash
+
+# SystemVoiceMemos build/sign/release helper.
+#
+# Usage:
+#   ./build-and-sign                # Debug build only
+#   ./build-and-sign Release        # Release build only
+#   ./build-and-sign Production     # Release + DMG + notarize/staple + Sparkle signature
+#   ./build-and-sign Production --bump patch|minor|major
+#   ./build-and-sign Production -p ./release-notes.txt
+#   ./build-and-sign Production -m "Fixes and improvements"
+#
+# Notarization auth options (Production mode):
+#   1) NOTARY_PROFILE=<keychain-profile-name>
+#   2) APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+#
+# Sparkle signing key:
+#   Defaults to ~/Downloads/sparkle_private_key
+#   Override with SPARKLE_PRIVATE_KEY=/path/to/key
+
+set -euo pipefail
+
+APP_NAME="SystemVoiceMemos"
+SCHEME="SystemVoiceMemos"
+ARG_CONFIG=""
+BUMP_KIND=""
+RELEASE_NOTES_PATH=""
+RELEASE_NOTES_MESSAGE=""
+CONFIGURATION=""
+PRODUCTION_MODE="false"
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+log_info() { echo -e "${GREEN}ℹ ${1}${NC}"; }
+log_warn() { echo -e "${YELLOW}⚠ ${1}${NC}"; }
+log_error() { echo -e "${RED}✗ ${1}${NC}"; }
+log_success() { echo -e "${GREEN}✓ ${1}${NC}"; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        Debug|debug|Release|release|Production|production)
+            if [[ -n "$ARG_CONFIG" ]]; then
+                log_error "Configuration specified more than once."
+                exit 1
+            fi
+            ARG_CONFIG="$1"
+            shift
+            ;;
+        --bump)
+            if [[ $# -lt 2 ]]; then
+                log_error "Missing value for --bump (patch|minor|major)."
+                exit 1
+            fi
+            case "$2" in
+                patch|minor|major)
+                    BUMP_KIND="$2"
+                    ;;
+                *)
+                    log_error "Invalid bump type: $2 (use patch|minor|major)."
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
+        -p)
+            if [[ $# -lt 2 ]]; then
+                log_error "Missing value for -p <release-notes-file>."
+                exit 1
+            fi
+            RELEASE_NOTES_PATH="$2"
+            shift 2
+            ;;
+        -m)
+            if [[ $# -lt 2 ]]; then
+                log_error "Missing value for -m <release-notes-message>."
+                exit 1
+            fi
+            RELEASE_NOTES_MESSAGE="$2"
+            shift 2
+            ;;
+        *)
+            log_error "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -n "$RELEASE_NOTES_PATH" && -n "$RELEASE_NOTES_MESSAGE" ]]; then
+    log_error "Use either -p or -m for release notes, not both."
+    exit 1
+fi
+
+if [[ -n "$RELEASE_NOTES_PATH" && ! -f "$RELEASE_NOTES_PATH" ]]; then
+    log_error "Release notes file not found: $RELEASE_NOTES_PATH"
+    exit 1
+fi
+
+ARG_CONFIG="${ARG_CONFIG:-Debug}"
+case "$ARG_CONFIG" in
+    Production|production)
+        CONFIGURATION="Release"
+        PRODUCTION_MODE="true"
+        ;;
+    Release|release)
+        CONFIGURATION="Release"
+        ;;
+    Debug|debug)
+        CONFIGURATION="Debug"
+        ;;
+    *)
+        CONFIGURATION="$ARG_CONFIG"
+        ;;
+esac
+
+DERIVED_DATA_PATH="/tmp/SystemVoiceMemos-build"
+BUILD_OUTPUT_PATH="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION"
+APP_PATH="$BUILD_OUTPUT_PATH/$APP_NAME.app"
+DIST_DIR="$PWD/dist"
+SPARKLE_PRIVATE_KEY="${SPARKLE_PRIVATE_KEY:-$HOME/Downloads/sparkle_private_key}"
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        log_error "Missing required command: $1"
+        exit 1
+    fi
+}
+
+bump_versions() {
+    local kind="$1"
+    require_command xcrun
+
+    local current raw major minor patch new_version
+    raw="$(xcrun agvtool what-marketing-version -terse1 2>/dev/null | tail -n 1 | tr -d '[:space:]')"
+    current="$raw"
+
+    if [[ -z "$current" ]]; then
+        log_error "Could not read MARKETING_VERSION via agvtool."
+        exit 1
+    fi
+
+    if [[ "$current" =~ ^([0-9]+)\.([0-9]+)(\.([0-9]+))?$ ]]; then
+        major="${BASH_REMATCH[1]}"
+        minor="${BASH_REMATCH[2]}"
+        patch="${BASH_REMATCH[4]:-0}"
+    else
+        log_error "Current MARKETING_VERSION '$current' is not numeric semver (e.g. 1.2.3)."
+        exit 1
+    fi
+
+    case "$kind" in
+        major)
+            major=$((major + 1))
+            minor=0
+            patch=0
+            ;;
+        minor)
+            minor=$((minor + 1))
+            patch=0
+            ;;
+        patch)
+            patch=$((patch + 1))
+            ;;
+    esac
+
+    new_version="${major}.${minor}.${patch}"
+
+    log_info "Bumping MARKETING_VERSION: $current -> $new_version"
+    xcrun agvtool new-marketing-version "$new_version" >/dev/null
+
+    log_info "Incrementing CURRENT_PROJECT_VERSION"
+    xcrun agvtool next-version -all >/dev/null
+
+    log_success "Version bump complete"
+}
+
+find_sparkle_sign_tool() {
+    if command -v sign_update >/dev/null 2>&1; then
+        command -v sign_update
+        return
+    fi
+
+    local found
+    found="$(find "$HOME/Library/Developer/Xcode/DerivedData" \
+        -path "*/SourcePackages/checkouts/Sparkle/bin/sign_update" \
+        -type f 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$found" ]]; then
+        echo "$found"
+    fi
+}
+
+notarize_and_staple() {
+    local file_path="$1"
+    require_command xcrun
+
+    if [[ -n "${NOTARY_PROFILE:-}" ]]; then
+        log_info "Submitting for notarization with keychain profile: $NOTARY_PROFILE"
+        xcrun notarytool submit "$file_path" --keychain-profile "$NOTARY_PROFILE" --wait
+    elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+        log_info "Submitting for notarization with Apple ID credentials"
+        xcrun notarytool submit "$file_path" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+    else
+        log_warn "Notarization credentials not configured; skipping notarization and stapling."
+        return
+    fi
+
+    log_info "Stapling notarization ticket"
+    xcrun stapler staple "$file_path"
+    xcrun stapler validate "$file_path"
+    log_success "Notarization and stapling complete"
+}
+
+extract_sparkle_signature() {
+    local input="$1"
+    local signature
+
+    signature="$(echo "$input" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' | tail -n 1)"
+    if [[ -n "$signature" ]]; then
+        echo "$signature"
+        return
+    fi
+
+    signature="$(echo "$input" | sed -n 's/.*edSignature=\(.*\)$/\1/p' | tail -n 1 | tr -d '" ')"
+    if [[ -n "$signature" ]]; then
+        echo "$signature"
+        return
+    fi
+
+    signature="$(echo "$input" | awk '/^[A-Za-z0-9+/=]+$/ {print}' | tail -n 1)"
+    echo "$signature"
+}
+
+html_escape() {
+    local value="$1"
+    value="${value//&/&amp;}"
+    value="${value//</&lt;}"
+    value="${value//>/&gt;}"
+    value="${value//\"/&quot;}"
+    value="${value//\'/&#39;}"
+    echo "$value"
+}
+
+build_release_notes_html() {
+    local raw="$1"
+    local html=""
+    local line=""
+    local has_items="false"
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+        if [[ "$has_items" != "true" ]]; then
+            html="${html}        <ul>\n"
+            has_items="true"
+        fi
+        html="${html}            <li>$(html_escape "$line")</li>\n"
+    done <<< "$raw"
+
+    if [[ "$has_items" == "true" ]]; then
+        html="${html}        </ul>"
+        printf '%b' "$html"
+        return
+    fi
+
+    echo "        <p>No release notes provided.</p>"
+}
+
+if [[ -n "$BUMP_KIND" ]]; then
+    bump_versions "$BUMP_KIND"
+fi
+
+log_info "Building $APP_NAME ($CONFIGURATION)..."
+
+xcodebuild -scheme "$SCHEME" \
+    -configuration "$CONFIGURATION" \
+    -derivedDataPath "$DERIVED_DATA_PATH" \
+    clean build \
+    OTHER_CODE_SIGN_FLAGS="--timestamp"
+
+if [[ ! -d "$APP_PATH" ]]; then
+    log_error "Built app not found: $APP_PATH"
+    exit 1
+fi
+
+log_success "Build completed: $APP_PATH"
+
+if [[ "$PRODUCTION_MODE" != "true" ]]; then
+    log_info "Non-production mode complete."
+    exit 0
+fi
+
+require_command create-dmg
+mkdir -p "$DIST_DIR"
+
+VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")"
+DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+DMG_PATH="$DIST_DIR/$DMG_NAME"
+STAGING_DIR="$(mktemp -d "/tmp/${APP_NAME}-release.XXXXXX")"
+
+log_info "Preparing DMG staging folder"
+cp -R "$APP_PATH" "$STAGING_DIR/"
+
+log_info "Creating DMG with create-dmg"
+create-dmg \
+    --overwrite \
+    --volname "$APP_NAME" \
+    --window-size 640 420 \
+    --icon-size 110 \
+    --icon "$APP_NAME.app" 180 190 \
+    --hide-extension "$APP_NAME.app" \
+    --app-drop-link 450 190 \
+    "$DMG_PATH" \
+    "$STAGING_DIR"
+
+rm -rf "$STAGING_DIR"
+log_success "DMG created: $DMG_PATH"
+
+notarize_and_staple "$DMG_PATH"
+
+if [[ ! -f "$SPARKLE_PRIVATE_KEY" ]]; then
+    log_error "Sparkle private key not found: $SPARKLE_PRIVATE_KEY"
+    exit 1
+fi
+
+SIGN_TOOL="$(find_sparkle_sign_tool)"
+if [[ -z "${SIGN_TOOL:-}" ]]; then
+    log_error "Could not find Sparkle sign tool (sign_update)."
+    log_error "Install Sparkle tools or expose sign_update on PATH."
+    exit 1
+fi
+
+log_info "Signing DMG for Sparkle using: $SIGN_TOOL"
+SIGN_OUTPUT="$("$SIGN_TOOL" "$DMG_PATH" "$SPARKLE_PRIVATE_KEY" 2>&1)"
+SPARKLE_SIGNATURE="$(extract_sparkle_signature "$SIGN_OUTPUT")"
+
+if [[ -z "$SPARKLE_SIGNATURE" ]]; then
+    log_error "Failed to parse Sparkle signature from sign_update output."
+    echo "$SIGN_OUTPUT"
+    exit 1
+fi
+
+FILE_SIZE="$(stat -f%z "$DMG_PATH")"
+PUB_DATE="$(date -Ru)"
+DOWNLOAD_URL="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v${VERSION}/${DMG_NAME}"
+APPCAST_SNIPPET_PATH="$DIST_DIR/appcast-item-${VERSION}.xml"
+RELEASE_NOTES_RAW=""
+
+if [[ -n "$RELEASE_NOTES_PATH" ]]; then
+    RELEASE_NOTES_RAW="$(cat "$RELEASE_NOTES_PATH")"
+elif [[ -n "$RELEASE_NOTES_MESSAGE" ]]; then
+    RELEASE_NOTES_RAW="$RELEASE_NOTES_MESSAGE"
+fi
+
+RELEASE_NOTES_HTML="$(build_release_notes_html "$RELEASE_NOTES_RAW")"
+
+cat > "$APPCAST_SNIPPET_PATH" <<EOF
+<item>
+    <title>Version ${VERSION}</title>
+    <sparkle:version>${VERSION}</sparkle:version>
+    <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+    <description><![CDATA[
+        <h2>What's New in ${VERSION}</h2>
+${RELEASE_NOTES_HTML}
+    ]]></description>
+    <pubDate>${PUB_DATE}</pubDate>
+    <enclosure
+        url="${DOWNLOAD_URL}"
+        sparkle:version="${VERSION}"
+        sparkle:shortVersionString="${VERSION}"
+        length="${FILE_SIZE}"
+        type="application/octet-stream"
+        sparkle:edSignature="${SPARKLE_SIGNATURE}" />
+</item>
+EOF
+
+log_success "Sparkle signature generated."
+log_info "Appcast snippet written to: $APPCAST_SNIPPET_PATH"
+log_info "Release artifact: $DMG_PATH"
+log_info "Signature: $SPARKLE_SIGNATURE"

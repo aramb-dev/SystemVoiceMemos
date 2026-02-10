@@ -10,8 +10,15 @@ import SwiftData
 import AppKit
 import Sparkle
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        !AppState.shared.isRecording
+    }
+}
+
 @main
 struct SystemVoiceMemosApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @StateObject private var playbackManager = PlaybackManager()
     @StateObject private var updaterManager = UpdaterManager()
@@ -126,8 +133,10 @@ struct SystemVoiceMemosApp: App {
     private func showAboutWindow() {
         let alert = NSAlert()
         alert.messageText = "System Voice Memos"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         alert.informativeText = """
-        Version 0.4.0
+        Version \(version) (\(build))
 
         This app is entirely open source
         Made by aramb-dev

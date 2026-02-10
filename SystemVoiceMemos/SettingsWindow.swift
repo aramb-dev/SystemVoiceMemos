@@ -48,7 +48,7 @@ struct GeneralSettingsView: View {
 
 struct UpdatesSettingsView: View {
     @AppStorage("updateCheckInterval") private var updateCheckInterval = 86400
-    @AppStorage("automaticUpdateChecks") private var automaticUpdateChecks = false
+    @AppStorage("automaticUpdateChecks") private var automaticUpdateChecks = true
     
     var body: some View {
         Form {

@@ -30,9 +30,12 @@ final class UpdaterManager: ObservableObject {
     
     /// The Sparkle updater controller
     private var updaterController: SPUStandardUpdaterController?
-    
+
     /// Cancellable subscriptions
     private var cancellables = Set<AnyCancellable>()
+
+    /// Reentrancy guard to prevent observer feedback loop
+    private var isApplyingSettings = false
     
     /// Whether the updater can check for updates
     var canCheckForUpdates: Bool {
@@ -43,7 +46,7 @@ final class UpdaterManager: ObservableObject {
     
     init() {
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: false,
+            startingUpdater: true,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
@@ -69,22 +72,28 @@ final class UpdaterManager: ObservableObject {
     
     // MARK: - Private Methods
     
-    /// Apply current settings to the updater
+    /// Apply current settings to the updater.
+    /// Uses reentrancy guard because Sparkle writes to UserDefaults internally,
+    /// which fires didChangeNotification, which would call this again.
     private func applySettings() {
-        guard let updaterController = updaterController,
-              updaterController.updater.canCheckForUpdates else {
-            return
-        }
-        
-        let automaticChecks = UserDefaults.standard.bool(forKey: "automaticUpdateChecks")
+        guard !isApplyingSettings else { return }
+        isApplyingSettings = true
+        defer { isApplyingSettings = false }
+
+        guard let updater = updaterController?.updater else { return }
+
+        let shouldCheck = UserDefaults.standard.object(forKey: "automaticUpdateChecks") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "automaticUpdateChecks")
         let interval = UserDefaults.standard.integer(forKey: "updateCheckInterval")
-        
-        // Use the user's preference (defaults to false via @AppStorage)
-        let shouldCheck = automaticChecks
         let checkInterval = interval > 0 ? TimeInterval(interval) : 86400
-        
-        updaterController.updater.automaticallyChecksForUpdates = shouldCheck
-        updaterController.updater.updateCheckInterval = checkInterval
+
+        if updater.automaticallyChecksForUpdates != shouldCheck {
+            updater.automaticallyChecksForUpdates = shouldCheck
+        }
+        if updater.updateCheckInterval != checkInterval {
+            updater.updateCheckInterval = checkInterval
+        }
     }
     
     /// Set up observers for settings changes

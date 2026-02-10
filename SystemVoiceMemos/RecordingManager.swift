@@ -24,7 +24,9 @@ class RecordingManager {
     // MARK: - Properties
 
     /// Whether a recording is currently active
-    var isRecording = false
+    var isRecording = false {
+        didSet { AppState.shared.isRecording = isRecording }
+    }
 
     /// User-facing error message when recording fails to start
     var lastError: String?

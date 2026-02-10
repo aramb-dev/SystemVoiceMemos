@@ -122,6 +122,10 @@ struct SystemVoiceMemosApp: App {
             }
 
             CommandGroup(replacing: .appSettings) {
+                Button("Check for Updates…") {
+                    updaterManager.checkForUpdates()
+                }
+
                 Button("Settings…") {
                     SettingsWindowController.shared.show()
                 }

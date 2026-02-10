@@ -32,6 +32,49 @@
         </item>
         -->
         
+        <!-- Version 0.5.0 -->
+        <item>
+            <title>Version 0.5.0</title>
+            <sparkle:version>0.5.0</sparkle:version>
+            <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.5.0</h2>
+                <h3>New Features</h3>
+                <ul>
+                    <li><strong>Custom Recordings Location</strong> - The storage directory setting now works correctly; choose where your recordings are saved</li>
+                    <li><strong>Auto-Cleanup</strong> - Deleted recordings are automatically purged after your configured retention period</li>
+                    <li><strong>Recording Failure Alerts</strong> - If a recording fails to start, you'll see a clear error message instead of silent failure</li>
+                </ul>
+
+                <h3>Accessibility</h3>
+                <ul>
+                    <li>Added VoiceOver labels to record, play/pause, stop, and floating panel controls</li>
+                    <li>Waveform and playback slider are now accessible to screen readers</li>
+                </ul>
+
+                <h3>Reliability</h3>
+                <ul>
+                    <li>Folders now use proper data relationships instead of name-based matching, preventing orphaned recordings when renaming folders</li>
+                    <li>Menu commands (start/stop recording, new recording) are now type-safe and more reliable</li>
+                </ul>
+
+                <h3>Under the Hood</h3>
+                <ul>
+                    <li>Separated business logic from UI for better stability</li>
+                    <li>Added comprehensive test suite covering recordings, folders, and core operations</li>
+                    <li>Cleaned up duplicate code in onboarding screens</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 10 Feb 2026 13:58:08 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.0/SystemVoiceMemos-0.5.0.dmg"
+                sparkle:version="0.5.0"
+                sparkle:shortVersionString="0.5.0"
+                length="4502909"
+                type="application/octet-stream"
+                sparkle:edSignature="87NJwB1+f9B7IPSUm9lIPSqMI9kYiwHM2qdR7iMeeBsgbyFWLvJsgK7mbja2pZ8YgUEZsSzRMcujudgC8qbJAQ==" />
+        </item>
+
         <!-- Version 0.4.0 - Sparkle Integration Release -->
         <item>
             <title>Version 0.4.0</title>

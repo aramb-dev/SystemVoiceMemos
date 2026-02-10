@@ -11,7 +11,7 @@
         
         <item>
             <title>Version X.Y.Z</title>
-            <sparkle:version>X.Y.Z</sparkle:version>
+            <sparkle:version>BUILD_NUMBER</sparkle:version>
             <sparkle:shortVersionString>X.Y.Z</sparkle:shortVersionString>
             <description><![CDATA[
                 <h2>What's New in X.Y.Z</h2>
@@ -22,9 +22,9 @@
                 </ul>
             ]]></description>
             <pubDate>Day, DD Mon YYYY HH:MM:SS +0000</pubDate>
-            <enclosure 
-                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/vX.Y.Z/SystemVoiceMemos.zip"
-                sparkle:version="X.Y.Z"
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/vX.Y.Z/SystemVoiceMemos-X.Y.Z.dmg"
+                sparkle:version="BUILD_NUMBER"
                 sparkle:shortVersionString="X.Y.Z"
                 length="FILE_SIZE_IN_BYTES"
                 type="application/octet-stream"
@@ -35,7 +35,7 @@
         <!-- Version 0.5.2 -->
         <item>
             <title>Version 0.5.2</title>
-            <sparkle:version>0.5.2</sparkle:version>
+            <sparkle:version>4</sparkle:version>
             <sparkle:shortVersionString>0.5.2</sparkle:shortVersionString>
             <description><![CDATA[
                 <h2>What's New in 0.5.2</h2>
@@ -47,7 +47,7 @@
             <pubDate>Tue, 10 Feb 2026 21:46:31 +0000</pubDate>
             <enclosure
                 url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.2/SystemVoiceMemos-0.5.2.dmg"
-                sparkle:version="0.5.2"
+                sparkle:version="4"
                 sparkle:shortVersionString="0.5.2"
                 length="4530862"
                 type="application/octet-stream"
@@ -57,7 +57,7 @@
         <!-- Version 0.5.1 -->
         <item>
             <title>Version 0.5.1</title>
-            <sparkle:version>0.5.1</sparkle:version>
+            <sparkle:version>3</sparkle:version>
             <sparkle:shortVersionString>0.5.1</sparkle:shortVersionString>
             <description><![CDATA[
                 <h2>What's New in 0.5.1</h2>
@@ -78,7 +78,7 @@
             <pubDate>Tue, 10 Feb 2026 20:23:14 +0000</pubDate>
             <enclosure
                 url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.1/SystemVoiceMemos-0.5.1.dmg"
-                sparkle:version="0.5.1"
+                sparkle:version="3"
                 sparkle:shortVersionString="0.5.1"
                 length="4529397"
                 type="application/octet-stream"
@@ -88,7 +88,7 @@
         <!-- Version 0.5.0 -->
         <item>
             <title>Version 0.5.0</title>
-            <sparkle:version>0.5.0</sparkle:version>
+            <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
             <description><![CDATA[
                 <h2>What's New in 0.5.0</h2>
@@ -121,7 +121,7 @@
             <pubDate>Tue, 10 Feb 2026 13:58:08 +0000</pubDate>
             <enclosure
                 url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.0/SystemVoiceMemos-0.5.0.dmg"
-                sparkle:version="0.5.0"
+                sparkle:version="2"
                 sparkle:shortVersionString="0.5.0"
                 length="4521380"
                 type="application/octet-stream"
@@ -131,23 +131,23 @@
         <!-- Version 0.4.0 - Sparkle Integration Release -->
         <item>
             <title>Version 0.4.0</title>
-            <sparkle:version>0.4.0</sparkle:version>
+            <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
             <description><![CDATA[
                 <h2>What's New in 0.4.0</h2>
-                <h3>✨ New Features</h3>
+                <h3>New Features</h3>
                 <ul>
                     <li><strong>Automatic Updates</strong> - App now checks for updates automatically via Sparkle</li>
                     <li><strong>Improved Onboarding</strong> - Better permission flow and user experience</li>
                 </ul>
-                
-                <h3>🐛 Bug Fixes</h3>
+
+                <h3>Bug Fixes</h3>
                 <ul>
                     <li>Fixed compiler warnings in DetailPanel</li>
                     <li>Improved permission handling in onboarding flow</li>
                 </ul>
-                
-                <h3>📚 Improvements</h3>
+
+                <h3>Improvements</h3>
                 <ul>
                     <li>Added Sparkle framework integration for GitHub distribution</li>
                     <li>Enhanced app sandbox entitlements for security</li>
@@ -155,9 +155,9 @@
                 </ul>
             ]]></description>
             <pubDate>Mon, 20 Jan 2026 12:00:00 +0000</pubDate>
-            <enclosure 
+            <enclosure
                 url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.4.0/SystemVoiceMemos-0.4.0.dmg"
-                sparkle:version="0.4.0"
+                sparkle:version="1"
                 sparkle:shortVersionString="0.4.0"
                 length="4458320"
                 type="application/octet-stream"

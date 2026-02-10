@@ -18,6 +18,8 @@ struct PlaybackControlsView: View {
             // Seek slider
             Slider(value: sliderBinding, in: 0...max(playbackManager.duration, 1))
                 .disabled(!playbackManager.hasActivePlayer)
+                .accessibilityLabel("Playback position")
+                .accessibilityValue(TimeFormatter.formatPlayback(playbackManager.currentTime))
             
             // Time labels
             HStack {
@@ -38,7 +40,8 @@ struct PlaybackControlsView: View {
                 }
                 .disabled(!playbackManager.hasActivePlayer)
                 .buttonStyle(.plain)
-                
+                .accessibilityLabel("Skip back 15 seconds")
+
                 Button {
                     playbackManager.togglePlayPause()
                 } label: {
@@ -48,7 +51,8 @@ struct PlaybackControlsView: View {
                 }
                 .disabled(!playbackManager.hasSelection)
                 .buttonStyle(.plain)
-                
+                .accessibilityLabel(playbackManager.isPlaying ? "Pause" : "Play")
+
                 Button {
                     playbackManager.skip(by: 15)
                 } label: {
@@ -57,6 +61,7 @@ struct PlaybackControlsView: View {
                 }
                 .disabled(!playbackManager.hasActivePlayer)
                 .buttonStyle(.plain)
+                .accessibilityLabel("Skip forward 15 seconds")
             }
         }
         .padding()

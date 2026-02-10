@@ -494,26 +494,6 @@ struct PermissionCard: View {
     }
 }
 
-struct HexagonShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let width = rect.width
-        let height = rect.height
-        let x = rect.minX
-        let y = rect.minY
-        
-        path.move(to: CGPoint(x: x + width * 0.5, y: y))
-        path.addLine(to: CGPoint(x: x + width, y: y + height * 0.25))
-        path.addLine(to: CGPoint(x: x + width, y: y + height * 0.75))
-        path.addLine(to: CGPoint(x: x + width * 0.5, y: y + height))
-        path.addLine(to: CGPoint(x: x, y: y + height * 0.75))
-        path.addLine(to: CGPoint(x: x, y: y + height * 0.25))
-        path.closeSubpath()
-        
-        return path
-    }
-}
-
 #Preview {
     OnboardingView()
 }

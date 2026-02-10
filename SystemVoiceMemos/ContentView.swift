@@ -83,6 +83,9 @@ struct ContentView: View {
     /// Shows delete folder confirmation dialog
     @State private var isShowingFolderDeleteConfirmation = false
 
+    /// AppKit presenter for native share picker
+    @State private var sharePresenter = RecordingSharePresenter()
+
     // MARK: - Constants
     
     /// Fixed width for the sidebar
@@ -101,10 +104,12 @@ struct ContentView: View {
             .sheet(item: $renamingRecording, content: renameRecordingSheet)
             .sheet(item: .constant(renamingFolderWrapper), content: renameFolderSheet)
             .alert(item: playbackErrorBinding, content: playbackErrorAlert)
+            .alert("Recording Failed", isPresented: recordingErrorBinding, actions: { Button("OK") { recordingManager.lastError = nil } }, message: { Text(recordingManager.lastError ?? "Unable to start recording.") })
             .confirmationDialog("Delete Recording?", isPresented: $isShowingDeleteConfirmation, presenting: recordingPendingDeletion, actions: deleteRecordingActions, message: deleteRecordingMessage)
             .confirmationDialog("Delete Folder?", isPresented: $isShowingFolderDeleteConfirmation, presenting: folderPendingDeletion, actions: deleteFolderActions, message: deleteFolderMessage)
             .task(id: recordingsHash) { await refreshDurationsIfNeeded() }
             .task { await recoverIncompleteRecordings() }
+            .task { autoDeleteExpiredRecordings() }
             .onChange(of: selectedSidebarItem) { _, _ in recalcSelection() }
             .onChange(of: recordingsHash) { _, _ in recalcSelection(keepExisting: true) }
             .onChange(of: searchText) { _, _ in recalcSelection(keepExisting: true) }
@@ -201,7 +206,7 @@ struct ContentView: View {
             if let recording = selectedRecording {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        RecordingDetailHeader(recording: recording)
+                        detailHeader(for: recording)
                         
                         if recording.deletedAt != nil {
                             DeletedRecordingMessage(recording: recording)
@@ -422,6 +427,19 @@ struct ContentView: View {
         }
     }
 
+    /// Handles share events and tracks growth metrics
+    /// - Parameter event: Share event emitted by the share button
+    private func handleShareEvent(_ event: ShareEvent) {
+        switch event {
+        case .clicked:
+            GrowthMetricsTracker.track(.shareClicked)
+        case .completed:
+            GrowthMetricsTracker.track(.shareCompleted)
+        case .failed(let errorMessage):
+            showShareErrorAlert(errorMessage)
+        }
+    }
+
     /// Gets the file URL for a recording
     /// - Parameter recording: The recording entity
     /// - Returns: The file URL
@@ -438,6 +456,52 @@ struct ContentView: View {
             window.sharingType = exclude ? .none : .readOnly
         }
         recordingManager.setScreenCaptureExclusion(exclude)
+    }
+
+    /// Builds the detail header for the selected recording
+    /// - Parameter recording: The current recording
+    /// - Returns: Header view with recording metadata
+    @ViewBuilder
+    private func detailHeader(for recording: RecordingEntity) -> some View {
+        RecordingDetailHeader(recording: recording)
+    }
+
+    /// Builds share text with lightweight app attribution
+    /// - Parameter recording: The recording being shared
+    /// - Returns: User-visible share copy
+    private func shareText(for recording: RecordingEntity) -> String {
+        "Shared from System Voice Memos: \(recording.title)\nGet the app: https://github.com/aramb-dev/SystemVoiceMemos"
+    }
+
+    /// Resolves a recording file URL if the file exists
+    /// - Parameter recording: The recording entity
+    /// - Returns: Existing file URL or nil
+    private func shareFileURL(for recording: RecordingEntity) -> URL? {
+        guard let fileURL = try? url(for: recording) else { return nil }
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        return fileURL
+    }
+
+    /// Opens native share picker from the current active window
+    /// - Parameter recording: Recording to share
+    private func shareRecording(_ recording: RecordingEntity) {
+        guard let shareURL = shareFileURL(for: recording) else { return }
+
+        handleShareEvent(.clicked)
+        sharePresenter.present(items: [shareURL, shareText(for: recording)]) { event in
+            handleShareEvent(event)
+        }
+    }
+
+    /// Presents a blocking alert for share failures
+    /// - Parameter message: Error details from the share service
+    private func showShareErrorAlert(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Share Failed"
+        alert.informativeText = message.isEmpty ? "Unable to share this recording." : message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
     
     // MARK: - Rename Operations
@@ -550,12 +614,44 @@ struct ContentView: View {
         
         try? modelContext.save()
     }
-    
+
+    // MARK: - Auto Delete
+
+    /// Permanently removes soft-deleted recordings that have exceeded the retention period
+    private func autoDeleteExpiredRecordings() {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: "autoDeleteEnabled") else { return }
+
+        let retentionDays = max(defaults.integer(forKey: "autoDeleteAfterDays"), 1)
+        let cutoff = Calendar.current.date(byAdding: .day, value: -retentionDays, to: .now) ?? .distantPast
+
+        let expired = recordings.filter { rec in
+            guard let deletedAt = rec.deletedAt else { return false }
+            return deletedAt < cutoff
+        }
+        guard !expired.isEmpty else { return }
+
+        for recording in expired {
+            if let dir = try? AppDirectories.recordingsDir() {
+                let url = dir.appendingPathComponent(recording.fileName)
+                try? FileManager.default.removeItem(at: url)
+            }
+            modelContext.delete(recording)
+        }
+
+        try? modelContext.save()
+    }
+
     // MARK: - View Helpers
     
     /// Binding for playback error alerts
     private var playbackErrorBinding: Binding<PlaybackManager.PlaybackError?> {
         Binding(get: { playbackManager.error }, set: { playbackManager.error = $0 })
+    }
+
+    /// Binding that presents a recording error alert when lastError is non-nil
+    private var recordingErrorBinding: Binding<Bool> {
+        Binding(get: { recordingManager.lastError != nil }, set: { if !$0 { recordingManager.lastError = nil } })
     }
     
     /// Sheet for creating a new folder
@@ -746,6 +842,15 @@ struct ContentView: View {
         
         ToolbarItemGroup(placement: .secondaryAction) {
             if let recording = selectedRecording {
+                if recording.deletedAt == nil, shareFileURL(for: recording) != nil {
+                    Button {
+                        shareRecording(recording)
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .help("Share Recording")
+                }
+
                 Button {
                     startRenaming(recording)
                 } label: {
@@ -852,6 +957,44 @@ struct ContentView: View {
         }
         
         recalcSelection()
+    }
+}
+
+private enum ShareEvent {
+    case clicked
+    case completed
+    case failed(String)
+}
+
+@MainActor
+private final class RecordingSharePresenter: NSObject, @preconcurrency NSSharingServicePickerDelegate, @preconcurrency NSSharingServiceDelegate {
+    private var onEvent: ((ShareEvent) -> Void)?
+
+    func present(items: [Any], onEvent: @escaping (ShareEvent) -> Void) {
+        self.onEvent = onEvent
+
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
+              let contentView = window.contentView else {
+            onEvent(.failed("No active window available for sharing."))
+            return
+        }
+
+        let picker = NSSharingServicePicker(items: items)
+        picker.delegate = self
+        let anchor = NSRect(x: contentView.bounds.midX, y: contentView.bounds.maxY - 6, width: 1, height: 1)
+        picker.show(relativeTo: anchor, of: contentView, preferredEdge: .minY)
+    }
+
+    func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, didChoose service: NSSharingService?) {
+        service?.delegate = self
+    }
+
+    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
+        onEvent?(.completed)
+    }
+
+    func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
+        onEvent?(.failed(error.localizedDescription))
     }
 }
 

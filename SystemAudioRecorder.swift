@@ -11,7 +11,6 @@
 import Foundation
 import AVFoundation
 import ScreenCaptureKit
-import Combine
 
 /// Records system audio from the main display to M4A files
 ///
@@ -23,6 +22,34 @@ import Combine
 /// - Handles sample buffer timing to ensure seamless recordings
 @MainActor
 final class SystemAudioRecorder: NSObject, ObservableObject {
+
+    // MARK: - Audio Quality
+
+    /// Supported audio quality presets mapped from Settings
+    private enum AudioQuality: String {
+        case low
+        case medium
+        case high
+        case maximum
+
+        var bitRate: Int {
+            switch self {
+            case .low:
+                return 64_000
+            case .medium:
+                return 128_000
+            case .high:
+                return 192_000
+            case .maximum:
+                return 320_000
+            }
+        }
+
+        static var current: AudioQuality {
+            let stored = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.audioQuality) ?? "high"
+            return AudioQuality(rawValue: stored) ?? .high
+        }
+    }
 
     // MARK: - Properties
     
@@ -123,11 +150,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         // 4) Prepare AVAssetWriter for M4A (AAC)
         let writer = try AVAssetWriter(outputURL: url, fileType: .m4a)
+        let selectedQuality = AudioQuality.current
         let audioSettings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: 44100,
             AVNumberOfChannelsKey: 2,
-            AVEncoderBitRateKey: 192_000
+            AVEncoderBitRateKey: selectedQuality.bitRate
         ]
         let input = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
         input.expectsMediaDataInRealTime = true

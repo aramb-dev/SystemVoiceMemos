@@ -22,10 +22,13 @@ import AVFoundation
 @Observable
 class RecordingManager {
     // MARK: - Properties
-    
+
     /// Whether a recording is currently active
     var isRecording = false
-    
+
+    /// User-facing error message when recording fails to start
+    var lastError: String?
+
     /// The recording entity being created (not yet finalized)
     private(set) var pendingRecording: RecordingEntity?
     
@@ -71,8 +74,8 @@ class RecordingManager {
         // Prevent concurrent executions - check manager state first
         guard !isRecording else { return }
         guard !recorder.isRecording else { return }
-        
-        await startNewRecording(modelContext: modelContext)
+
+        guard await startNewRecording(modelContext: modelContext) else { return }
         isRecording = true
         
         floatingPanel.onStop = { [weak self] in
@@ -167,15 +170,15 @@ class RecordingManager {
     /// Creates and starts a new recording
     ///
     /// - Parameter modelContext: SwiftData context for persistence
-    private func startNewRecording(modelContext: ModelContext) async {
+    /// - Returns: Whether the recording started successfully
+    @discardableResult
+    private func startNewRecording(modelContext: ModelContext) async -> Bool {
         // Guard against concurrent calls
-        guard !isRecording else { return }
-        
+        guard !isRecording else { return false }
+
         do {
             let dir = try AppDirectories.recordingsDir()
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
-            let base = formatter.string(from: .now)
+            let base = await recordingBaseName()
             let fileName = "\(base).m4a"
             let url = dir.appendingPathComponent(fileName)
 
@@ -191,10 +194,32 @@ class RecordingManager {
             try? modelContext.save()
 
             pendingRecording = entity
-            // Note: isRecording is set to true in startRecordingFlow, not here
+            return true
         } catch {
-            print("startRecording error:", error)
+            lastError = error.localizedDescription
+            return false
         }
+    }
+
+    /// Builds a recording name based on user naming preferences.
+    ///
+    /// If location-based naming is enabled, format is:
+    /// `Location-YYYY-MM-DD HH.mm.ss`
+    /// Otherwise:
+    /// `YYYY-MM-DD HH.mm.ss`
+    private func recordingBaseName(at date: Date = .now) async -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        let timestamp = formatter.string(from: date)
+
+        let defaults = UserDefaults.standard
+        let locationNamingEnabled = defaults.bool(forKey: AppConstants.UserDefaultsKeys.locationBasedNaming)
+        guard locationNamingEnabled else { return timestamp }
+
+        guard let locationToken = await LocationNamingService.shared.cityToken(), !locationToken.isEmpty else {
+            return timestamp
+        }
+        return "\(locationToken)-\(timestamp)"
     }
 
     /// Finalizes the pending recording with actual duration

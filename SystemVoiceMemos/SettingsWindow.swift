@@ -97,6 +97,7 @@ struct RecordingSettingsView: View {
     @AppStorage("recordingsLocation") private var recordingsLocation = ""
     @AppStorage("audioQuality") private var audioQuality = "high"
     @AppStorage("locationBasedNaming") private var locationBasedNaming = false
+    @AppStorage("autoDeleteEnabled") private var autoDeleteEnabled = true
     @AppStorage("autoDeleteAfterDays") private var autoDeleteAfterDays = 30
     @State private var showingLocationPicker = false
     
@@ -123,12 +124,17 @@ struct RecordingSettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Location-based Naming")
                             .font(.headline)
-                        Text("Include device location in recording names when available")
+                        Text("Prefix recording names with your current city when available")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .toggleStyle(.switch)
+                .onChange(of: locationBasedNaming) { _, enabled in
+                    if enabled {
+                        LocationNamingService.shared.requestAuthorizationIfNeeded()
+                    }
+                }
             }
             
             Section("Quality") {
@@ -142,13 +148,42 @@ struct RecordingSettingsView: View {
             }
             
             Section("Cleanup") {
-                HStack {
-                    Text("Auto-delete recordings after")
-                    TextField("Days", value: $autoDeleteAfterDays, format: .number)
-                        .frame(width: 60)
-                    Text("days")
-                    Spacer()
+                Toggle(isOn: $autoDeleteEnabled) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Auto Cleanup")
+                            .font(.headline)
+                        Text("Automatically remove recordings from Trash after a set number of days.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .toggleStyle(.switch)
+
+                HStack(spacing: 12) {
+                    Text("Retention")
+                    Spacer()
+                    Stepper(value: $autoDeleteAfterDays, in: 1...365) {
+                        Text("\(autoDeleteAfterDays) \(autoDeleteDayLabel)")
+                            .monospacedDigit()
+                            .frame(minWidth: 84, alignment: .trailing)
+                    }
+                    .fixedSize()
+                    .accessibilityLabel("Auto cleanup days")
+                }
+                .disabled(!autoDeleteEnabled)
+                .opacity(autoDeleteEnabled ? 1 : 0.45)
+
+                if !autoDeleteEnabled {
+                    HStack {
+                        Image(systemName: "pause.circle")
+                            .foregroundStyle(.secondary)
+                        Text("Auto cleanup is currently disabled.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Divider()
                 
                 Button("Clear All Deleted Recordings") {
                     clearDeletedRecordings()
@@ -159,13 +194,20 @@ struct RecordingSettingsView: View {
         .formStyle(.grouped)
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            autoDeleteAfterDays = min(max(autoDeleteAfterDays, 1), 365)
+        }
     }
     
     private var recordingsLocationDisplay: String {
         if recordingsLocation.isEmpty {
-            return "Default (~/Documents/System Voice Memos)"
+            return "Default (~/Library/Application Support/SystemVoiceMemos)"
         }
         return recordingsLocation
+    }
+
+    private var autoDeleteDayLabel: String {
+        autoDeleteAfterDays == 1 ? "day" : "days"
     }
     
     private func chooseRecordingsLocation() {

@@ -42,6 +42,7 @@ struct RecordButtonView: View {
             .shadow(color: Color.white.opacity(0.1), radius: 1, y: -1)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isRecording ? "Stop Recording" : "Start Recording")
     }
 }
 

@@ -92,6 +92,16 @@ struct WaveformView: View {
                 )
             }
             .frame(height: waveformHeight)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Audio waveform")
+            .accessibilityValue("\(Int(playbackProgress * 100)) percent played")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: onSeek(min(currentTime + 5, duration))
+                case .decrement: onSeek(max(currentTime - 5, 0))
+                @unknown default: break
+                }
+            }
 
             // Timeline with time markers
             timelineView

@@ -24,6 +24,7 @@ struct MinimalRecordingView: View {
                 .font(.system(size: 18, weight: .medium, design: .monospaced))
                 .foregroundColor(.primary)
                 .frame(width: 60)
+                .accessibilityLabel("Recording duration: \(formattedDuration)")
 
             Divider()
                 .frame(height: 24)
@@ -120,6 +121,7 @@ struct MinimalRecordingView: View {
             .buttonStyle(.plain)
             .contentShape(Circle())
             .help(recorder.isPaused ? "Resume" : "Pause")
+            .accessibilityLabel(recorder.isPaused ? "Resume Recording" : "Pause Recording")
 
             // Stop button
             Button {
@@ -156,6 +158,7 @@ struct MinimalRecordingView: View {
             .buttonStyle(.plain)
             .contentShape(Circle())
             .help("Stop Recording")
+            .accessibilityLabel("Stop Recording")
 
             // Restart button
             Button {
@@ -177,6 +180,7 @@ struct MinimalRecordingView: View {
             .buttonStyle(.plain)
             .contentShape(Circle())
             .help("Restart Recording")
+            .accessibilityLabel("Restart Recording")
         }
     }
     
@@ -191,8 +195,9 @@ struct MinimalRecordingView: View {
         }
         .buttonStyle(.plain)
         .help(isAlwaysOnTop ? "Unpin from top" : "Keep on top")
+        .accessibilityLabel(isAlwaysOnTop ? "Unpin from top" : "Keep on top")
     }
-    
+
     private var expandButton: some View {
         Button {
             onExpand()
@@ -204,6 +209,7 @@ struct MinimalRecordingView: View {
         }
         .buttonStyle(.plain)
         .help("Show full window")
+        .accessibilityLabel("Show full window")
     }
 }
 

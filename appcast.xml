@@ -32,6 +32,29 @@
         </item>
         -->
         
+        <!-- Version 0.5.3 -->
+        <item>
+            <title>Version 0.5.3</title>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>0.5.3</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.5.3</h2>
+                <h3>Improvements</h3>
+                <ul>
+                    <li><strong>Custom About window</strong> - The About panel now shows app description, author, and a link to the GitHub repo</li>
+                    <li><strong>Fixed Sparkle updates</strong> - Update checks now correctly detect new versions</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 10 Feb 2026 22:07:38 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.5.3/SystemVoiceMemos-0.5.3.dmg"
+                sparkle:version="5"
+                sparkle:shortVersionString="0.5.3"
+                length="4537930"
+                type="application/octet-stream"
+                sparkle:edSignature="bHFrqDEMQ4QTH5Sqd365i+6eMYG9KwQgBoQLeM3J1jOqJBITs2m+XQEBu/AbS1oaRMiH2K25FZDSrhbsgagSAg==" />
+        </item>
+
         <!-- Version 0.5.2 -->
         <item>
             <title>Version 0.5.2</title>

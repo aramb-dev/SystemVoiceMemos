@@ -32,6 +32,31 @@
         </item>
         -->
         
+        <!-- Version 0.6.0 -->
+        <item>
+            <title>Version 0.6.0</title>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.6.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.6.0</h2>
+                <ul>
+                    <li><strong>Recording rediscovery</strong> - Recordings directory is scanned on launch, so files are never lost even if the database resets</li>
+                    <li><strong>Cloud-aware file tracking</strong> - iCloud Drive, Dropbox, and Google Drive cloud-only files are detected without triggering downloads</li>
+                    <li><strong>Fixed playback switching</strong> - Selecting a different recording while paused now correctly switches audio</li>
+                    <li><strong>File menu</strong> - New Recording (Cmd+N), Delete Recording (Cmd+Delete), Show in Finder, and Open in QuickTime Player</li>
+                    <li><strong>Share button</strong> - Now visible in the main toolbar</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 17 Feb 2026 01:57:18 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.6.0/SystemVoiceMemos-0.6.0.dmg"
+                sparkle:version="6"
+                sparkle:shortVersionString="0.6.0"
+                length="4565973"
+                type="application/octet-stream"
+                sparkle:edSignature="zENjStMWIS2FFuhZyHJO20hwJXRfd6MJ7v1yqc5OVrX84GKsz30hNC9WMnKAzHikJtBXztWv3I1AoUodKLxGCA==" />
+        </item>
+
         <!-- Version 0.5.3 -->
         <item>
             <title>Version 0.5.3</title>

@@ -20,6 +20,12 @@ final class AppState {
     private(set) var toggleSidebarTrigger = 0
     private(set) var clearDeletedRecordingsTrigger = 0
     private(set) var checkForUpdatesTrigger = 0
+    private(set) var deleteRecordingTrigger = 0
+    private(set) var revealRecordingTrigger = 0
+    private(set) var openInQuickTimeTrigger = 0
+
+    /// Whether a recording is currently selected (updated by ContentViewModel)
+    var hasSelectedRecording = false
 
     /// Whether a recording is currently active (mirrors RecordingManager.isRecording)
     var isRecording = false {
@@ -36,6 +42,9 @@ final class AppState {
     func requestToggleSidebar() { toggleSidebarTrigger &+= 1 }
     func requestClearDeletedRecordings() { clearDeletedRecordingsTrigger &+= 1 }
     func requestCheckForUpdates() { checkForUpdatesTrigger &+= 1 }
+    func requestDeleteRecording() { deleteRecordingTrigger &+= 1 }
+    func requestRevealRecording() { revealRecordingTrigger &+= 1 }
+    func requestOpenInQuickTime() { openInQuickTimeTrigger &+= 1 }
 
     private func updateStatusItem() {
         if isRecording {

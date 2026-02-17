@@ -52,18 +52,35 @@ struct SystemVoiceMemosApp: App {
         .windowResizability(.contentSize)
         .modelContainer(for: [RecordingEntity.self, FolderEntity.self])
         .commands {
-            CommandGroup(replacing: .newItem) { }
-
-            CommandMenu("Recording") {
-                Button("New Recording") {
-                    AppState.shared.requestStartRecording()
+            CommandGroup(replacing: .newItem) {
+                Button(appState.isRecording ? "Stop Recording" : "New Recording") {
+                    if appState.isRecording {
+                        AppState.shared.requestStopRecording()
+                    } else {
+                        AppState.shared.requestStartRecording()
+                    }
                 }
-                .keyboardShortcut("r", modifiers: .command)
+                .keyboardShortcut("n", modifiers: .command)
 
-                Button("Stop Recording") {
-                    AppState.shared.requestStopRecording()
+                Divider()
+
+                Button("Delete Recording") {
+                    AppState.shared.requestDeleteRecording()
                 }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(!appState.hasSelectedRecording)
+
+                Divider()
+
+                Button("Show in Finder") {
+                    AppState.shared.requestRevealRecording()
+                }
+                .disabled(!appState.hasSelectedRecording)
+
+                Button("Open in QuickTime Player") {
+                    AppState.shared.requestOpenInQuickTime()
+                }
+                .disabled(!appState.hasSelectedRecording)
             }
 
             CommandMenu("View") {

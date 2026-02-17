@@ -121,6 +121,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     ///   - autoPlay: Whether to automatically start playback
     func select(recording: RecordingEntity?, autoPlay: Bool = false) {
         guard let recording else {
+            stop()
             selectedRecording = nil
             selectedRecordingID = nil
             return
@@ -128,6 +129,13 @@ final class PlaybackManager: NSObject, ObservableObject {
 
         do {
             let info = try makeInfo(from: recording)
+
+            // Stop the old player when switching to a different recording
+            if activeRecordingID != nil && activeRecordingID != info.id {
+                player?.stop()
+                resetPlayerState(preserveSelection: true)
+            }
+
             selectedRecording = info
             selectedRecordingID = info.id
 

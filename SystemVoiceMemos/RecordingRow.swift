@@ -71,12 +71,14 @@ struct RecordingRow: View {
 
     private var iconName: String {
         if recording.deletedAt != nil { return "trash" }
+        if recording.isCloudOnly { return "icloud.and.arrow.down" }
         if recording.isFavorite { return "star.fill" }
         return "waveform"
     }
 
     private var iconColor: Color {
         if recording.deletedAt != nil { return .secondary }
+        if recording.isCloudOnly { return .blue }
         if recording.isFavorite { return .yellow }
         return isActive ? .accentColor : .secondary
     }

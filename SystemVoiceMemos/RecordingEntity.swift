@@ -43,6 +43,9 @@ final class RecordingEntity: Identifiable {
     /// Soft delete timestamp (nil if not deleted)
     var deletedAt: Date?
 
+    /// Whether this recording's file exists only in the cloud (not persisted — recomputed each launch)
+    @Transient var isCloudOnly: Bool = false
+
     /// Convenience accessor for the folder name
     var folderName: String? { folderRef?.name }
 

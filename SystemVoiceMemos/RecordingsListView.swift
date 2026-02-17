@@ -87,7 +87,7 @@ struct RecordingsListView: View {
             recording: rec,
             isActive: activeRecordingID == rec.id,
             isSelected: selectedRecordingID == rec.id,
-            durationString: TimeFormatter.format(rec.duration)
+            durationString: rec.isCloudOnly && rec.duration <= 0 ? "--:--" : TimeFormatter.format(rec.duration)
         )
         .tag(rec.id)
         .listRowSeparator(.hidden)

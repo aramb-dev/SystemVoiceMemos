@@ -256,6 +256,15 @@ final class ContentViewModel {
         }
     }
 
+    func openInQuickTime(_ rec: RecordingEntity) {
+        guard let url = try? fileURL(for: rec) else { return }
+        NSWorkspace.shared.open(
+            [url],
+            withApplicationAt: URL(fileURLWithPath: "/System/Applications/QuickTime Player.app"),
+            configuration: NSWorkspace.OpenConfiguration()
+        )
+    }
+
     func clearAllDeletedRecordings(
         recordings: [RecordingEntity],
         context: ModelContext,
@@ -355,11 +364,17 @@ final class ContentViewModel {
         recalcSelection(recordings: recordings, playbackManager: playbackManager)
     }
 
+    // MARK: - Directory Scanning
+
+    func scanRecordingsDirectory(context: ModelContext) async {
+        await DirectoryScanner.reconcile(context: context)
+    }
+
     // MARK: - Background Tasks
 
     func refreshDurationsIfNeeded(recordings: [RecordingEntity], context: ModelContext) async {
         var didUpdate = false
-        for recording in recordings where recording.duration <= 0 {
+        for recording in recordings where recording.duration <= 0 && !recording.isCloudOnly {
             guard let url = try? fileURL(for: recording) else { continue }
             let asset = AVURLAsset(url: url)
             do {
@@ -379,7 +394,7 @@ final class ContentViewModel {
     }
 
     func recoverIncompleteRecordings(recordings: [RecordingEntity], context: ModelContext) async {
-        let incomplete = recordings.filter { $0.duration == 0 && $0.deletedAt == nil }
+        let incomplete = recordings.filter { $0.duration == 0 && $0.deletedAt == nil && !$0.isCloudOnly }
 
         for recording in incomplete {
             guard let url = try? fileURL(for: recording) else {

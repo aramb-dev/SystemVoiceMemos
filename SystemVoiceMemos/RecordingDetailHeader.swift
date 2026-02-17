@@ -17,7 +17,15 @@ struct RecordingDetailHeader: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             HStack(spacing: 12) {
-                Label(TimeFormatter.format(recording.duration), systemImage: "clock")
+                Label(
+                    recording.isCloudOnly && recording.duration <= 0
+                        ? "--:--"
+                        : TimeFormatter.format(recording.duration),
+                    systemImage: "clock"
+                )
+                if recording.isCloudOnly {
+                    Label("Cloud", systemImage: "icloud")
+                }
                 if recording.isFavorite {
                     Label("Favorite", systemImage: "star.fill")
                 }
@@ -42,6 +50,32 @@ struct DeletedRecordingMessage: View {
                 .foregroundStyle(.secondary)
             Text("Playback is unavailable.")
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct CloudOnlyRecordingMessage: View {
+    let recording: RecordingEntity
+    var onReveal: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "icloud.and.arrow.down")
+                    .font(.title3)
+                    .foregroundStyle(.blue)
+                Text("This recording is stored in the cloud.")
+                    .foregroundStyle(.secondary)
+            }
+            Text("Download the file to enable playback.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Button {
+                onReveal()
+            } label: {
+                Label("Show in Finder", systemImage: "folder")
+            }
+            .controlSize(.small)
         }
     }
 }

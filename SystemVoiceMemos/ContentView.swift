@@ -63,6 +63,7 @@ struct ContentView: View {
             .alert("Recording Failed", isPresented: vm.recordingErrorBinding, actions: { Button("OK") { vm.recordingManager.lastError = nil } }, message: { Text(vm.recordingManager.lastError ?? "Unable to start recording.") })
             .confirmationDialog("Delete Recording?", isPresented: $vm.isShowingDeleteConfirmation, presenting: vm.recordingPendingDeletion, actions: deleteRecordingActions, message: deleteRecordingMessage)
             .confirmationDialog("Delete Folder?", isPresented: $vm.isShowingFolderDeleteConfirmation, presenting: vm.folderPendingDeletion, actions: deleteFolderActions, message: deleteFolderMessage)
+            .task { await vm.scanRecordingsDirectory(context: modelContext) }
             .task(id: recordingsHash) { await vm.refreshDurationsIfNeeded(recordings: recordings, context: modelContext) }
             .task { await vm.recoverIncompleteRecordings(recordings: recordings, context: modelContext) }
             .task { vm.autoDeleteExpiredRecordings(recordings: recordings, context: modelContext) }
@@ -78,6 +79,19 @@ struct ContentView: View {
             .onChange(of: appState.stopRecordingTrigger) { _, _ in handleStopRecording() }
             .onChange(of: appState.clearDeletedRecordingsTrigger) { _, _ in
                 vm.clearAllDeletedRecordings(recordings: recordings, context: modelContext, playbackManager: playbackManager)
+            }
+            .onChange(of: appState.deleteRecordingTrigger) { _, _ in
+                if let rec = selectedRecording { vm.confirmDelete(rec) }
+            }
+            .onChange(of: appState.revealRecordingTrigger) { _, _ in
+                if let rec = selectedRecording { vm.reveal(rec) }
+            }
+            .onChange(of: appState.openInQuickTimeTrigger) { _, _ in
+                if let rec = selectedRecording { vm.openInQuickTime(rec) }
+            }
+            .onChange(of: vm.selectedRecordingID) { _, newValue in
+                appState.hasSelectedRecording = newValue != nil
+                vm.updatePlayback(for: newValue, recordings: recordings, playbackManager: playbackManager)
             }
             .toolbar(content: toolbarContent)
     }
@@ -167,6 +181,8 @@ struct ContentView: View {
 
                         if recording.deletedAt != nil {
                             DeletedRecordingMessage(recording: recording)
+                        } else if recording.isCloudOnly {
+                            CloudOnlyRecordingMessage(recording: recording, onReveal: { vm.reveal(recording) })
                         } else {
                             PlaybackControlsView(recording: recording)
                                 .environmentObject(playbackManager)
@@ -342,8 +358,6 @@ struct ContentView: View {
                 Label(vm.recordingManager.isRecording ? "Stop Recording" : "New Recording",
                       systemImage: vm.recordingManager.isRecording ? "stop.circle.fill" : "record.circle")
             }
-            .keyboardShortcut("r", modifiers: .command)
-
             Button {
                 playbackManager.togglePlayPause()
             } label: {
@@ -352,17 +366,19 @@ struct ContentView: View {
             }
             .keyboardShortcut(" ", modifiers: [])
             .disabled(!playbackManager.hasSelection)
+
+            if let recording = selectedRecording,
+               recording.deletedAt == nil,
+               vm.shareFileURL(for: recording) != nil {
+                Button { shareRecording(recording) } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .help("Share Recording")
+            }
         }
 
         ToolbarItemGroup(placement: .secondaryAction) {
             if let recording = selectedRecording {
-                if recording.deletedAt == nil, vm.shareFileURL(for: recording) != nil {
-                    Button { shareRecording(recording) } label: {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                    .help("Share Recording")
-                }
-
                 Button { vm.startRenaming(recording) } label: {
                     Label("Rename", systemImage: "pencil")
                 }
@@ -399,7 +415,7 @@ private enum ShareEvent {
 }
 
 @MainActor
-private final class RecordingSharePresenter: NSObject, @preconcurrency NSSharingServicePickerDelegate, @preconcurrency NSSharingServiceDelegate {
+private final class RecordingSharePresenter: NSObject, @preconcurrency NSSharingServicePickerDelegate, NSSharingServiceDelegate {
     private var onEvent: ((ShareEvent) -> Void)?
 
     func present(items: [Any], onEvent: @escaping (ShareEvent) -> Void) {

@@ -32,42 +32,90 @@ struct PlaybackControlsView: View {
             
             // Playback controls
             HStack(spacing: 24) {
-                Button {
-                    playbackManager.skip(by: -15)
-                } label: {
-                    Image(systemName: "gobackward.15")
-                        .font(.title2)
-                }
-                .disabled(!playbackManager.hasActivePlayer)
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip back 15 seconds")
+                // System Audio Toggle
+                trackVolumeToggle(
+                    title: "System",
+                    icon: "speaker.wave.2.fill",
+                    mutedIcon: "speaker.slash.fill",
+                    volume: $playbackManager.systemVolume
+                )
 
-                Button {
-                    playbackManager.togglePlayPause()
-                } label: {
-                    Image(systemName: playbackManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 44))
-                        .foregroundStyle(Color.accentColor)
-                }
-                .disabled(!playbackManager.hasSelection)
-                .buttonStyle(.plain)
-                .accessibilityLabel(playbackManager.isPlaying ? "Pause" : "Play")
+                Spacer()
 
-                Button {
-                    playbackManager.skip(by: 15)
-                } label: {
-                    Image(systemName: "goforward.15")
-                        .font(.title2)
+                HStack(spacing: 24) {
+                    Button {
+                        playbackManager.skip(by: -15)
+                    } label: {
+                        Image(systemName: "gobackward.15")
+                            .font(.title2)
+                    }
+                    .disabled(!playbackManager.hasActivePlayer)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Skip back 15 seconds")
+
+                    Button {
+                        playbackManager.togglePlayPause()
+                    } label: {
+                        Image(systemName: playbackManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .disabled(!playbackManager.hasSelection)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(playbackManager.isPlaying ? "Pause" : "Play")
+
+                    Button {
+                        playbackManager.skip(by: 15)
+                    } label: {
+                        Image(systemName: "goforward.15")
+                            .font(.title2)
+                    }
+                    .disabled(!playbackManager.hasActivePlayer)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Skip forward 15 seconds")
                 }
-                .disabled(!playbackManager.hasActivePlayer)
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip forward 15 seconds")
+
+                Spacer()
+
+                // Mic Audio Toggle (only if available)
+                if playbackManager.hasMicTrack {
+                    trackVolumeToggle(
+                        title: "Mic",
+                        icon: "mic.fill",
+                        mutedIcon: "mic.slash.fill",
+                        volume: $playbackManager.micVolume
+                    )
+                } else {
+                    // Spacer to keep layout balanced
+                    Color.clear.frame(width: 44, height: 44)
+                }
             }
         }
         .padding()
         .task(id: recording.id) {
             await loadWaveform()
         }
+    }
+    
+    @ViewBuilder
+    private func trackVolumeToggle(title: String, icon: String, mutedIcon: String, volume: Binding<Float>) -> some View {
+        Button {
+            withAnimation(.spring(duration: 0.2)) {
+                volume.wrappedValue = volume.wrappedValue > 0 ? 0 : 1
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: volume.wrappedValue > 0 ? icon : mutedIcon)
+                    .font(.system(size: 18))
+                    .foregroundStyle(volume.wrappedValue > 0 ? .primary : .secondary)
+                    .frame(width: 44, height: 32)
+                Text(title)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .help("\(volume.wrappedValue > 0 ? "Mute" : "Unmute") \(title)")
     }
     
     @ViewBuilder

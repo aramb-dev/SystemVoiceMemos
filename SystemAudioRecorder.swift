@@ -62,6 +62,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// Audio input for the asset writer
     private var audioInput: AVAssetWriterInput?
     
+    /// Microphone input for the asset writer
+    private var micInput: AVAssetWriterInput?
+    
+    /// Capture session for microphone
+    private var captureSession: AVCaptureSession?
+    
     /// Queue for processing audio sample buffers
     private let outputQueue = DispatchQueue(label: "SystemVoiceMemos.AudioOutput")
 
@@ -161,9 +167,39 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         input.expectsMediaDataInRealTime = true
         guard writer.canAdd(input) else { throw RecorderError.writerCantAddInput }
         writer.add(input)
+        self.audioInput = input
+
+        // 4b) Prepare microphone input if needed
+        if UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone) {
+            let micSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderBitRateKey: 64_000
+            ]
+            let micInput = AVAssetWriterInput(mediaType: .audio, outputSettings: micSettings)
+            micInput.expectsMediaDataInRealTime = true
+            if writer.canAdd(micInput) {
+                writer.add(micInput)
+                self.micInput = micInput
+            }
+
+            let session = AVCaptureSession()
+            if let device = AVCaptureDevice.default(for: .audio),
+               let deviceInput = try? AVCaptureDeviceInput(device: device) {
+                if session.canAddInput(deviceInput) {
+                    session.addInput(deviceInput)
+                }
+                let output = AVCaptureAudioDataOutput()
+                output.setSampleBufferDelegate(self, queue: outputQueue)
+                if session.canAddOutput(output) {
+                    session.addOutput(output)
+                }
+                self.captureSession = session
+            }
+        }
 
         self.writer = writer
-        self.audioInput = input
 
         // 5) Create stream
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
@@ -186,6 +222,11 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         print("🚀 Starting capture...")
         try await stream.startCapture()
+        
+        if let session = captureSession {
+            session.startRunning()
+        }
+        
         print("✅ Capture started successfully!")
 
         isRecording = true
@@ -209,6 +250,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         
         do {
             try await stream?.stopCapture()
+            captureSession?.stopRunning()
             isPaused = true
             recordingState = .paused
             pauseStartDate = Date()
@@ -235,6 +277,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             pauseStartDate = nil
             
             try await stream?.startCapture()
+            captureSession?.startRunning()
             isPaused = false
             recordingState = .recording
             startDurationTimer()
@@ -290,6 +333,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         // Stop capture first
         do {
             try await stream?.stopCapture()
+            captureSession?.stopRunning()
         } catch {
             print("stopCapture error:", error)
         }
@@ -305,6 +349,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         // Finish writing cleanly
         audioInput?.markAsFinished()
+        micInput?.markAsFinished()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             writer?.finishWriting {
                 continuation.resume()
@@ -318,6 +363,8 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         // Release resources
         stream = nil
         audioInput = nil
+        micInput = nil
+        captureSession = nil
         writer = nil
     }
 }
@@ -357,7 +404,7 @@ private extension NSScreen {
 // MARK: - Stream Output Handling
 
 /// Handles audio sample buffers from the capture stream
-extension SystemAudioRecorder: SCStreamOutput {
+extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBufferDelegate {
     /// Receives audio sample buffers from the capture stream
     ///
     /// - Parameters:
@@ -372,14 +419,25 @@ extension SystemAudioRecorder: SCStreamOutput {
             return
         }
 
+        processSampleBuffer(sampleBuffer, forMic: false)
+    }
+
+    /// Receives audio sample buffers from the microphone
+    nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        processSampleBuffer(sampleBuffer, forMic: true)
+    }
+
+    /// Processes a sample buffer and appends it to the appropriate writer input
+    nonisolated private func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, forMic: Bool) {
         Task { @MainActor in
             guard let writer = self.writer,
-                  let input = self.audioInput,
                   writer.status == .writing || writer.status == .unknown else {
                 return
             }
 
-            if input.isReadyForMoreMediaData {
+            let input = forMic ? self.micInput : self.audioInput
+            
+            if let input = input, input.isReadyForMoreMediaData {
                 let adjustedBuffer = self.adjustSampleBufferTiming(sampleBuffer)
                 _ = input.append(adjustedBuffer)
             }

@@ -46,6 +46,9 @@ final class RecordingEntity: Identifiable {
     /// Whether this recording's file exists only in the cloud (not persisted — recomputed each launch)
     @Transient var isCloudOnly: Bool = false
 
+    /// Whether this recording has a microphone track
+    var hasMicTrack: Bool
+
     /// Convenience accessor for the folder name
     var folderName: String? { folderRef?.name }
 
@@ -56,7 +59,8 @@ final class RecordingEntity: Identifiable {
          fileName: String,
          isFavorite: Bool = false,
          folderRef: FolderEntity? = nil,
-         deletedAt: Date? = nil) {
+         deletedAt: Date? = nil,
+         hasMicTrack: Bool = false) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
@@ -65,5 +69,6 @@ final class RecordingEntity: Identifiable {
         self.isFavorite = isFavorite
         self.folderRef = folderRef
         self.deletedAt = deletedAt
+        self.hasMicTrack = hasMicTrack
     }
 }

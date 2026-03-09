@@ -12,7 +12,7 @@ import SwiftUI
 /// Represents an item in the sidebar navigation
 enum SidebarItem: Hashable, Identifiable {
     case library(LibraryCategory)
-    case folder(String)
+    case folder(UUID)
 
     var id: Self { self }
 }
@@ -47,10 +47,10 @@ enum LibraryCategory: String, CaseIterable, Identifiable {
 /// Sidebar navigation view with library categories and folders
 struct SidebarView: View {
     @Binding var selectedItem: SidebarItem?
-    let folders: [String]
+    let folders: [FolderEntity]
     let width: CGFloat
-    var onDeleteFolder: ((String) -> Void)?
-    var onRenameFolder: ((String) -> Void)?
+    var onDeleteFolder: ((FolderEntity) -> Void)?
+    var onRenameFolder: ((FolderEntity) -> Void)?
 
     var body: some View {
         List(selection: $selectedItem) {
@@ -80,16 +80,16 @@ struct SidebarView: View {
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 20)
                 } else {
-                    ForEach(folders, id: \.self) { folder in
+                    ForEach(folders) { folder in
                         Label {
-                            Text(folder)
+                            Text(folder.name)
                                 .font(.system(size: 13))
                         } icon: {
                             Image(systemName: "folder.fill")
                                 .font(.system(size: 14))
                                 .foregroundStyle(.blue)
                         }
-                        .tag(SidebarItem.folder(folder))
+                        .tag(SidebarItem.folder(folder.id))
                         .contextMenu {
                             Button {
                                 onRenameFolder?(folder)

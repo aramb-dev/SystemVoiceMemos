@@ -6,6 +6,8 @@
 	<string>AppIcon</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>This app captures system audio to save as memos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required to capture your voice alongside system audio.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location is used to prefix recording names with your current city when location-based naming is enabled.</string>
 	<key>NSScreenCaptureUsageDescription</key>

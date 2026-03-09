@@ -58,9 +58,18 @@ struct ContentView: View {
         mainContent
             .sheet(isPresented: $vm.isCreatingFolder, content: createFolderSheet)
             .sheet(item: $vm.renamingRecording, content: renameRecordingSheet)
+            .sheet(item: $vm.movingRecording, content: moveToFolderSheet)
             .sheet(item: .constant(vm.renamingFolderWrapper), content: renameFolderSheet)
             .alert(item: playbackErrorBinding, content: playbackErrorAlert)
-            .alert("Recording Failed", isPresented: vm.recordingErrorBinding, actions: { Button("OK") { vm.recordingManager.lastError = nil } }, message: { Text(vm.recordingManager.lastError ?? "Unable to start recording.") })
+            .alert("Recording Failed", isPresented: vm.recordingErrorBinding, actions: {
+                if let error = vm.recordingManager.lastError, error.contains("Microphone access is denied") {
+                    Button("Open Settings") {
+                        PermissionManager.shared.openMicrophoneSettings()
+                        vm.recordingManager.lastError = nil
+                    }
+                }
+                Button("OK") { vm.recordingManager.lastError = nil }
+            }, message: { Text(vm.recordingManager.lastError ?? "Unable to start recording.") })
             .confirmationDialog("Delete Recording?", isPresented: $vm.isShowingDeleteConfirmation, presenting: vm.recordingPendingDeletion, actions: deleteRecordingActions, message: deleteRecordingMessage)
             .confirmationDialog("Delete Folder?", isPresented: $vm.isShowingFolderDeleteConfirmation, presenting: vm.folderPendingDeletion, actions: deleteFolderActions, message: deleteFolderMessage)
             .task { await vm.scanRecordingsDirectory(context: modelContext) }
@@ -132,7 +141,7 @@ struct ContentView: View {
     private var recordingsSection: some View {
         Group {
             RecordingsListView(
-                title: vm.sidebarTitle,
+                title: vm.sidebarTitle(from: folders),
                 recordings: filteredRecordings,
                 selectedRecordingID: $vm.selectedRecordingID,
                 searchText: $vm.searchText,
@@ -252,6 +261,37 @@ struct ContentView: View {
         alert.runModal()
     }
 
+    private func showExportStemsPanel(for recording: RecordingEntity) {
+        let panel = NSSavePanel()
+        panel.title = "Export Recording"
+        panel.nameFieldStringValue = recording.title
+        panel.allowedContentTypes = [.mpeg4Audio]
+        
+        let settings = ExportSettings(hasMic: recording.hasMicTrack)
+        let accessory = NSHostingView(rootView: ExportAccessoryView(settings: settings))
+        accessory.frame = NSRect(x: 0, y: 0, width: 300, height: 100)
+        panel.accessoryView = accessory
+        
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                let mode = settings.selectedMode
+                Task {
+                    do {
+                        try await playbackManager.exportRecording(recording, mode: mode, to: url)
+                    } catch {
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "Export Failed"
+                            alert.informativeText = error.localizedDescription
+                            alert.alertStyle = .critical
+                            alert.runModal()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Alert / Sheet Builders
 
     private var playbackErrorBinding: Binding<PlaybackManager.PlaybackError?> {
@@ -281,12 +321,25 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func renameFolderSheet(_ wrapper: FolderWrapper) -> some View {
-        RenameFolderSheet(folderName: wrapper.name, newName: $vm.renameFolderText) { newName in
-            vm.renameFolder(from: wrapper.name, to: newName, folders: folders, context: modelContext)
-            vm.renamingFolder = nil
+    private func moveToFolderSheet(_ recording: RecordingEntity) -> some View {
+        MoveToFolderSheet(folders: folders, folderName: $vm.moveToFolderText) { folderName in
+            vm.moveToFolder(recording, name: folderName, context: modelContext, folders: folders, recordings: recordings, playbackManager: playbackManager)
         } onCancel: {
-            vm.renamingFolder = nil
+            vm.movingRecording = nil
+            vm.moveToFolderText = ""
+        }
+    }
+
+    @ViewBuilder
+    private func renameFolderSheet(_ wrapper: FolderWrapper) -> some View {
+        let folder = folders.first { $0.id.uuidString == wrapper.id }
+        RenameFolderSheet(folderName: folder?.name ?? "", newName: $vm.renameFolderText) { newName in
+            if let id = folder?.id {
+                vm.renameFolder(id: id, to: newName, folders: folders, context: modelContext)
+            }
+            vm.renamingFolderID = nil
+        } onCancel: {
+            vm.renamingFolderID = nil
             vm.renameFolderText = ""
         }
     }
@@ -308,15 +361,15 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func deleteFolderActions(_ folderName: String) -> some View {
+    private func deleteFolderActions(_ folder: FolderEntity) -> some View {
         Button("Delete", role: .destructive) {
-            vm.performFolderDeletion(folderName, folders: folders, context: modelContext, recordings: recordings, playbackManager: playbackManager)
+            vm.performFolderDeletion(folder, context: modelContext, recordings: recordings, playbackManager: playbackManager)
         }
         Button("Cancel", role: .cancel) { vm.folderPendingDeletion = nil }
     }
 
-    private func deleteFolderMessage(_ folderName: String) -> Text {
-        Text("Are you sure you want to delete the folder '\(folderName)'? Recordings in this folder will not be deleted.")
+    private func deleteFolderMessage(_ folder: FolderEntity) -> Text {
+        Text("Are you sure you want to delete the folder '\(folder.name)'? Recordings in this folder will not be deleted.")
     }
 
     // MARK: - Toolbar
@@ -397,6 +450,13 @@ struct ContentView: View {
                 }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
 
+                Button {
+                    showExportStemsPanel(for: recording)
+                } label: {
+                    Label("Export Stems...", systemImage: "square.and.arrow.down")
+                }
+                .help("Export system or mic stems separately")
+
                 Button(role: .destructive) { vm.confirmDelete(recording) } label: {
                     Label("Delete", systemImage: "trash")
                 }
@@ -448,5 +508,36 @@ private final class RecordingSharePresenter: NSObject, @preconcurrency NSSharing
 
 struct FolderWrapper: Identifiable {
     let name: String
-    var id: String { name }
+    let id: String
+}
+
+@MainActor
+final class ExportSettings: ObservableObject {
+    let hasMic: Bool
+    @Published var selectedMode: PlaybackManager.ExportMode = .bothMixed
+    
+    init(hasMic: Bool) {
+        self.hasMic = hasMic
+    }
+}
+
+struct ExportAccessoryView: View {
+    @ObservedObject var settings: ExportSettings
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Export Mode")
+                .font(.headline)
+            
+            Picker("", selection: $settings.selectedMode) {
+                Text("Both (Mixed)").tag(PlaybackManager.ExportMode.bothMixed)
+                Text("System Audio Only").tag(PlaybackManager.ExportMode.systemOnly)
+                if settings.hasMic {
+                    Text("Microphone Only").tag(PlaybackManager.ExportMode.micOnly)
+                }
+            }
+            .pickerStyle(.radioGroup)
+        }
+        .padding()
+    }
 }

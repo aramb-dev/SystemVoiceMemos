@@ -15,6 +15,7 @@ enum AppConstants {
         static let hideFromScreenSharing = "hideFromScreenSharing"
         static let audioQuality = "audioQuality"
         static let locationBasedNaming = "locationBasedNaming"
+        static let includeMicrophone = "includeMicrophone"
 
         static let shareClickedCount = "shareClickedCount"
         static let shareCompletedCount = "shareCompletedCount"

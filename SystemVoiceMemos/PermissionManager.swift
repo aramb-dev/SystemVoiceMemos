@@ -52,4 +52,10 @@ final class PermissionManager: ObservableObject {
             NSWorkspace.shared.open(url)
         }
     }
+    
+    func openMicrophoneSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
+        }
+    }
 }

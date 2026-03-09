@@ -29,29 +29,33 @@ final class ContentViewModel {
 
     var isCreatingFolder = false
     var newFolderName = ""
-    var renamingFolder: String?
+    var renamingFolderID: UUID?
     var renameFolderText = ""
-    var folderPendingDeletion: String?
+    var folderPendingDeletion: FolderEntity?
     var isShowingFolderDeleteConfirmation = false
 
     // MARK: - Recording Sheet State
 
     var renamingRecording: RecordingEntity?
     var renameText = ""
+    var movingRecording: RecordingEntity?
+    var moveToFolderText = ""
     var recordingPendingDeletion: RecordingEntity?
     var isShowingDeleteConfirmation = false
 
     // MARK: - Computed Helpers
 
     var renamingFolderWrapper: FolderWrapper? {
-        renamingFolder.map { FolderWrapper(name: $0) }
+        guard let id = renamingFolderID else { return nil }
+        return FolderWrapper(name: renameFolderText, id: id.uuidString)
     }
 
-    var sidebarTitle: String {
+    func sidebarTitle(from folders: [FolderEntity]) -> String {
         guard let item = selectedSidebarItem else { return "Library" }
         switch item {
         case .library(let category): return category.title
-        case .folder(let name): return name
+        case .folder(let id):
+            return folders.first(where: { $0.id == id })?.name ?? "Folder"
         }
     }
 
@@ -75,8 +79,8 @@ final class ContentViewModel {
             base = recordings.filter { $0.deletedAt == nil && $0.isFavorite }
         case .library(.recentlyDeleted):
             base = recordings.filter { $0.deletedAt != nil }
-        case .folder(let name):
-            base = recordings.filter { $0.deletedAt == nil && $0.folderName == name }
+        case .folder(let id):
+            base = recordings.filter { $0.deletedAt == nil && $0.folderRef?.id == id }
         }
 
         guard !searchText.isEmpty else { return base }
@@ -89,8 +93,8 @@ final class ContentViewModel {
         return recordings.first { $0.id == id }
     }
 
-    func userFolders(from folders: [FolderEntity]) -> [String] {
-        folders.map { $0.name }.sorted()
+    func userFolders(from folders: [FolderEntity]) -> [FolderEntity] {
+        folders.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     func recordingsHash(from recordings: [RecordingEntity]) -> Int {
@@ -226,27 +230,28 @@ final class ContentViewModel {
         recordings: [RecordingEntity],
         playbackManager: PlaybackManager
     ) {
-        let alert = NSAlert()
-        alert.messageText = "Assign Folder"
-        alert.informativeText = "Enter a folder name for this recording."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        moveToFolderText = rec.folderName ?? ""
+        movingRecording = rec
+    }
 
-        let input = NSTextField(string: rec.folderName ?? "")
-        input.frame = NSRect(x: 0, y: 0, width: 240, height: 24)
-        alert.accessoryView = input
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            let trimmed = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty {
-                rec.folderRef = nil
-            } else {
-                rec.folderRef = findOrCreateFolder(named: trimmed, in: folders, context: context)
-            }
-            try? context.save()
-            recalcSelection(recordings: recordings, playbackManager: playbackManager, keepExisting: true)
+    func moveToFolder(
+        _ rec: RecordingEntity,
+        name: String,
+        context: ModelContext,
+        folders: [FolderEntity],
+        recordings: [RecordingEntity],
+        playbackManager: PlaybackManager
+    ) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            rec.folderRef = nil
+        } else {
+            rec.folderRef = findOrCreateFolder(named: trimmed, in: folders, context: context)
         }
+        try? context.save()
+        movingRecording = nil
+        moveToFolderText = ""
+        recalcSelection(recordings: recordings, playbackManager: playbackManager, keepExisting: true)
     }
 
     func reveal(_ rec: RecordingEntity) {
@@ -299,8 +304,8 @@ final class ContentViewModel {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        guard !folders.contains(where: { $0.name == trimmed }) else {
-            selectedSidebarItem = .folder(trimmed)
+        if let existing = folders.first(where: { $0.name == trimmed }) {
+            selectedSidebarItem = .folder(existing.id)
             return
         }
 
@@ -308,40 +313,35 @@ final class ContentViewModel {
         context.insert(newFolder)
         try? context.save()
 
-        selectedSidebarItem = .folder(trimmed)
+        selectedSidebarItem = .folder(newFolder.id)
         newFolderName = ""
     }
 
-    func startRenamingFolder(_ folderName: String) {
-        renameFolderText = folderName
-        renamingFolder = folderName
+    func startRenamingFolder(_ folder: FolderEntity) {
+        renameFolderText = folder.name
+        renamingFolderID = folder.id
     }
 
-    func renameFolder(from oldName: String, to newName: String, folders: [FolderEntity], context: ModelContext) {
+    func renameFolder(id: UUID, to newName: String, folders: [FolderEntity], context: ModelContext) {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != oldName else { return }
+        guard !trimmed.isEmpty else { return }
 
-        if let folderEntity = folders.first(where: { $0.name == oldName }) {
+        if let folderEntity = folders.first(where: { $0.id == id }) {
             folderEntity.name = trimmed
         }
 
         try? context.save()
-
-        if selectedSidebarItem == .folder(oldName) {
-            selectedSidebarItem = .folder(trimmed)
-        }
-
         renameFolderText = ""
+        renamingFolderID = nil
     }
 
-    func confirmFolderDeletion(_ folderName: String) {
-        folderPendingDeletion = folderName
+    func confirmFolderDeletion(_ folder: FolderEntity) {
+        folderPendingDeletion = folder
         isShowingFolderDeleteConfirmation = true
     }
 
     func performFolderDeletion(
-        _ folderName: String,
-        folders: [FolderEntity],
+        _ folder: FolderEntity,
         context: ModelContext,
         recordings: [RecordingEntity],
         playbackManager: PlaybackManager
@@ -351,13 +351,10 @@ final class ContentViewModel {
             isShowingFolderDeleteConfirmation = false
         }
 
-        if let folderEntity = folders.first(where: { $0.name == folderName }) {
-            context.delete(folderEntity)
-        }
-
+        context.delete(folder)
         try? context.save()
 
-        if selectedSidebarItem == .folder(folderName) {
+        if case .folder(let id) = selectedSidebarItem, id == folder.id {
             selectedSidebarItem = .library(.all)
         }
 

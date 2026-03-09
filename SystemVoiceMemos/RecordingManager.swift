@@ -178,6 +178,17 @@ class RecordingManager {
         // Guard against concurrent calls
         guard !isRecording else { return false }
 
+        // Check microphone permission if enabled
+        if UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone) {
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            if status == .notDetermined {
+                await PermissionManager.shared.requestAudioPermission()
+            } else if status == .denied || status == .restricted {
+                lastError = "Microphone access is denied. Please enable it in System Settings."
+                return false
+            }
+        }
+
         do {
             let dir = try AppDirectories.recordingsDir()
             let base = await recordingBaseName()
@@ -190,7 +201,8 @@ class RecordingManager {
                 title: base,
                 createdAt: .now,
                 duration: 0,
-                fileName: fileName
+                fileName: fileName,
+                hasMicTrack: UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
             )
             modelContext.insert(entity)
             try? modelContext.save()
@@ -242,12 +254,13 @@ class RecordingManager {
         
         let asset = AVURLAsset(url: url)
         do {
-            let cmDuration = try await asset.load(.duration)
+            let (cmDuration, tracks) = try await asset.load(.duration, .tracks)
             let seconds = CMTimeGetSeconds(cmDuration)
             if seconds.isFinite && seconds > 0.01 {
                 recording.duration = seconds
-                try? modelContext.save()
             }
+            recording.hasMicTrack = tracks.count > 1
+            try? modelContext.save()
         } catch {
             print("duration load error:", error)
         }

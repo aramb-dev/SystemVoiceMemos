@@ -37,6 +37,15 @@ struct RecordingRow: View {
 
             Spacer()
 
+            if recording.hasMicTrack {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary.opacity(0.8))
+                    .padding(4)
+                    .background(Circle().fill(.ultraThinMaterial))
+                    .overlay(Circle().stroke(.white.opacity(0.1), lineWidth: 0.5))
+            }
+
             // Duration badge with glass pill
             Text(durationString)
                 .font(.system(size: 11, design: .rounded))

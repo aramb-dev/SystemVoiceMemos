@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 // MARK: - Glass Capsule Button Style
 
@@ -215,9 +216,14 @@ struct OnboardingView: View {
                     description: "Required if you wish to record external audio devices.",
                     icon: "mic.fill",
                     isAuthorized: permissionManager.isAudioAuthorized,
+                    buttonLabel: AVCaptureDevice.authorizationStatus(for: .audio) == .denied ? "Settings" : "Grant",
                     action: {
-                        Task {
-                            await permissionManager.requestAudioPermission()
+                        if AVCaptureDevice.authorizationStatus(for: .audio) == .denied {
+                            permissionManager.openMicrophoneSettings()
+                        } else {
+                            Task {
+                                await permissionManager.requestAudioPermission()
+                            }
                         }
                     }
                 )
@@ -329,6 +335,7 @@ struct PermissionCard: View {
     let description: String
     let icon: String
     let isAuthorized: Bool
+    var buttonLabel: String = "Grant"
     let action: () -> Void
 
     var body: some View {
@@ -353,7 +360,7 @@ struct PermissionCard: View {
                     .foregroundColor(.green)
                     .font(.title2)
             } else {
-                Button("Grant", action: action)
+                Button(buttonLabel, action: action)
                     .buttonStyle(.bordered)
                     .tint(.blue)
             }

@@ -97,13 +97,32 @@ struct RecordingSettingsView: View {
     @AppStorage("recordingsLocation") private var recordingsLocation = ""
     @AppStorage("audioQuality") private var audioQuality = "high"
     @AppStorage("locationBasedNaming") private var locationBasedNaming = false
+    @AppStorage("includeMicrophone") private var includeMicrophone = false
     @AppStorage("autoDeleteEnabled") private var autoDeleteEnabled = true
     @AppStorage("autoDeleteAfterDays") private var autoDeleteAfterDays = 30
     @State private var showingLocationPicker = false
     
     var body: some View {
         Form {
-            Section("Storage") {
+            Section("Recording") {
+                Toggle(isOn: $includeMicrophone) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Include Microphone")
+                            .font(.headline)
+                        Text("Capture your voice alongside system audio")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .onChange(of: includeMicrophone) { _, enabled in
+                    if enabled {
+                        Task {
+                            await PermissionManager.shared.requestAudioPermission()
+                        }
+                    }
+                }
+
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Recordings Location")

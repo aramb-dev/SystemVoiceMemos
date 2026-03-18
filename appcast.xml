@@ -32,6 +32,29 @@
         </item>
         -->
         
+        <!-- Version 0.7.0 -->
+        <item>
+            <title>Version 0.7.0</title>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.7.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.7.0</h2>
+                <ul>
+                    <li><strong>Multi-track recording</strong> - Simultaneously capture system audio and microphone as separate tracks</li>
+                    <li><strong>Stem export</strong> - Export individual audio stems from multi-track recordings</li>
+                    <li><strong>Improved folder system</strong> - More robust folder management and organization</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 18 Mar 2026 17:52:10 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.7.0/SystemVoiceMemos-0.7.0.dmg"
+                sparkle:version="7"
+                sparkle:shortVersionString="0.7.0"
+                length="4643265"
+                type="application/octet-stream"
+                sparkle:edSignature="R6tnawSJw0t4u490JNQceH9v0v2x1A1NC6dWE0Sby/VzjxcNiLKeYQm01wR1EA3TsnFjEK/1gZzghygzt86LCg==" />
+        </item>
+
         <!-- Version 0.6.0 -->
         <item>
             <title>Version 0.6.0</title>

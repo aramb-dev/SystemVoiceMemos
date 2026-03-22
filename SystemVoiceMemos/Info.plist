@@ -20,5 +20,9 @@
 	<string>fIQpxkBHPL0KJxy+PQkIHmndQ+Li9jBc/wOVvm8erzo=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
+	<key>CFBundleHelpBookFolder</key>
+	<string>SystemVoiceMemos.help</string>
+	<key>CFBundleHelpBookName</key>
+	<string>com.arambdev.SystemVoiceMemos.help</string>
 </dict>
 </plist>

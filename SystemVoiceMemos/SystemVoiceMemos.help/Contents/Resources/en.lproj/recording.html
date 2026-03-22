@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="AppleTitle" content="Recording">
+    <title>Recording - SystemVoiceMemos Help</title>
+    <link rel="stylesheet" href="css/help.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Recording</h1>
+            <p class="subtitle">Capture system audio with multi-track support and stem export</p>
+        </header>
+
+        <section>
+            <h2>Starting a Recording</h2>
+            <p>There are several ways to start recording:</p>
+            <ul>
+                <li>Click <strong>New Recording</strong> in the File menu</li>
+                <li>Press <kbd>Cmd+N</kbd></li>
+                <li>Click the record button in the main window (if available)</li>
+            </ul>
+
+            <p>Once recording starts, the menu item changes to <strong>Stop Recording</strong> and a recording indicator appears.</p>
+        </section>
+
+        <section>
+            <h2>Stopping a Recording</h2>
+            <ul>
+                <li>Click <strong>Stop Recording</strong> in the File menu</li>
+                <li>Press <kbd>Cmd+N</kbd> again (the shortcut toggles recording)</li>
+                <li>Click the stop button in the main window (if available)</li>
+            </ul>
+
+            <p>When you stop recording, the audio is automatically saved as an M4A file in your recordings directory.</p>
+        </section>
+
+        <section>
+            <h2>Multi-Track Recording</h2>
+            <p>SystemVoiceMemos supports recording multiple audio sources simultaneously:</p>
+
+            <h3>System Audio</h3>
+            <p>Captures any audio playing on your Mac — music from Spotify/Apple Music, video audio, system sounds, etc. This requires Screen Recording permission.</p>
+
+            <h3>Microphone</h3>
+            <p>Optionally record your voice or external audio devices alongside system audio. This requires Microphone permission and must be enabled in settings.</p>
+
+            <div class="note">
+                <strong>Note:</strong>
+                When multi-track recording is enabled, SystemVoiceMemos creates separate audio tracks for system audio and microphone input. This allows for flexible post-production and stem export.
+            </div>
+        </section>
+
+        <section>
+            <h2>Stem Export</h2>
+            <p>After recording with multiple tracks, you can export individual stems:</p>
+            <ul>
+                <li>Select a multi-track recording</li>
+                <li>Choose <strong>Export Stems</strong> from the File menu or context menu</li>
+                <li>Choose a destination folder</li>
+                <li>Individual audio files are exported for each track</li>
+            </ul>
+
+            <h3>Stem File Names</h3>
+            <p>Exported stems are named with the recording title plus the track name:</p>
+            <ul>
+                <li><code>RecordingName-system.m4a</code> — System audio track</li>
+                <li><code>RecordingName-mic.m4a</code> — Microphone track</li>
+            </ul>
+
+            <div class="note">
+                <strong>Use Case:</strong>
+                Stem export is useful for podcasters, musicians, and content creators who want to process individual audio tracks separately in a DAW or audio editor.
+            </div>
+        </section>
+
+        <section>
+            <h2>Recording Names</h2>
+            <p>SystemVoiceMemos automatically names your recordings:</p>
+
+            <h3>Default Naming</h3>
+            <p>By default, recordings are named with a timestamp format like <code>Recording 2025-03-18 at 14.30.45</code>.</p>
+
+            <h3>Location-Based Naming</h3>
+            <p>When enabled in Settings, recordings are named with your current city:</p>
+            <ul>
+                <li><code>San Francisco - 2025-03-18 at 14.30</code></li>
+                <li><code>New York - Morning Jam</code></li>
+            </ul>
+
+            <p>This requires Location permission and can be enabled in Settings.</p>
+
+            <h3>Custom Names</h3>
+            <p>You can rename any recording by:</p>
+            <ol>
+                <li>Select the recording in the list</li>
+                <li>Press <kbd>Return</kbd> or right-click and choose <strong>Rename</strong></li>
+                <li>Type the new name and press <kbd>Return</kbd></li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Recording Formats</h2>
+            <p>SystemVoiceMemos saves recordings as M4A files using the AAC codec:</p>
+            <ul>
+                <li><strong>Container:</strong> M4A (MPEG-4 Audio)</li>
+                <li><strong>Codec:</strong> AAC (Advanced Audio Coding)</li>
+                <li><strong>Quality:</strong> High (optimized for voice and music)</li>
+            </ul>
+
+            <p>M4A files are widely compatible and can be played on most devices and software including QuickTime, VLC, iTunes/Apple Music, and more.</p>
+        </section>
+
+        <section>
+            <h2>Troubleshooting Recording Issues</h2>
+            <h3>"Cannot start recording" error</h3>
+            <ul>
+                <li>Ensure Screen Recording permission is granted in System Settings → Privacy & Security</li>
+                <li>Quit other apps that may be capturing system audio (screen recorders, audio routers)</li>
+                <li>Restart SystemVoiceMemos and try again</li>
+            </ul>
+
+            <h3>Recording has no audio</h3>
+            <ul>
+                <li>Verify audio is actually playing on your Mac (check system volume)</li>
+                <li>Ensure the correct display is selected for capture in Settings (if using multiple displays)</li>
+                <li>Check that no other audio device is routing sound away from the built-in output</li>
+            </ul>
+
+            <h3>Recording is distorted</h3>
+            <ul>
+                <li>Lower your Mac's system volume before recording</li>
+                <li>Check if any audio effects or equalizers are enabled in System Settings</li>
+            </ul>
+
+            <p>See <a href="troubleshooting.html">Troubleshooting</a> for more help.</p>
+        </section>
+
+        <section>
+            <h2>Keyboard Shortcuts</h2>
+            <dl class="shortcuts-list">
+                <dt><kbd>Cmd+N</kbd></dt><dd>Start/Stop Recording</dd>
+                <dt><kbd>Cmd+Shift+Delete</kbd></dt><dd>Delete Selected Recording</dd>
+            </dl>
+        </section>
+
+        <div class="back-to-top">
+            <a href="index.html">← Back to Topics</a>
+        </div>
+    </div>
+</body>
+</html>

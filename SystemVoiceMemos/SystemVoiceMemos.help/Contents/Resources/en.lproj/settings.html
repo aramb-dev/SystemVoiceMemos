@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="AppleTitle" content="Settings">
+    <title>Settings - SystemVoiceMemos Help</title>
+    <link rel="stylesheet" href="css/help.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Settings</h1>
+            <p class="subtitle">Configure preferences, updates, and app behavior</p>
+        </header>
+
+        <section>
+            <h2>Opening Settings</h2>
+            <p>Open the Settings window:</p>
+            <ul>
+                <li>Press <kbd>Cmd+,</kbd></li>
+                <li>Choose <strong>Settings…</strong> from the app menu (SystemVoiceMemos → Settings)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>General Settings</h2>
+
+            <h3>Location-Based Naming</h3>
+            <p>When enabled, SystemVoiceMemos names recordings using your current city instead of timestamps.</p>
+            <ul>
+                <li><strong>Enable toggle:</strong> Turn on location-based naming</li>
+                <li><strong>Permission:</strong> You'll be prompted to grant Location permission</li>
+                <li><strong>Privacy:</strong> Location data is only used for naming — never stored or transmitted</li>
+            </ul>
+
+            <p>Example names with location-based naming:</p>
+            <ul>
+                <li><code>San Francisco - 2025-03-18 at 14.30</code></li>
+                <li><code>London Recording</code></li>
+                <li><code>Tokyo - Jam Session</code></li>
+            </ul>
+
+            <h3>Multi-Track Recording</h3>
+            <p>Configure how multiple audio sources are captured:</p>
+            <ul>
+                <li><strong>Record System Audio:</strong> Always enabled (required for app functionality)</li>
+                <li><strong>Record Microphone:</strong> Optionally capture mic alongside system audio</li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong>
+                When microphone recording is enabled, you'll need Microphone permission. System audio and microphone are saved as separate tracks for stem export.
+            </div>
+
+            <h3>Default Output Folder</h3>
+            <p>View or change where recordings are stored:</p>
+            <ul>
+                <li>Shows the current recordings directory path</li>
+                <li>Click <strong>Reveal in Finder</strong> to open the folder</li>
+                <li>Note: Changing this setting may require restarting the app</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Updates</h2>
+
+            <h3>Automatic Updates</h3>
+            <p>SystemVoiceMemos uses Sparkle for automatic updates:</p>
+            <ul>
+                <li>Checks for updates automatically every 24 hours</li>
+                <li>Notifies you when a new version is available</li>
+                <li>Downloads and installs updates with one click</li>
+            </ul>
+
+            <h3>Check for Updates Manually</h3>
+            <p>To check for updates immediately:</p>
+            <ul>
+                <li>Choose <strong>Check for Updates…</strong> from the app menu</li>
+                <li>Or click <strong>Check Now</strong> in the Updates section of Settings</li>
+            </ul>
+
+            <h3>Update Settings</h3>
+            <p>Configure update behavior:</p>
+            <ul>
+                <li><strong>Automatic checks:</strong> Toggle on/off</li>
+                <li><strong>Check interval:</strong> How often to check (default: daily)</li>
+                <li><strong>Beta updates:</strong> Optionally receive pre-release versions</li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong>
+                Updates are downloaded from the official GitHub repository. SystemVoiceMemos is signed and notarized for secure installation.
+            </div>
+        </section>
+
+        <section>
+            <h2>Appearance</h2>
+
+            <h3>Theme</h3>
+            <p>SystemVoiceMemos follows your macOS system appearance:</p>
+            <ul>
+                <li><strong>Light Mode:</strong> Uses light color scheme when macOS is in light mode</li>
+                <li><strong>Dark Mode:</strong> Uses dark color scheme when macOS is in dark mode</li>
+                <li><strong>Auto:</strong> Switches automatically based on time of day</li>
+            </ul>
+
+            <p>The app uses glass-morphism design elements that adapt to your system theme.</p>
+
+            <h3>Sidebar</h3>
+            <p>Customize sidebar behavior:</p>
+            <ul>
+                <li><strong>Show sidebar on launch:</strong> Always show sidebar when app opens</li>
+                <li><strong>Remember sidebar state:</strong> Restore sidebar to its last state</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Recording Settings</h2>
+
+            <h3>Audio Quality</h3>
+            <p>Configure recording quality:</p>
+            <ul>
+                <li><strong>High (default):</strong> Best quality, larger file sizes</li>
+                <li><strong>Medium:</strong> Good quality, smaller file sizes</li>
+                <li><strong>Low:</strong> Smallest files, reduced quality</li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong>
+                Higher quality settings create larger files but preserve more audio detail. Most users should keep the default High setting.
+            </div>
+
+            <h3>Display Selection</h3>
+            <p>If you have multiple displays, choose which display's audio to capture:</p>
+            <ul>
+                <li><strong>Primary Display:</strong> Captures audio from the main display</li>
+                <li><strong>All Displays:</strong> Captures mixed audio from all displays (if supported)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Keyboard Shortcuts</h2>
+            <dl class="shortcuts-list">
+                <dt><kbd>Cmd+,</kbd></dt><dd>Open Settings</dd>
+            </dl>
+        </section>
+
+        <section>
+            <h2>Resetting Settings</h2>
+            <p>If you're experiencing issues or want to start fresh:</p>
+            <ol>
+                <li>Quit SystemVoiceMemos</li>
+                <li>Open <strong>System Settings → Privacy & Security → Location → SystemVoiceMemos</strong></li>
+                <li>Disable and re-enable location access if needed</li>
+                <li>For a full reset, delete <code>~/Library/Containers/com.arambdev.SystemVoiceMemos/</code> and relaunch</li>
+            </ol>
+
+            <div class="warning">
+                <strong>Warning:</strong>
+                Deleting the app container will remove all settings and your recordings. Only do this if you want a completely fresh start.
+            </div>
+        </section>
+
+        <div class="back-to-top">
+            <a href="index.html">← Back to Topics</a>
+        </div>
+    </div>
+</body>
+</html>

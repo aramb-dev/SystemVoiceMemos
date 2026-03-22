@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="AppleTitle" content="Advanced">
+    <title>Advanced - SystemVoiceMemos Help</title>
+    <link rel="stylesheet" href="css/help.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Advanced</h1>
+            <p class="subtitle">File formats, storage locations, and automation</p>
+        </header>
+
+        <section>
+            <h2>File Formats</h2>
+
+            <h3>M4A Format</h3>
+            <p>SystemVoiceMemos saves recordings as M4A files:</p>
+            <ul>
+                <li><strong>Container:</strong> MPEG-4 Part 14 (.m4a)</li>
+                <li><strong>Audio Codec:</strong> AAC (Advanced Audio Coding)</li>
+                <li><strong>Bitrate:</strong> Variable, typically 256 kbps for high quality</li>
+                <li><strong>Sample Rate:</strong> 48 kHz</li>
+                <li><strong>Channels:</strong> Stereo (2 channels)</li>
+            </ul>
+
+            <h3>Why M4A?</h3>
+            <p>M4A was chosen because it offers excellent audio quality at relatively small file sizes and is widely compatible across devices and software.</p>
+
+            <h3>Compatibility</h3>
+            <p>M4A files play natively on:</p>
+            <ul>
+                <li>macOS (QuickTime, Music, TV apps)</li>
+                <li>iOS (Music, Voice Memos)</li>
+                <li>Windows (Windows Media Player, iTunes, VLC)</li>
+                <li>Linux (VLC, Audacity, most players)</li>
+                <li>Most smart TVs and media players</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Storage Location</h2>
+
+            <h3>Default Path</h3>
+            <p>Recordings are stored in the app's container:</p>
+            <pre><code>~/Library/Containers/com.arambdev.SystemVoiceMemos/Data/Documents/Recordings/</code></pre>
+
+            <h3>Sandboxing</h3>
+            <p>SystemVoiceMemos is sandboxed for security. This means:</p>
+            <ul>
+                <li>All app data is contained within the app's sandbox</li>
+                <li>The app cannot access arbitrary files on your system</li>
+                <li>Files are isolated from other apps unless explicitly shared</li>
+            </ul>
+
+            <h3>Accessing Files</h3>
+            <p>To work with recordings outside the app:</p>
+            <ul>
+                <li><strong>Show in Finder:</strong> Right-click any recording</li>
+                <li><strong>Export:</strong> Drag recordings from Finder to any location</li>
+                <li><strong>Open in:</strong> Choose "Open in QuickTime" or another app</li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong>
+                The sandbox location is backed up by Time Machine if you have that enabled. Ensure your backup includes your Home Library.
+            </div>
+        </section>
+
+        <section>
+            <h2>Database Structure</h2>
+
+            <h3>SwiftData</h3>
+            <p>SystemVoiceMemos uses SwiftData for persistent storage of metadata:</p>
+            <ul>
+                <li><strong>RecordingEntity:</strong> Stores recording metadata (title, date, duration, file path)</li>
+                <li><strong>FolderEntity:</strong> Stores folder information and relationships</li>
+            </ul>
+
+            <h3>File vs Database</h3>
+            <p>Important distinction:</p>
+            <ul>
+                <li><strong>Audio files:</strong> The actual M4A audio data</li>
+                <li><strong>Database:</strong> Metadata, folder associations, and app state</li>
+            </ul>
+
+            <p>Deleting a recording removes both the database entry AND the audio file.</p>
+        </section>
+
+        <section>
+            <h2>Automation and Scripting</h2>
+
+            <h3>AppleScript Support</h3>
+            <p>Currently, SystemVoiceMemos has limited AppleScript support. Future versions may include:</p>
+            <ul>
+                <li>Start/stop recording</li>
+                <li>Query recordings</li>
+                <li>Export recordings</li>
+            </ul>
+
+            <h3>Shortcuts Integration</h3>
+            <p>macOS Shortcuts integration is planned for future updates, allowing you to:</p>
+            <ul>
+                <li>Create shortcuts that start recording with one tap</li>
+                <li>Automate post-processing of recordings</li>
+                <li>Integrate with other apps in your workflow</li>
+            </ul>
+
+            <h3>Folder Actions</h3>
+            <p>You can use macOS Folder Actions on the recordings directory to trigger workflows:</p>
+            <ol>
+                <li>Right-click the recordings folder in Finder</li>
+                <li>Choose <strong>Services → Folder Actions Setup…</strong></li>
+                <li>Attach an AppleScript or Automator workflow</li>
+            </ol>
+
+            <div class="warning">
+                <strong>Caution:</strong>
+                Be careful with folder actions that modify or move files, as this could break the link between the database and the actual audio files.
+            </div>
+        </section>
+
+        <section>
+            <h2>Multi-Track Recording Deep Dive</h2>
+
+            <h3>How It Works</h3>
+            <p>When multi-track recording is enabled:</p>
+            <ul>
+                <li>System audio and microphone are captured on separate tracks</li>
+                <li>Each track is encoded independently</li>
+                <li>Tracks are muxed into a single M4A container</li>
+            </ul>
+
+            <h3>Stem Export Details</h3>
+            <p>Exporting stems creates separate files:</p>
+            <ul>
+                <li>Each track is written to its own M4A file</li>
+                <li>Files are named with track suffixes (-system, -mic)</li>
+                <li>Original multi-track file remains unchanged</li>
+            </ul>
+
+            <h3>Post-Production</h3>
+            <p>Exported stems can be:</p>
+            <ul>
+                <li>Opened in DAWs (Logic Pro, GarageBand, Ableton Live, Reaper)</li>
+                <li>Mixed with different track balances</li>
+                <li>Processed with effects and plugins</li>
+                <li>Exported to other formats (WAV, MP3, etc.)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>ScreenCaptureKit</h2>
+
+            <h3>Underlying Technology</h3>
+            <p>SystemVoiceMemos uses Apple's ScreenCaptureKit framework:</p>
+            <ul>
+                <li>Introduced in macOS 12.3</li>
+                <li>Replaces the deprecated CGDisplayStream API</li>
+                <li>Designed for screen recording and streaming apps</li>
+                <li>Provides efficient access to display and audio streams</li>
+            </ul>
+
+            <h3>Audio Capture</h3>
+            <p>ScreenCaptureKit captures:</p>
+            <ul>
+                <li>System audio from the specified display</li>
+                <li>Does NOT capture video (only audio stream is used)</li>
+                <li>Works even if no screen content is visibly changing</li>
+            </ul>
+
+            <div class="note">
+                <strong>Note:</strong>
+                ScreenCaptureKit requires macOS 12.3+, but SystemVoiceMemos requires macOS 15.0+ for other features and improvements.
+            </div>
+        </section>
+
+        <section>
+            <h2>Privacy and Security</h2>
+
+            <h3>Local-First Design</h3>
+            <p>SystemVoiceMemos is designed with privacy in mind:</p>
+            <ul>
+                <li>All recordings stored locally on your Mac</li>
+                <li>No cloud sync or upload features</li>
+                <li>No analytics or telemetry</li>
+                <li>No user tracking or identification</li>
+            </ul>
+
+            <h3>Open Source</h3>
+            <p>The app is fully open source:</p>
+            <ul>
+                <li>Source code available on GitHub</li>
+                <li>You can audit the code yourself</li>
+                <li>Community contributions welcome</li>
+            </ul>
+
+            <h3>Code Signing</h3>
+            <p>Release builds are:</p>
+            <ul>
+                <li>Signed with a Developer ID certificate</li>
+                <li>Notarized by Apple for macOS security</li>
+                <li>Stapled with the notarization ticket</li>
+            </ul>
+
+            <div class="note">
+                <strong>Verification:</strong>
+                You can verify the app's signature by running <code>codesign -dv /Applications/SystemVoiceMemos.app</code> in Terminal.
+            </div>
+        </section>
+
+        <section>
+            <h2>Building from Source</h2>
+
+            <h3>Requirements</h3>
+            <ul>
+                <li>Xcode 16 or later</li>
+                <li>macOS 15.0+ SDK</li>
+                <li>A Developer Team for code signing (optional for development builds)</li>
+            </ul>
+
+            <h3>Build Steps</h3>
+            <ol>
+                <li>Clone the repository: <code>git clone https://github.com/aramb-dev/SystemVoiceMemos.git</code></li>
+                <li>Open <code>SystemVoiceMemos.xcodeproj</code> in Xcode</li>
+                <li>Select the SystemVoiceMemos scheme</li>
+                <li>Press <kbd>Cmd+B</kbd> to build or <kbd>Cmd+R</kbd> to run</li>
+            </ol>
+
+            <p>See the <a href="https://github.com/aramb-dev/SystemVoiceMemos">GitHub repository</a> for more detailed build instructions.</p>
+        </section>
+
+        <section>
+            <h2>Contributing</h2>
+            <p>SystemVoiceMemos welcomes contributions:</p>
+            <ul>
+                <li><strong>Report bugs:</strong> Open an issue on GitHub</li>
+                <li><strong>Request features:</strong> Suggest ideas in GitHub Discussions</li>
+                <li><strong>Submit code:</strong> Fork, branch, and open a pull request</li>
+            </ul>
+
+            <p>Before contributing, please read the project's contributing guidelines (if available) and check existing issues to avoid duplicates.</p>
+        </section>
+
+        <div class="back-to-top">
+            <a href="index.html">← Back to Topics</a>
+        </div>
+    </div>
+</body>
+</html>

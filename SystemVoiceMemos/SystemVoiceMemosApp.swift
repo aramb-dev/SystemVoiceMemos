@@ -122,10 +122,7 @@ struct SystemVoiceMemosApp: App {
             CommandGroup(after: .help) {
                 // Native macOS Help - opens Help Viewer
                 Button("SystemVoiceMemos Help") {
-                    NSHelpManager.shared.openHelpAnchor(
-                        "top",
-                        inBook: "com.arambdev.SystemVoiceMemos.help"
-                    )
+                    NSApplication.shared.showHelp(nil)
                 }
 
                 Divider()

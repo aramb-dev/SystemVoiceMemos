@@ -23,6 +23,6 @@
 	<key>CFBundleHelpBookFolder</key>
 	<string>SystemVoiceMemos.help</string>
 	<key>CFBundleHelpBookName</key>
-	<string>com.arambdev.SystemVoiceMemos.help</string>
+	<string>SystemVoiceMemos Help</string>
 </dict>
 </plist>

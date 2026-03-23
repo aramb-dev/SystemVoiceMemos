@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="AppleTitle" content="Troubleshooting">
+    <title>Troubleshooting - SystemVoiceMemos Help</title>
+    <link rel="stylesheet" href="css/help.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Troubleshooting</h1>
+            <p class="subtitle">Common issues and solutions</p>
+        </header>
+
+        <section>
+            <h2>Permission Issues</h2>
+
+            <h3>"Screen Recording permission not granted"</h3>
+            <p>Symptoms: Recording won't start, error message about permissions</p>
+            <p><strong>Solutions:</strong></p>
+            <ol>
+                <li>Open <strong>System Settings → Privacy & Security → Screen Recording</strong></li>
+                <li>Find <strong>SystemVoiceMemos</strong> in the list</li>
+                <li>Enable the toggle switch</li>
+                <li><strong>Quit and restart</strong> SystemVoiceMemos</li>
+            </ol>
+            <div class="note">
+                <strong>Tip:</strong>
+                macOS sometimes requires you to toggle Screen Recording permission off and on again after an app update. If permission was already granted but stopped working, try toggling it.
+            </div>
+
+            <h3>Microphone permission denied</h3>
+            <p>Symptoms: Can't enable microphone recording, "Settings" button appears</p>
+            <p><strong>Solutions:</strong></p>
+            <ol>
+                <li>Open <strong>System Settings → Privacy & Security → Microphone</strong></li>
+                <li>Find <strong>SystemVoiceMemos</strong> and enable the toggle</li>
+                <li>Restart the app</li>
+            </ol>
+
+            <h3>Previously denied permissions</h3>
+            <p>If you previously clicked "Don't Allow" for a permission:</p>
+            <ol>
+                <li>Open System Settings and manually enable the permission as described above</li>
+                <li>The app won't prompt again until you grant permission in System Settings</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Recording Issues</h2>
+
+            <h3>"Cannot start recording" error</h3>
+            <p><strong>Possible causes and solutions:</strong></p>
+            <ul>
+                <li><strong>Another app is using system audio:</strong> Quit screen recorders, audio routers, or other capture apps</li>
+                <li><strong>Permission just granted:</strong> Restart SystemVoiceMemos after granting Screen Recording permission</li>
+                <li><strong>Display sleep issue:</strong> Prevent your Mac from sleeping during long recordings</li>
+            </ul>
+
+            <h3>Recording has no audio</h3>
+            <p><strong>Check these:</strong></p>
+            <ul>
+                <li>Is audio actually playing on your Mac? Check system volume</li>
+                <li>Are headphones connected? Audio may be routing there instead of to the system output</li>
+                <li>Try playing from a different app (Music, YouTube, etc.)</li>
+                <li>Open the recording file in QuickTime to verify it truly has no audio</li>
+            </ul>
+
+            <h3>Recording is too quiet or distorted</h3>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li><strong>Too quiet:</strong> Increase the source volume before recording</li>
+                <li><strong>Distorted:</strong> Lower the source volume — capture at moderate levels</li>
+                <li><strong>Check system effects:</strong> Disable any equalizers or audio enhancers in System Settings</li>
+            </ul>
+
+            <h3>Recording stops unexpectedly</h3>
+            <p><strong>Possible causes:</strong></p>
+            <ul>
+                <li><strong>Disk space:</strong> Ensure your Mac has sufficient free disk space</li>
+                <li><strong>System sleep:</strong> Prevent display sleep or use a caffeinate tool</li>
+                <li><strong>App crash:</strong> Check Console.app for crash logs and report the issue</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Playback Issues</h2>
+
+            <h3>No sound during playback</h3>
+            <p><strong>Check:</strong></p>
+            <ul>
+                <li>System volume is not muted and is at a reasonable level</li>
+                <li>Audio output is set to the correct device (check in System Settings → Sound)</li>
+                <li>The recording file actually contains audio (open in QuickTime)</li>
+            </ul>
+
+            <h3>Playback is choppy or stutters</h3>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Close other apps that may be using significant CPU</li>
+                <li>Check if the recording file is corrupted (try opening in QuickTime)</li>
+                <li>Verify the file is on local storage (not a network drive)</li>
+            </ul>
+
+            <h3>Can't select or play a recording</h3>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Verify the recording file still exists in the recordings directory</li>
+                <li>Restart SystemVoiceMemos if the UI seems unresponsive</li>
+                <li>Check Console.app for any error messages</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Update Issues</h2>
+
+            <h3>Updates not downloading</h3>
+            <p><strong>Check:</strong></p>
+            <ul>
+                <li>Internet connection is active</li>
+                <li>Firewall isn't blocking connections to github.com</li>
+                <li>The appcast URL is correct: <code>https://raw.githubusercontent.com/aramb-dev/SystemVoiceMemos/main/appcast.xml</code></li>
+            </ul>
+
+            <h3>Update fails to install</h3>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Ensure the app is in your Applications folder</li>
+                <li>Check that you have write permissions for the app</li>
+                <li>Try downloading manually from GitHub and replacing the app manually</li>
+            </ul>
+
+            <h3>"App is damaged" error after update</h3>
+            <p>This is a macOS security issue. <strong>Solutions:</strong></p>
+            <ol>
+                <li>Right-click (or Control-click) the app and choose <strong>Open</strong></li>
+                <li>Click <strong>Open</strong> in the security dialog</li>
+                <li>The app is now trusted and will open normally</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>File and Folder Issues</h2>
+
+            <h3>Can't find recordings in Finder</h3>
+            <p><strong>Default location:</strong></p>
+            <pre><code>~/Library/Containers/com.arambdev.SystemVoiceMemos/Data/Documents/Recordings/</code></pre>
+            <p>To reveal: Right-click any recording and choose <strong>Show in Finder</strong>.</p>
+
+            <h3>Folders disappeared</h3>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Toggle the sidebar (<kbd>Cmd+Option+S</kbd>) to ensure it's visible</li>
+                <li>Check if you're in a specific folder view — click "All Recordings"</li>
+                <li>Restart the app to refresh the database</li>
+            </ul>
+
+            <h3>Recording shows wrong date or name</h3>
+            <p>This could indicate a database issue. <strong>Solutions:</strong></p>
+            <ul>
+                <li>Right-click the recording and choose <strong>Show in Finder</strong> to verify the actual file date</li>
+                <li>Rename the recording if needed</li>
+                <li>For persistent issues, consider quitting the app and restarting it</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Performance Issues</h2>
+
+            <h3>App is slow or unresponsive</h3>
+            <p><strong>Check:</strong></p>
+            <ul>
+                <li>Number of recordings — very large libraries (1000+) may be slower</li>
+                <li>Available RAM — close other apps if memory is low</li>
+                <li>Disk space — ensure your Mac has free space for the database to operate</li>
+            </ul>
+
+            <h3>High CPU or memory usage</h3>
+            <p><strong>During recording:</strong> Some CPU usage is normal, especially with multi-track recording.</p>
+            <p><strong>When idle:</strong> Should be minimal. If not:</p>
+            <ul>
+                <li>Check for background sync or indexing activity</li>
+                <li>Restart the app</li>
+                <li>Check Console.app for error messages</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Getting Help</h2>
+            <p>If you're still experiencing issues:</p>
+            <ul>
+                <li><strong>Report issues:</strong> <a href="https://github.com/aramb-dev/SystemVoiceMemos/issues">GitHub Issues</a></li>
+                <li><strong>Check for updates:</strong> Make sure you're on the latest version</li>
+                <li><strong>Include details:</strong> macOS version, app version, steps to reproduce, and any error messages</li>
+            </ul>
+
+            <div class="note">
+                <strong>Privacy Note:</strong>
+                When reporting issues, avoid sharing sensitive information about your recordings or personal data. Focus on the technical details of the problem.
+            </div>
+        </section>
+
+        <div class="back-to-top">
+            <a href="index.html">← Back to Topics</a>
+        </div>
+    </div>
+</body>
+</html>

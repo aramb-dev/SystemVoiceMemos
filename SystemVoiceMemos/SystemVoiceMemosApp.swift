@@ -119,13 +119,18 @@ struct SystemVoiceMemosApp: App {
                 .disabled(!playbackManager.hasActivePlayer)
             }
 
-            CommandMenu("Help") {
-                Button("Check for Updates…") {
-                    updaterManager.checkForUpdates()
+            CommandGroup(after: .help) {
+                // Native macOS Help - opens Help Viewer
+                Button("SystemVoiceMemos Help") {
+                    NSHelpManager.shared.openHelpAnchor(
+                        "top",
+                        inBook: "com.arambdev.SystemVoiceMemos.help"
+                    )
                 }
 
                 Divider()
 
+                // Existing onboarding - stays as separate entry
                 Button("Show Welcome Guide") {
                     showOnboarding = true
                 }

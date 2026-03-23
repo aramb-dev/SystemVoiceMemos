@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="AppleTitle" content="Getting Started">
+    <title>Getting Started - SystemVoiceMemos Help</title>
+    <link rel="stylesheet" href="css/help.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Getting Started</h1>
+            <p class="subtitle">Set up SystemVoiceMemos and make your first recording</p>
+        </header>
+
+        <section>
+            <h2>Requirements</h2>
+            <ul>
+                <li>macOS 15.0 or later</li>
+                <li>Screen Recording permission (required for system audio capture)</li>
+                <li>Optional: Microphone permission (for recording external audio devices)</li>
+                <li>Optional: Location permission (for city-based recording naming)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>First Launch</h2>
+            <p>When you first launch SystemVoiceMemos, you'll see the Welcome Guide. This onboarding flow walks you through granting the necessary permissions.</p>
+
+            <h3>Screen Recording Permission</h3>
+            <p><strong>This permission is required</strong> to capture system audio. SystemVoiceMemos uses ScreenCaptureKit to access the audio stream from your displays — no video is recorded.</p>
+            <ol>
+                <li>Click <strong>Grant</strong> next to Screen Recording in the Welcome Guide</li>
+                <li>macOS will open System Settings</li>
+                <li>Find <strong>SystemVoiceMemos</strong> in the list and enable the toggle</li>
+                <li>Return to SystemVoiceMemos — the permission should now show as granted</li>
+            </ol>
+
+            <div class="note">
+                <strong>Note:</strong>
+                If you previously denied Screen Recording permission, you may need to click the <strong>Settings</strong> button to manually open System Settings.
+            </div>
+
+            <h3>Microphone Permission (Optional)</h3>
+            <p>If you want to record external audio devices (microphones, instruments) alongside system audio, grant Microphone access.</p>
+            <ol>
+                <li>Click <strong>Grant</strong> next to Microphone Access</li>
+                <li>When prompted, click <strong>Allow</strong></li>
+            </ol>
+
+            <h3>Location Permission (Optional)</h3>
+            <p>SystemVoiceMemos can automatically name your recordings based on your current city. This is entirely optional and can be enabled later in Settings.</p>
+        </section>
+
+        <section>
+            <h2>Making Your First Recording</h2>
+            <ol>
+                <li>Click <strong>New Recording</strong> in the menu bar or press <kbd>Cmd+N</kbd></li>
+                <li>The recording indicator appears — SystemVoiceMemos is now capturing system audio</li>
+                <li>Play audio on your Mac (music, videos, system sounds — anything)</li>
+                <li>Click <strong>Stop Recording</strong> when done</li>
+                <li>Your recording appears in the recordings list with a timestamp-based name</li>
+            </ol>
+
+            <div class="warning">
+                <strong>Important:</strong>
+                Only one app can capture system audio at a time. If you have other screen recording or audio capture apps running, SystemVoiceMemos may not be able to start recording.
+            </div>
+        </section>
+
+        <section>
+            <h2>Understanding the Interface</h2>
+            <h3>Main Window</h3>
+            <ul>
+                <li><strong>Sidebar</strong> — Browse recordings by folder or view all recordings</li>
+                <li><strong>Recordings List</strong> — Shows all recordings with title, date, and duration</li>
+                <li><strong>Playback Controls</strong> — Play, pause, skip, and seek through recordings</li>
+                <li><strong>Recording Indicator</strong> — Shows when a recording is in progress</li>
+            </ul>
+
+            <h3>Menu Bar</h3>
+            <ul>
+                <li><strong>File</strong> — New Recording, Delete, Show in Finder, Open in QuickTime</li>
+                <li><strong>View</strong> — Toggle Sidebar (<kbd>Cmd+Option+S</kbd>)</li>
+                <li><strong>Playback</strong> — Play/Pause, skip forward/back, play selection</li>
+                <li><strong>Help</strong> — Open this help book or show the Welcome Guide</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Where Recordings Are Stored</h2>
+            <p>By default, SystemVoiceMemos stores recordings in:</p>
+            <pre><code>~/Library/Containers/com.arambdev.SystemVoiceMemos/Data/Documents/Recordings/</code></pre>
+            <p>To reveal this folder in Finder, right-click any recording and choose <strong>Show in Finder</strong>.</p>
+        </section>
+
+        <section>
+            <h2>Next Steps</h2>
+            <ul>
+                <li>Learn more about <a href="recording.html">Recording features</a></li>
+                <li>Explore <a href="playback.html">Playback controls</a></li>
+                <li>Organize with <a href="folders.html">Folders</a></li>
+                <li>Customize your experience in <a href="settings.html">Settings</a></li>
+            </ul>
+        </section>
+
+        <div class="back-to-top">
+            <a href="index.html">← Back to Topics</a>
+        </div>
+    </div>
+</body>
+</html>

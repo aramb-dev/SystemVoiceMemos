@@ -32,6 +32,27 @@
         </item>
         -->
         
+        <!-- Version 0.7.1 -->
+        <item>
+            <title>Version 0.7.1</title>
+            <sparkle:version>0.7.1</sparkle:version>
+            <sparkle:shortVersionString>0.7.1</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.7.1</h2>
+                <ul>
+                    <li>Native macOS Help Book with searchable documentation, keyboard shortcut fixes</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 23 Mar 2026 20:06:08 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.7.1/SystemVoiceMemos-0.7.1.dmg"
+                sparkle:version="0.7.1"
+                sparkle:shortVersionString="0.7.1"
+                length="4682802"
+                type="application/octet-stream"
+                sparkle:edSignature="f3oz6CBAA8H4fRS94bWq57C+RUo8IJWeEjfU3NYX63ZXA2XVJgeDpZf0UaAZliDwzSCmtHThfi0hlZXutTPPBw==" />
+        </item>
+
         <!-- Version 0.7.0 -->
         <item>
             <title>Version 0.7.0</title>

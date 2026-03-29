@@ -45,6 +45,29 @@ final class PlaybackManager: NSObject, ObservableObject {
         case bothMixed
     }
 
+    /// Output format for export
+    enum ExportFormat {
+        case m4a
+        case wav
+        case aiff
+
+        var fileExtension: String {
+            switch self {
+            case .m4a: return "m4a"
+            case .wav: return "wav"
+            case .aiff: return "aiff"
+            }
+        }
+
+        var avFileType: AVFileType {
+            switch self {
+            case .m4a: return .m4a
+            case .wav: return .wav
+            case .aiff: return .aiff
+            }
+        }
+    }
+
     /// Internal recording information
     private struct RecordingInfo {
         let id: UUID
@@ -405,53 +428,120 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Export
-    
-    /// Exports a recording based on the specified mode
-    ///
-    /// - Parameters:
-    ///   - recording: The recording to export
-    ///   - mode: The export mode
-    ///   - destinationURL: Where to save the exported file
-    func exportRecording(_ recording: RecordingEntity, mode: ExportMode, to destinationURL: URL) async throws {
+
+    /// Exports a recording using the specified track mode and output format.
+    func exportRecording(
+        _ recording: RecordingEntity,
+        mode: ExportMode,
+        format: ExportFormat = .m4a,
+        to destinationURL: URL
+    ) async throws {
         let info = try makeInfo(from: recording)
         let asset = AVAsset(url: info.url)
-        
-        let composition = AVMutableComposition()
         let tracks = try await asset.loadTracks(withMediaType: .audio)
-        
+        let duration = try await asset.load(.duration)
+
+        let composition = AVMutableComposition()
+
         switch mode {
         case .systemOnly:
-            if let systemTrack = tracks.first {
-                let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: asset.load(.duration)), of: systemTrack, at: .zero)
-            }
+            guard let systemTrack = tracks.first else { break }
+            let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: systemTrack, at: .zero)
         case .micOnly:
-            if tracks.count > 1 {
-                let micTrack = tracks[1]
-                let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: asset.load(.duration)), of: micTrack, at: .zero)
-            } else {
+            guard tracks.count > 1 else {
                 throw NSError(domain: "PlaybackManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Microphone track not found"])
             }
+            let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: tracks[1], at: .zero)
         case .bothMixed:
-            // Both tracks will be mixed by default if we add them both to the composition
             for track in tracks {
                 let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: asset.load(.duration)), of: track, at: .zero)
+                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: track, at: .zero)
             }
         }
-        
-        guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
+
+        switch format {
+        case .m4a:
+            try await exportAsM4A(composition: composition, to: destinationURL)
+        case .wav, .aiff:
+            try await exportAsPCM(composition: composition, format: format, to: destinationURL)
+        }
+    }
+
+    private func exportAsM4A(composition: AVMutableComposition, to destinationURL: URL) async throws {
+        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
             throw NSError(domain: "PlaybackManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create export session"])
         }
-        
-        exportSession.outputURL = destinationURL
-        exportSession.outputFileType = .m4a
-        
-        await exportSession.export()
-        
-        if exportSession.status == .failed {
-            throw exportSession.error ?? NSError(domain: "PlaybackManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Export failed"])
+        try await session.export(to: destinationURL, as: .m4a)
+    }
+
+    /// Decodes the composition to linear PCM and writes as WAV or AIFF.
+    /// This produces files compatible with Python ML tools (transformers, whisper, librosa).
+    private func exportAsPCM(composition: AVMutableComposition, format: ExportFormat, to destinationURL: URL) async throws {
+        let reader = try AVAssetReader(asset: composition)
+
+        let pcmSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 2,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: format == .aiff,
+            AVLinearPCMIsNonInterleavedKey: false
+        ]
+
+        let compTracks = try await composition.loadTracks(withMediaType: .audio)
+        let readerOutput = AVAssetReaderAudioMixOutput(audioTracks: compTracks, audioSettings: pcmSettings)
+        readerOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(readerOutput) else {
+            throw NSError(domain: "PlaybackManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Cannot read audio tracks for export"])
+        }
+        reader.add(readerOutput)
+
+        let writer = try AVAssetWriter(outputURL: destinationURL, fileType: format.avFileType)
+        let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: pcmSettings)
+        writerInput.expectsMediaDataInRealTime = false
+        guard writer.canAdd(writerInput) else {
+            throw NSError(domain: "PlaybackManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Cannot write audio"])
+        }
+        writer.add(writerInput)
+
+        guard reader.startReading() else {
+            throw reader.error ?? NSError(domain: "PlaybackManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to start reading audio"])
+        }
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            writerInput.requestMediaDataWhenReady(on: DispatchQueue(label: "SVM.PCMExport")) {
+                while writerInput.isReadyForMoreMediaData {
+                    if reader.status == .reading, let buffer = readerOutput.copyNextSampleBuffer() {
+                        if !writerInput.append(buffer) {
+                            writerInput.markAsFinished()
+                            writer.cancelWriting()
+                            continuation.resume(throwing: writer.error ?? NSError(
+                                domain: "PlaybackManager", code: 7,
+                                userInfo: [NSLocalizedDescriptionKey: "Failed to write audio data"]
+                            ))
+                            return
+                        }
+                    } else {
+                        writerInput.markAsFinished()
+                        writer.finishWriting {
+                            if writer.status == .failed {
+                                continuation.resume(throwing: writer.error ?? NSError(
+                                    domain: "PlaybackManager", code: 8,
+                                    userInfo: [NSLocalizedDescriptionKey: "Export failed"]
+                                ))
+                            } else {
+                                continuation.resume()
+                            }
+                        }
+                        return
+                    }
+                }
+            }
         }
     }
 

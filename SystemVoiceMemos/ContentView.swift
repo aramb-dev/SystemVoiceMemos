@@ -10,6 +10,7 @@ import SwiftUI
 import AppKit
 import SwiftData
 import AVFoundation
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     // MARK: - Environment & Data
@@ -264,20 +265,25 @@ struct ContentView: View {
     private func showExportStemsPanel(for recording: RecordingEntity) {
         let panel = NSSavePanel()
         panel.title = "Export Recording"
-        panel.nameFieldStringValue = recording.title
         panel.allowedContentTypes = [.mpeg4Audio]
-        
+        panel.nameFieldStringValue = "\(recording.title).m4a"
+
         let settings = ExportSettings(hasMic: recording.hasMicTrack)
-        let accessory = NSHostingView(rootView: ExportAccessoryView(settings: settings))
-        accessory.frame = NSRect(x: 0, y: 0, width: 300, height: 100)
+        let accessory = NSHostingView(rootView: ExportAccessoryView(settings: settings, onFormatChange: { format in
+            panel.allowedContentTypes = [format.utType]
+            let base = (panel.nameFieldStringValue as NSString).deletingPathExtension
+            panel.nameFieldStringValue = "\(base).\(format.fileExtension)"
+        }))
+        accessory.frame = NSRect(x: 0, y: 0, width: 260, height: 200)
         panel.accessoryView = accessory
-        
+
         panel.begin { response in
             if response == .OK, let url = panel.url {
                 let mode = settings.selectedMode
+                let format = settings.selectedFormat
                 Task {
                     do {
-                        try await playbackManager.exportRecording(recording, mode: mode, to: url)
+                        try await playbackManager.exportRecording(recording, mode: mode, format: format, to: url)
                     } catch {
                         await MainActor.run {
                             let alert = NSAlert()
@@ -515,20 +521,31 @@ struct FolderWrapper: Identifiable {
 final class ExportSettings: ObservableObject {
     let hasMic: Bool
     @Published var selectedMode: PlaybackManager.ExportMode = .bothMixed
-    
+    @Published var selectedFormat: PlaybackManager.ExportFormat = .m4a
+
     init(hasMic: Bool) {
         self.hasMic = hasMic
     }
 }
 
+private extension PlaybackManager.ExportFormat {
+    var utType: UTType {
+        switch self {
+        case .m4a: return .mpeg4Audio
+        case .wav: return .wav
+        case .aiff: return .aiff
+        }
+    }
+}
+
 struct ExportAccessoryView: View {
     @ObservedObject var settings: ExportSettings
-    
+    var onFormatChange: (PlaybackManager.ExportFormat) -> Void = { _ in }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Export Mode")
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Tracks")
                 .font(.headline)
-            
             Picker("", selection: $settings.selectedMode) {
                 Text("Both (Mixed)").tag(PlaybackManager.ExportMode.bothMixed)
                 Text("System Audio Only").tag(PlaybackManager.ExportMode.systemOnly)
@@ -537,7 +554,22 @@ struct ExportAccessoryView: View {
                 }
             }
             .pickerStyle(.radioGroup)
+
+            Divider()
+
+            Text("Format")
+                .font(.headline)
+            Picker("", selection: $settings.selectedFormat) {
+                Text("M4A (AAC)").tag(PlaybackManager.ExportFormat.m4a)
+                Text("WAV (16-bit PCM)").tag(PlaybackManager.ExportFormat.wav)
+                Text("AIFF (16-bit PCM)").tag(PlaybackManager.ExportFormat.aiff)
+            }
+            .pickerStyle(.radioGroup)
+            .onChange(of: settings.selectedFormat) { _, newFormat in
+                onFormatChange(newFormat)
+            }
         }
         .padding()
+        .frame(width: 260)
     }
 }

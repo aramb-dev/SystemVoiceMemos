@@ -16,6 +16,7 @@ enum AppConstants {
         static let audioQuality = "audioQuality"
         static let locationBasedNaming = "locationBasedNaming"
         static let includeMicrophone = "includeMicrophone"
+        static let selectedMicrophoneUID = "selectedMicrophoneUID"
 
         static let shareClickedCount = "shareClickedCount"
         static let shareCompletedCount = "shareCompletedCount"

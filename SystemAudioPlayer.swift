@@ -10,6 +10,7 @@
 
 import Foundation
 import AVFoundation
+import AudioToolbox
 import MediaPlayer
 
 /// Manages audio playback for recordings
@@ -50,20 +51,14 @@ final class PlaybackManager: NSObject, ObservableObject {
         case m4a
         case wav
         case aiff
+        case mp3
 
         var fileExtension: String {
             switch self {
             case .m4a: return "m4a"
             case .wav: return "wav"
             case .aiff: return "aiff"
-            }
-        }
-
-        var avFileType: AVFileType {
-            switch self {
-            case .m4a: return .m4a
-            case .wav: return .wav
-            case .aiff: return .aiff
+            case .mp3: return "mp3"
             }
         }
     }
@@ -466,6 +461,8 @@ final class PlaybackManager: NSObject, ObservableObject {
             try await exportAsM4A(composition: composition, to: destinationURL)
         case .wav, .aiff:
             try await exportAsPCM(composition: composition, format: format, to: destinationURL)
+        case .mp3:
+            try await exportAsMP3(composition: composition, to: destinationURL)
         }
     }
 
@@ -488,7 +485,7 @@ final class PlaybackManager: NSObject, ObservableObject {
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: format == .aiff,
-            AVLinearPCMIsNonInterleavedKey: false
+
         ]
 
         let compTracks = try await composition.loadTracks(withMediaType: .audio)
@@ -499,7 +496,8 @@ final class PlaybackManager: NSObject, ObservableObject {
         }
         reader.add(readerOutput)
 
-        let writer = try AVAssetWriter(outputURL: destinationURL, fileType: format.avFileType)
+        let avFileType: AVFileType = format == .aiff ? .aiff : .wav
+        let writer = try AVAssetWriter(outputURL: destinationURL, fileType: avFileType)
         let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: pcmSettings)
         writerInput.expectsMediaDataInRealTime = false
         guard writer.canAdd(writerInput) else {
@@ -545,8 +543,103 @@ final class PlaybackManager: NSObject, ObservableObject {
         }
     }
 
+    /// Decodes the composition and encodes to MP3 via ExtAudioFile.
+    /// Uses macOS's built-in Fraunhofer MP3 encoder at 192 kbps.
+    private func exportAsMP3(composition: AVMutableComposition, to destinationURL: URL) async throws {
+        let reader = try AVAssetReader(asset: composition)
+
+        let pcmSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 2,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+
+        ]
+
+        let compTracks = try await composition.loadTracks(withMediaType: .audio)
+        let readerOutput = AVAssetReaderAudioMixOutput(audioTracks: compTracks, audioSettings: pcmSettings)
+        readerOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(readerOutput) else {
+            throw NSError(domain: "PlaybackManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Cannot read audio tracks for MP3 export"])
+        }
+        reader.add(readerOutput)
+
+        // Create MP3 output file via ExtAudioFile (handles encoding internally)
+        var dstASBD = AudioStreamBasicDescription(
+            mSampleRate: 44100, mFormatID: kAudioFormatMPEGLayer3,
+            mFormatFlags: 0, mBytesPerPacket: 0, mFramesPerPacket: 1152,
+            mBytesPerFrame: 0, mChannelsPerFrame: 2, mBitsPerChannel: 0, mReserved: 0
+        )
+        var extFileRef: ExtAudioFileRef?
+        let createStatus = ExtAudioFileCreateWithURL(
+            destinationURL as CFURL, kAudioFileMP3Type, &dstASBD,
+            nil, AudioFileFlags.eraseFile.rawValue, &extFileRef
+        )
+        guard createStatus == noErr, let extFile = extFileRef else {
+            throw NSError(domain: "PlaybackManager", code: 11, userInfo: [
+                NSLocalizedDescriptionKey: "MP3 encoding is not available on this system (status \(createStatus))"
+            ])
+        }
+        defer { ExtAudioFileDispose(extFile) }
+
+        // Tell ExtAudioFile the format we'll feed in (16-bit signed PCM stereo)
+        var clientASBD = AudioStreamBasicDescription(
+            mSampleRate: 44100, mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked,
+            mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4,
+            mChannelsPerFrame: 2, mBitsPerChannel: 16, mReserved: 0
+        )
+        guard ExtAudioFileSetProperty(
+            extFile, kExtAudioFileProperty_ClientDataFormat,
+            UInt32(MemoryLayout<AudioStreamBasicDescription>.size), &clientASBD
+        ) == noErr else {
+            throw NSError(domain: "PlaybackManager", code: 13, userInfo: [NSLocalizedDescriptionKey: "Failed to configure MP3 encoder"])
+        }
+
+        // Optionally bump bitrate to 192 kbps via the underlying AudioConverter
+        var convRef: AudioConverterRef?
+        var convRefSize = UInt32(MemoryLayout<AudioConverterRef>.size)
+        if ExtAudioFileGetProperty(extFile, kExtAudioFileProperty_AudioConverter, &convRefSize, &convRef) == noErr,
+           let conv = convRef {
+            var bitRate: UInt32 = 192_000
+            AudioConverterSetProperty(conv, kAudioConverterEncodeBitRate, 4, &bitRate)
+            // Signal ExtAudioFile that converter settings changed
+            var dummy: UInt32 = 1
+            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, &dummy)
+        }
+
+        guard reader.startReading() else {
+            throw reader.error ?? NSError(domain: "PlaybackManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to start reading audio"])
+        }
+
+        // Feed PCM sample buffers; ExtAudioFile encodes to MP3 as we write
+        while let sampleBuf = readerOutput.copyNextSampleBuffer() {
+            guard let blockBuf = CMSampleBufferGetDataBuffer(sampleBuf) else { continue }
+            let numFrames = CMSampleBufferGetNumSamples(sampleBuf)
+            var totalLength = 0
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            guard CMBlockBufferGetDataPointer(
+                blockBuf, atOffset: 0, lengthAtOffsetOut: nil,
+                totalLengthOut: &totalLength, dataPointerOut: &dataPointer
+            ) == kCMBlockBufferNoErr, let dataPtr = dataPointer else { continue }
+
+            var bufList = AudioBufferList(
+                mNumberBuffers: 1,
+                mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(totalLength), mData: dataPtr)
+            )
+            let writeStatus = ExtAudioFileWrite(extFile, UInt32(numFrames), &bufList)
+            if writeStatus != noErr {
+                throw NSError(domain: "PlaybackManager", code: 14, userInfo: [
+                    NSLocalizedDescriptionKey: "MP3 encoding failed (status \(writeStatus))"
+                ])
+            }
+        }
+    }
+
     // MARK: - Progress Tracking
-    
+
     /// Starts the progress update timer
     private func startTimer() {
         stopTimer()

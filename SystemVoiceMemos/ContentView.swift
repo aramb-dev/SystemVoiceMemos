@@ -31,6 +31,13 @@ struct ContentView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing)
     private var hideFromScreenSharing = true
 
+    @AppStorage(AppConstants.UserDefaultsKeys.includeMicrophone)
+    private var includeMicrophone = false
+
+    @AppStorage(AppConstants.UserDefaultsKeys.selectedMicrophoneUID)
+    private var selectedMicUID = ""
+
+    @State private var availableMics: [AVCaptureDevice] = []
     @State private var sharePresenter = RecordingSharePresenter()
 
     private var appState: AppState { AppState.shared }
@@ -216,6 +223,19 @@ struct ContentView: View {
     private func handleAppear() {
         recalcSelection()
         vm.applyScreenSharingPreference(hideFromScreenSharing)
+        loadAvailableMics()
+    }
+
+    private func loadAvailableMics() {
+        let session = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.microphone],
+            mediaType: .audio,
+            position: .unspecified
+        )
+        availableMics = session.devices
+        if selectedMicUID.isEmpty, let first = availableMics.first {
+            selectedMicUID = first.uniqueID
+        }
     }
 
     private func handleStartRecording() {
@@ -434,6 +454,26 @@ struct ContentView: View {
                 }
                 .help("Share Recording")
             }
+
+            Menu {
+                Toggle("Include Microphone", isOn: $includeMicrophone)
+
+                if !availableMics.isEmpty {
+                    Divider()
+                    Picker("Input Device", selection: $selectedMicUID) {
+                        ForEach(availableMics, id: \.uniqueID) { device in
+                            Text(device.localizedName).tag(device.uniqueID)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                }
+            } label: {
+                Label(
+                    includeMicrophone ? "Mic On" : "Mic Off",
+                    systemImage: includeMicrophone ? "mic.fill" : "mic.slash"
+                )
+            }
+            .help(includeMicrophone ? "Microphone enabled — tap to configure" : "Microphone disabled — tap to configure")
         }
 
         ToolbarItemGroup(placement: .secondaryAction) {
@@ -534,6 +574,7 @@ private extension PlaybackManager.ExportFormat {
         case .m4a: return .mpeg4Audio
         case .wav: return .wav
         case .aiff: return .aiff
+        case .mp3: return .mp3
         }
     }
 }
@@ -561,6 +602,7 @@ struct ExportAccessoryView: View {
                 .font(.headline)
             Picker("", selection: $settings.selectedFormat) {
                 Text("M4A (AAC)").tag(PlaybackManager.ExportFormat.m4a)
+                Text("MP3 (192 kbps)").tag(PlaybackManager.ExportFormat.mp3)
                 Text("WAV (16-bit PCM)").tag(PlaybackManager.ExportFormat.wav)
                 Text("AIFF (16-bit PCM)").tag(PlaybackManager.ExportFormat.aiff)
             }

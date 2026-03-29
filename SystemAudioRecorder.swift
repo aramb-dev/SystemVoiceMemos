@@ -185,7 +185,11 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             }
 
             let session = AVCaptureSession()
-            if let device = AVCaptureDevice.default(for: .audio),
+            let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
+            let micDevice = storedUID.isEmpty
+                ? AVCaptureDevice.default(for: .audio)
+                : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
+            if let device = micDevice,
                let deviceInput = try? AVCaptureDeviceInput(device: device) {
                 if session.canAddInput(deviceInput) {
                     session.addInput(deviceInput)

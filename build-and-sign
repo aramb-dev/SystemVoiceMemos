@@ -422,6 +422,24 @@ ${RELEASE_NOTES_HTML}
 EOF
 
 log_success "Sparkle signature generated."
+
+# Patch appcast.xml in place if it has placeholder values for this version
+APPCAST_PATH="$PWD/appcast.xml"
+if [[ -f "$APPCAST_PATH" ]]; then
+    if grep -q "FILL_IN_FILE_SIZE" "$APPCAST_PATH" || grep -q "FILL_IN_SIGNATURE" "$APPCAST_PATH"; then
+        log_info "Patching appcast.xml with size and signature..."
+        sed -i '' \
+            "s|length=\"FILL_IN_FILE_SIZE\"|length=\"${FILE_SIZE}\"|g" \
+            "$APPCAST_PATH"
+        sed -i '' \
+            "s|sparkle:edSignature=\"FILL_IN_SIGNATURE\"|sparkle:edSignature=\"${SPARKLE_SIGNATURE}\"|g" \
+            "$APPCAST_PATH"
+        log_success "appcast.xml updated."
+    else
+        log_warn "appcast.xml has no placeholders for this version — snippet saved to $APPCAST_SNIPPET_PATH"
+    fi
+fi
+
 echo ""
 log_success "=== Release Summary ==="
 log_info "Version:    $VERSION"
@@ -433,9 +451,9 @@ if [[ "$NOTARIZED" == "true" ]]; then
 else
     log_warn "Notarized:  No (set NOTARY_PROFILE to enable)"
 fi
-log_info "Appcast:    $APPCAST_SNIPPET_PATH"
+log_info "Appcast:    $APPCAST_PATH (updated)"
 echo ""
 log_info "Next steps:"
-log_info "  1. Copy appcast snippet into appcast.xml"
-log_info "  2. gh release create v${VERSION} \"$DMG_PATH\" -t \"v${VERSION}\" -n \"Release notes\""
+log_info "  1. gh release create v${VERSION} \"$DMG_PATH\" -t \"v${VERSION}\" -n \"Release notes\""
+log_info "  2. git add appcast.xml && git commit -m \"release: v${VERSION}\""
 log_info "  3. git push"

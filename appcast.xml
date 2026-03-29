@@ -32,6 +32,29 @@
         </item>
         -->
         
+        <!-- Version 0.8.0 -->
+        <item>
+            <title>Version 0.8.0</title>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>0.8.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.8.0</h2>
+                <ul>
+                    <li><strong>MP3 export</strong> - Export recordings as 192 kbps MP3 (compatible with all players and Python ML tools)</li>
+                    <li><strong>Microphone toolbar controls</strong> - Toggle mic on/off and pick your input device directly from the toolbar</li>
+                    <li><strong>WAV &amp; AIFF export</strong> - Lossless PCM formats for use with Whisper, librosa, and other audio tools</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 30 Mar 2026 00:00:00 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.8.0/SystemVoiceMemos-0.8.0.dmg"
+                sparkle:version="9"
+                sparkle:shortVersionString="0.8.0"
+                length="4723911"
+                type="application/octet-stream"
+                sparkle:edSignature="v3lqNg1j++Yyu0lrIKCi64bMDPp1h9LYv6QHNUrxp+HTE2l4Oxq/iS57ZKtie/NaYonXY8KZvLip6iDECiW7Cg==" />
+        </item>
+
         <!-- Version 0.7.1 -->
         <item>
             <title>Version 0.7.1</title>

@@ -10,6 +10,7 @@
 
 import Foundation
 import AVFoundation
+import AudioToolbox
 import MediaPlayer
 
 /// Manages audio playback for recordings
@@ -43,6 +44,23 @@ final class PlaybackManager: NSObject, ObservableObject {
         case systemOnly
         case micOnly
         case bothMixed
+    }
+
+    /// Output format for export
+    enum ExportFormat {
+        case m4a
+        case wav
+        case aiff
+        case mp3
+
+        var fileExtension: String {
+            switch self {
+            case .m4a: return "m4a"
+            case .wav: return "wav"
+            case .aiff: return "aiff"
+            case .mp3: return "mp3"
+            }
+        }
     }
 
     /// Internal recording information
@@ -405,58 +423,223 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Export
-    
-    /// Exports a recording based on the specified mode
-    ///
-    /// - Parameters:
-    ///   - recording: The recording to export
-    ///   - mode: The export mode
-    ///   - destinationURL: Where to save the exported file
-    func exportRecording(_ recording: RecordingEntity, mode: ExportMode, to destinationURL: URL) async throws {
+
+    /// Exports a recording using the specified track mode and output format.
+    func exportRecording(
+        _ recording: RecordingEntity,
+        mode: ExportMode,
+        format: ExportFormat = .m4a,
+        to destinationURL: URL
+    ) async throws {
         let info = try makeInfo(from: recording)
         let asset = AVAsset(url: info.url)
-        
-        let composition = AVMutableComposition()
         let tracks = try await asset.loadTracks(withMediaType: .audio)
-        
+        let duration = try await asset.load(.duration)
+
+        let composition = AVMutableComposition()
+
         switch mode {
         case .systemOnly:
-            if let systemTrack = tracks.first {
-                let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: asset.load(.duration)), of: systemTrack, at: .zero)
-            }
+            guard let systemTrack = tracks.first else { break }
+            let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: systemTrack, at: .zero)
         case .micOnly:
-            if tracks.count > 1 {
-                let micTrack = tracks[1]
-                let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: asset.load(.duration)), of: micTrack, at: .zero)
-            } else {
+            guard tracks.count > 1 else {
                 throw NSError(domain: "PlaybackManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Microphone track not found"])
             }
+            let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: tracks[1], at: .zero)
         case .bothMixed:
-            // Both tracks will be mixed by default if we add them both to the composition
             for track in tracks {
                 let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: asset.load(.duration)), of: track, at: .zero)
+                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: track, at: .zero)
             }
         }
-        
-        guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
+
+        switch format {
+        case .m4a:
+            try await exportAsM4A(composition: composition, to: destinationURL)
+        case .wav, .aiff:
+            try await exportAsPCM(composition: composition, format: format, to: destinationURL)
+        case .mp3:
+            try await exportAsMP3(composition: composition, to: destinationURL)
+        }
+    }
+
+    private func exportAsM4A(composition: AVMutableComposition, to destinationURL: URL) async throws {
+        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
             throw NSError(domain: "PlaybackManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create export session"])
         }
-        
-        exportSession.outputURL = destinationURL
-        exportSession.outputFileType = .m4a
-        
-        await exportSession.export()
-        
-        if exportSession.status == .failed {
-            throw exportSession.error ?? NSError(domain: "PlaybackManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Export failed"])
+        try await session.export(to: destinationURL, as: .m4a)
+    }
+
+    /// Decodes the composition to linear PCM and writes as WAV or AIFF.
+    /// This produces files compatible with Python ML tools (transformers, whisper, librosa).
+    private func exportAsPCM(composition: AVMutableComposition, format: ExportFormat, to destinationURL: URL) async throws {
+        let reader = try AVAssetReader(asset: composition)
+
+        let pcmSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 2,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: format == .aiff,
+
+        ]
+
+        let compTracks = try await composition.loadTracks(withMediaType: .audio)
+        let readerOutput = AVAssetReaderAudioMixOutput(audioTracks: compTracks, audioSettings: pcmSettings)
+        readerOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(readerOutput) else {
+            throw NSError(domain: "PlaybackManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Cannot read audio tracks for export"])
+        }
+        reader.add(readerOutput)
+
+        let avFileType: AVFileType = format == .aiff ? .aiff : .wav
+        let writer = try AVAssetWriter(outputURL: destinationURL, fileType: avFileType)
+        let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: pcmSettings)
+        writerInput.expectsMediaDataInRealTime = false
+        guard writer.canAdd(writerInput) else {
+            throw NSError(domain: "PlaybackManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Cannot write audio"])
+        }
+        writer.add(writerInput)
+
+        guard reader.startReading() else {
+            throw reader.error ?? NSError(domain: "PlaybackManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to start reading audio"])
+        }
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            writerInput.requestMediaDataWhenReady(on: DispatchQueue(label: "SVM.PCMExport")) {
+                while writerInput.isReadyForMoreMediaData {
+                    if reader.status == .reading, let buffer = readerOutput.copyNextSampleBuffer() {
+                        if !writerInput.append(buffer) {
+                            writerInput.markAsFinished()
+                            writer.cancelWriting()
+                            continuation.resume(throwing: writer.error ?? NSError(
+                                domain: "PlaybackManager", code: 7,
+                                userInfo: [NSLocalizedDescriptionKey: "Failed to write audio data"]
+                            ))
+                            return
+                        }
+                    } else {
+                        writerInput.markAsFinished()
+                        writer.finishWriting {
+                            if writer.status == .failed {
+                                continuation.resume(throwing: writer.error ?? NSError(
+                                    domain: "PlaybackManager", code: 8,
+                                    userInfo: [NSLocalizedDescriptionKey: "Export failed"]
+                                ))
+                            } else {
+                                continuation.resume()
+                            }
+                        }
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    /// Decodes the composition and encodes to MP3 via ExtAudioFile.
+    /// Uses macOS's built-in Fraunhofer MP3 encoder at 192 kbps.
+    private func exportAsMP3(composition: AVMutableComposition, to destinationURL: URL) async throws {
+        let reader = try AVAssetReader(asset: composition)
+
+        let pcmSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 2,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+
+        ]
+
+        let compTracks = try await composition.loadTracks(withMediaType: .audio)
+        let readerOutput = AVAssetReaderAudioMixOutput(audioTracks: compTracks, audioSettings: pcmSettings)
+        readerOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(readerOutput) else {
+            throw NSError(domain: "PlaybackManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Cannot read audio tracks for MP3 export"])
+        }
+        reader.add(readerOutput)
+
+        // Create MP3 output file via ExtAudioFile (handles encoding internally)
+        var dstASBD = AudioStreamBasicDescription(
+            mSampleRate: 44100, mFormatID: kAudioFormatMPEGLayer3,
+            mFormatFlags: 0, mBytesPerPacket: 0, mFramesPerPacket: 1152,
+            mBytesPerFrame: 0, mChannelsPerFrame: 2, mBitsPerChannel: 0, mReserved: 0
+        )
+        var extFileRef: ExtAudioFileRef?
+        let createStatus = ExtAudioFileCreateWithURL(
+            destinationURL as CFURL, kAudioFileMP3Type, &dstASBD,
+            nil, AudioFileFlags.eraseFile.rawValue, &extFileRef
+        )
+        guard createStatus == noErr, let extFile = extFileRef else {
+            throw NSError(domain: "PlaybackManager", code: 11, userInfo: [
+                NSLocalizedDescriptionKey: "MP3 encoding is not available on this system (status \(createStatus))"
+            ])
+        }
+        defer { ExtAudioFileDispose(extFile) }
+
+        // Tell ExtAudioFile the format we'll feed in (16-bit signed PCM stereo)
+        var clientASBD = AudioStreamBasicDescription(
+            mSampleRate: 44100, mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked,
+            mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4,
+            mChannelsPerFrame: 2, mBitsPerChannel: 16, mReserved: 0
+        )
+        guard ExtAudioFileSetProperty(
+            extFile, kExtAudioFileProperty_ClientDataFormat,
+            UInt32(MemoryLayout<AudioStreamBasicDescription>.size), &clientASBD
+        ) == noErr else {
+            throw NSError(domain: "PlaybackManager", code: 13, userInfo: [NSLocalizedDescriptionKey: "Failed to configure MP3 encoder"])
+        }
+
+        // Optionally bump bitrate to 192 kbps via the underlying AudioConverter
+        var convRef: AudioConverterRef?
+        var convRefSize = UInt32(MemoryLayout<AudioConverterRef>.size)
+        if ExtAudioFileGetProperty(extFile, kExtAudioFileProperty_AudioConverter, &convRefSize, &convRef) == noErr,
+           let conv = convRef {
+            var bitRate: UInt32 = 192_000
+            AudioConverterSetProperty(conv, kAudioConverterEncodeBitRate, 4, &bitRate)
+            // Signal ExtAudioFile that converter settings changed
+            var dummy: UInt32 = 1
+            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, &dummy)
+        }
+
+        guard reader.startReading() else {
+            throw reader.error ?? NSError(domain: "PlaybackManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to start reading audio"])
+        }
+
+        // Feed PCM sample buffers; ExtAudioFile encodes to MP3 as we write
+        while let sampleBuf = readerOutput.copyNextSampleBuffer() {
+            guard let blockBuf = CMSampleBufferGetDataBuffer(sampleBuf) else { continue }
+            let numFrames = CMSampleBufferGetNumSamples(sampleBuf)
+            var totalLength = 0
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            guard CMBlockBufferGetDataPointer(
+                blockBuf, atOffset: 0, lengthAtOffsetOut: nil,
+                totalLengthOut: &totalLength, dataPointerOut: &dataPointer
+            ) == kCMBlockBufferNoErr, let dataPtr = dataPointer else { continue }
+
+            var bufList = AudioBufferList(
+                mNumberBuffers: 1,
+                mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(totalLength), mData: dataPtr)
+            )
+            let writeStatus = ExtAudioFileWrite(extFile, UInt32(numFrames), &bufList)
+            if writeStatus != noErr {
+                throw NSError(domain: "PlaybackManager", code: 14, userInfo: [
+                    NSLocalizedDescriptionKey: "MP3 encoding failed (status \(writeStatus))"
+                ])
+            }
         }
     }
 
     // MARK: - Progress Tracking
-    
+
     /// Starts the progress update timer
     private func startTimer() {
         stopTimer()

@@ -25,5 +25,8 @@ xcuserdata/
 .claude/audit/
 .claude/settings.local.json
 
+# Build artifacts
+dist/
+
 # Sparkle
 .sparkle_private_key

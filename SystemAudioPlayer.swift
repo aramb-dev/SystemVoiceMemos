@@ -440,7 +440,9 @@ final class PlaybackManager: NSObject, ObservableObject {
 
         switch mode {
         case .systemOnly:
-            guard let systemTrack = tracks.first else { break }
+            guard let systemTrack = tracks.first else {
+                throw NSError(domain: "PlaybackManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "System audio track not found"])
+            }
             let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
             try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: systemTrack, at: .zero)
         case .micOnly:
@@ -525,6 +527,15 @@ final class PlaybackManager: NSObject, ObservableObject {
                             return
                         }
                     } else {
+                        if reader.status == .failed {
+                            writerInput.markAsFinished()
+                            writer.cancelWriting()
+                            continuation.resume(throwing: reader.error ?? NSError(
+                                domain: "PlaybackManager", code: 16,
+                                userInfo: [NSLocalizedDescriptionKey: "Audio read failed during PCM export"]
+                            ))
+                            return
+                        }
                         writerInput.markAsFinished()
                         writer.finishWriting {
                             if writer.status == .failed {
@@ -606,34 +617,49 @@ final class PlaybackManager: NSObject, ObservableObject {
             var bitRate: UInt32 = 192_000
             AudioConverterSetProperty(conv, kAudioConverterEncodeBitRate, 4, &bitRate)
             // Signal ExtAudioFile that converter settings changed
-            var dummy: UInt32 = 1
-            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, &dummy)
+            // Notify ExtAudioFile that converter properties changed (nil/0 is the correct signal)
+            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, nil)
         }
 
         guard reader.startReading() else {
             throw reader.error ?? NSError(domain: "PlaybackManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to start reading audio"])
         }
 
-        // Feed PCM sample buffers; ExtAudioFile encodes to MP3 as we write
-        while let sampleBuf = readerOutput.copyNextSampleBuffer() {
-            guard let blockBuf = CMSampleBufferGetDataBuffer(sampleBuf) else { continue }
-            let numFrames = CMSampleBufferGetNumSamples(sampleBuf)
-            var totalLength = 0
-            var dataPointer: UnsafeMutablePointer<Int8>?
-            guard CMBlockBufferGetDataPointer(
-                blockBuf, atOffset: 0, lengthAtOffsetOut: nil,
-                totalLengthOut: &totalLength, dataPointerOut: &dataPointer
-            ) == kCMBlockBufferNoErr, let dataPtr = dataPointer else { continue }
+        // Run the encode loop off the main actor to avoid blocking the UI
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            Task.detached {
+                do {
+                    while let sampleBuf = readerOutput.copyNextSampleBuffer() {
+                        guard let blockBuf = CMSampleBufferGetDataBuffer(sampleBuf) else { continue }
+                        let numFrames = CMSampleBufferGetNumSamples(sampleBuf)
+                        var totalLength = 0
+                        var dataPointer: UnsafeMutablePointer<Int8>?
+                        guard CMBlockBufferGetDataPointer(
+                            blockBuf, atOffset: 0, lengthAtOffsetOut: nil,
+                            totalLengthOut: &totalLength, dataPointerOut: &dataPointer
+                        ) == kCMBlockBufferNoErr, let dataPtr = dataPointer else { continue }
 
-            var bufList = AudioBufferList(
-                mNumberBuffers: 1,
-                mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(totalLength), mData: dataPtr)
-            )
-            let writeStatus = ExtAudioFileWrite(extFile, UInt32(numFrames), &bufList)
-            if writeStatus != noErr {
-                throw NSError(domain: "PlaybackManager", code: 14, userInfo: [
-                    NSLocalizedDescriptionKey: "MP3 encoding failed (status \(writeStatus))"
-                ])
+                        var bufList = AudioBufferList(
+                            mNumberBuffers: 1,
+                            mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(totalLength), mData: dataPtr)
+                        )
+                        let writeStatus = ExtAudioFileWrite(extFile, UInt32(numFrames), &bufList)
+                        if writeStatus != noErr {
+                            throw NSError(domain: "PlaybackManager", code: 14, userInfo: [
+                                NSLocalizedDescriptionKey: "MP3 encoding failed (status \(writeStatus))"
+                            ])
+                        }
+                    }
+                    // nil from copyNextSampleBuffer can mean failure — surface it
+                    if reader.status == .failed {
+                        throw reader.error ?? NSError(domain: "PlaybackManager", code: 15, userInfo: [
+                            NSLocalizedDescriptionKey: "MP3 export incomplete — reader failed"
+                        ])
+                    }
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }

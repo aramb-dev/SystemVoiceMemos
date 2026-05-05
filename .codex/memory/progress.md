@@ -3,15 +3,12 @@
 ## Completed
 - Project orientation captured from `README.md`, `AGENTS.md`, and `conductor/` docs.
 - Memory Bank initialized in `.codex/memory/`.
-- Review fixes committed in `a46ae97`:
-  - Guard failed PCM writer startup.
-  - Align appcast patch placeholder names with the checked-in template.
+- Durable Claude/Codex project memory now reflects the full app state.
 
 ## In Progress
-- Core Audio tap capture branch is active and not yet merged from this worktree.
+- Continue using the memory files as whole-project context.
 
 ## Open Follow-Ups
-- Decide whether `.agents/` and `.codex/` should be committed, ignored, or kept local.
 - Consider addressing build warnings in `SystemAudioPlayer.swift` if/when strict concurrency or warning cleanliness becomes a gate.
 - Validate recording behavior manually on macOS with real permissions and audio devices:
   - Core Audio tap source.

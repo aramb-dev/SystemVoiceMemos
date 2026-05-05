@@ -1,7 +1,7 @@
 # Project Context
 
 ## Project
-SystemVoiceMemos is a privacy-first macOS utility for capturing and managing audio memos. The app is built with SwiftUI, SwiftData, AVFoundation, ScreenCaptureKit, Sparkle, and a newer Core Audio process-tap recording path.
+SystemVoiceMemos is a privacy-first macOS utility for capturing and managing audio memos. The app is built with SwiftUI, SwiftData, AVFoundation, ScreenCaptureKit, Sparkle, and Core Audio process taps.
 
 ## Product Goals
 - Capture system audio with minimal friction and clear recording state.

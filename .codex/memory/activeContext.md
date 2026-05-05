@@ -1,26 +1,19 @@
 # Active Context
 
-## Branch
-- Current branch: `codex/core-audio-tap-capture`
-- Recent commit: `a46ae97 fix: address export and appcast review issues`
+## Product State
+- Core Audio process-tap recording is the default no-screen-sharing system audio source on macOS 14.2+.
+- Legacy ScreenCaptureKit system audio remains available as a fallback/source option.
+- Microphone-only recording is supported.
+- Toolbar/settings controls configure recording source, microphone inclusion, and input device selection.
+- Export supports M4A, MP3, WAV, and AIFF.
+- The app includes a native macOS Help Book and Sparkle release/appcast tooling.
 
-## Current Branch Work
-- Adds Core Audio process-tap recording as the default no-screen-sharing system audio source on macOS 14.2+.
-- Keeps legacy ScreenCaptureKit system audio as a selectable source.
-- Adds microphone-only recording.
-- Adds toolbar/settings controls for recording source, microphone inclusion, and input device selection.
-- Adds WAV, AIFF, and MP3 export support.
-- Adds a native macOS Help Book and updates release/appcast tooling.
-
-## Recent Review Fixes
-- `SystemAudioPlayer.swift`: PCM export now checks `AVAssetWriter.startWriting()`, cancels the reader, and throws instead of waiting forever when writing cannot start.
-- `build-and-sign`: appcast patching now recognizes both `FILL_IN_*` placeholders and the placeholders documented in `appcast.xml`.
-
-## Working Tree Notes
-- `.agents/` and `.codex/` are untracked local agent/config state.
-- Memory bank files were initialized under `.codex/memory/`.
-- Do not accidentally include unrelated local agent state in product commits unless explicitly requested.
+## Durable Implementation Notes
+- `SystemAudioPlayer.swift` should fail fast if PCM export cannot start writing; do not enter an async writer loop after `AVAssetWriter.startWriting()` returns `false`.
+- `build-and-sign` appcast patching should stay aligned with the placeholders documented in `appcast.xml`.
+- Memory bank files live under `.codex/memory/`.
+- Do not stage unrelated local agent/config files unless the user explicitly asks.
 
 ## Last Known Verification
-- `xcodebuild -scheme SystemVoiceMemos -destination 'platform=macOS' build` succeeded after the review fixes.
+- `xcodebuild -scheme SystemVoiceMemos -destination 'platform=macOS' build` is the canonical CLI build check.
 - Build emitted warnings in `SystemAudioPlayer.swift` about unnecessary `await` on synchronous `insertTimeRange` calls and non-Sendable AVFoundation captures inside a sendable closure.

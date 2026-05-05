@@ -3,8 +3,8 @@
 ## 2026-05-05: Store Memory Bank Under `.codex/memory`
 The repo already contains Codex-local configuration under `.codex/`, so the Memory Bank was initialized at `.codex/memory/` to keep agent state colocated.
 
-## 2026-05-05: Keep Review Fix Commit Narrow
-The review fixes were committed as `a46ae97` with only `SystemAudioPlayer.swift` and `build-and-sign` staged. Untracked `.agents/` and `.codex/` state was intentionally left out.
+## 2026-05-05: Keep Memory Durable
+Memory files should describe the whole project state. Branch names and transient commit bookkeeping belong in git history, not long-lived project memory.
 
 ## Current Product/Architecture Decisions From Repo Docs
 - Favor native macOS SwiftUI patterns and standard system controls.

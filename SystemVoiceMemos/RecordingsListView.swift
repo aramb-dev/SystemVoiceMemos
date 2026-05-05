@@ -10,7 +10,7 @@ struct RecordingsListView: View {
     let recordings: [RecordingEntity]
     @Binding var selectedRecordingID: RecordingEntity.ID?
     @Binding var searchText: String
-    
+
     let activeRecordingID: UUID?
     let onSelect: (RecordingEntity.ID?) -> Void
     let onToggleFavorite: (RecordingEntity) -> Void
@@ -34,14 +34,14 @@ struct RecordingsListView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
-            
+
             Divider()
-            
+
             recordingsList
         }
         .frame(minWidth: 300)
     }
-    
+
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
@@ -87,7 +87,7 @@ struct RecordingsListView: View {
             }
         }
     }
-    
+
     private func recordingRowView(for rec: RecordingEntity) -> some View {
         RecordingRow(
             recording: rec,

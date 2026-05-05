@@ -14,7 +14,9 @@ enum SidebarItem: Hashable, Identifiable {
     case library(LibraryCategory)
     case folder(UUID)
 
-    var id: Self { self }
+    var id: Self {
+        self
+    }
 }
 
 /// Built-in library categories
@@ -23,7 +25,9 @@ enum LibraryCategory: String, CaseIterable, Identifiable {
     case favorites
     case recentlyDeleted
 
-    var id: Self { self }
+    var id: Self {
+        self
+    }
 
     var title: String {
         switch self {
@@ -72,7 +76,7 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
             }
-            
+
             Section {
                 if folders.isEmpty {
                     Text("No folders")
@@ -96,9 +100,9 @@ struct SidebarView: View {
                             } label: {
                                 Label("Rename", systemImage: "pencil")
                             }
-                            
+
                             Divider()
-                            
+
                             Button(role: .destructive) {
                                 onDeleteFolder?(folder)
                             } label: {

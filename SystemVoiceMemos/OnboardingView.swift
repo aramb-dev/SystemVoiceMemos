@@ -5,8 +5,8 @@
 //  Created by aramb-dev on 01/13/26.
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 // MARK: - Glass Capsule Button Style
 
@@ -97,7 +97,7 @@ struct OnboardingView: View {
             LinearGradient(
                 colors: [
                     Color(red: 0.05, green: 0.1, blue: 0.15),
-                    Color(red: 0.1, green: 0.15, blue: 0.2)
+                    Color(red: 0.1, green: 0.15, blue: 0.2),
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

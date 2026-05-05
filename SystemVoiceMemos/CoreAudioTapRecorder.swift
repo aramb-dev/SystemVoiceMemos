@@ -124,7 +124,8 @@ final class CoreAudioTapRecorder {
         var audioConverter: AudioConverterRef?
         var converterSize = UInt32(MemoryLayout<AudioConverterRef>.size)
         if ExtAudioFileGetProperty(extAudioFile, kExtAudioFileProperty_AudioConverter, &converterSize, &audioConverter) == noErr,
-           let audioConverter {
+           let audioConverter
+        {
             var bitRate = UInt32(bitRate)
             AudioConverterSetProperty(audioConverter, kAudioConverterEncodeBitRate, 4, &bitRate)
         }
@@ -144,7 +145,8 @@ final class CoreAudioTapRecorder {
         let block: AudioDeviceIOBlock = { [weak self] _, inputData, _, _, _ in
             guard let self,
                   !self.isPaused,
-                  let extAudioFile = self.extAudioFile else {
+                  let extAudioFile = self.extAudioFile
+            else {
                 return
             }
 
@@ -229,9 +231,9 @@ enum CoreAudioTapRecorderError: LocalizedError {
         switch self {
         case .unavailable:
             return "System Audio (No Screen Sharing) requires macOS 14.2 or later."
-        case .setupFailed(let message):
+        case let .setupFailed(message):
             return message
-        case .osStatus(let status, let context):
+        case let .osStatus(status, context):
             return "Could not \(context) (status \(status))."
         }
     }

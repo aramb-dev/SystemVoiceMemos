@@ -8,9 +8,9 @@
 //  Provides playback controls, progress tracking, and Now Playing info.
 //
 
-import Foundation
-import AVFoundation
 import AudioToolbox
+import AVFoundation
+import Foundation
 import MediaPlayer
 
 /// Manages audio playback for recordings
@@ -23,9 +23,8 @@ import MediaPlayer
 /// - Manages volume and seeking
 @MainActor
 final class PlaybackManager: NSObject, ObservableObject {
-
     // MARK: - Types
-    
+
     /// Playback phase enumeration
     enum Phase {
         case stopped
@@ -72,30 +71,30 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Published State
-    
+
     /// Current playback phase
     @Published private(set) var phase: Phase = .stopped
-    
+
     /// ID of the recording currently being played
     @Published private(set) var activeRecordingID: UUID?
-    
+
     /// ID of the recording selected for playback
     @Published private(set) var selectedRecordingID: UUID?
-    
+
     /// Current playback position in seconds
     @Published private(set) var currentTime: TimeInterval = 0
-    
+
     /// Total duration of the current recording in seconds
     @Published private(set) var duration: TimeInterval = 0
-    
+
     /// Current volume level (0.0 to 1.0)
     @Published private(set) var volume: Float = 1.0
-    
+
     /// System audio track volume
     @Published var systemVolume: Float = 1.0 {
         didSet { updateAudioMix() }
     }
-    
+
     /// Microphone track volume
     @Published var micVolume: Float = 1.0 {
         didSet { updateAudioMix() }
@@ -103,46 +102,54 @@ final class PlaybackManager: NSObject, ObservableObject {
 
     /// Whether the selected recording has a mic track
     @Published private(set) var hasMicTrack: Bool = false
-    
+
     /// Current playback error, if any
     @Published var error: PlaybackError?
 
     // MARK: - Private Properties
-    
+
     /// Currently selected recording information
     private var selectedRecording: RecordingInfo?
-    
+
     /// The active audio player instance
     private var player: AVPlayer?
-    
+
     /// Audio mix for independent track volume control
     private var audioMix: AVMutableAudioMix?
-    
+
     /// Timer for updating playback progress
     private var timer: Timer?
-    
+
     /// Now Playing metadata dictionary
     private var nowPlayingInfo: [String: Any] = [:]
-    
+
     /// Remote command targets for cleanup
     private var commandTargets: [(command: MPRemoteCommand, token: Any)] = []
 
     // MARK: - Computed Properties
-    
+
     /// Whether audio is currently playing
-    var isPlaying: Bool { phase == .playing }
-    
+    var isPlaying: Bool {
+        phase == .playing
+    }
+
     /// Whether a recording is selected
-    var hasSelection: Bool { selectedRecording != nil }
-    
+    var hasSelection: Bool {
+        selectedRecording != nil
+    }
+
     /// Whether an active player exists
-    var hasActivePlayer: Bool { player != nil }
-    
+    var hasActivePlayer: Bool {
+        player != nil
+    }
+
     /// Whether the selected recording can be played
-    var canPlaySelection: Bool { hasSelection }
+    var canPlaySelection: Bool {
+        hasSelection
+    }
 
     // MARK: - Initialization
-    
+
     override init() {
         super.init()
         configureRemoteCommands()
@@ -155,7 +162,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Selection Management
-    
+
     /// Selects a recording for playback
     ///
     /// - Parameters:
@@ -174,7 +181,7 @@ final class PlaybackManager: NSObject, ObservableObject {
             let info = try makeInfo(from: recording)
 
             // Stop the old player when switching to a different recording
-            if activeRecordingID != nil && activeRecordingID != info.id {
+            if activeRecordingID != nil, activeRecordingID != info.id {
                 player?.pause()
                 resetPlayerState(preserveSelection: true)
             }
@@ -195,7 +202,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Playback Control
-    
+
     /// Plays the currently selected recording
     func playSelected() {
         guard let info = selectedRecording else {
@@ -288,7 +295,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Private Playback Methods
-    
+
     /// Starts playing a recording
     ///
     /// - Parameter info: The recording information
@@ -300,18 +307,18 @@ final class PlaybackManager: NSObject, ObservableObject {
 
         let asset = AVAsset(url: info.url)
         let playerItem = AVPlayerItem(asset: asset)
-        
+
         // Setup initial audio mix
         setupAudioMix(for: playerItem, asset: asset)
-        
+
         let player = AVPlayer(playerItem: playerItem)
         player.volume = volume
         player.play()
 
         self.player = player
-        self.activeRecordingID = info.id
-        self.phase = .playing
-        
+        activeRecordingID = info.id
+        phase = .playing
+
         // Use a Task to load duration
         Task {
             if let duration = try? await asset.load(.duration) {
@@ -320,14 +327,14 @@ final class PlaybackManager: NSObject, ObservableObject {
                 }
             }
         }
-        
-        self.currentTime = 0
+
+        currentTime = 0
         startTimer()
         updateNowPlayingInfo(for: info, player: player)
-        
+
         NotificationCenter.default.addObserver(self, selector: #selector(playerItemDidFinishPlaying), name: .AVPlayerItemDidPlayToEndTime, object: playerItem)
     }
-    
+
     @objc private func playerItemDidFinishPlaying() {
         Task { @MainActor in
             self.stop()
@@ -374,12 +381,12 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Track Volume Control
-    
+
     private func setupAudioMix(for playerItem: AVPlayerItem, asset: AVAsset) {
         Task {
             let tracks = try? await asset.loadTracks(withMediaType: .audio)
             guard let tracks = tracks else { return }
-            
+
             await MainActor.run {
                 let mixParameters = tracks.enumerated().map { index, track -> AVMutableAudioMixInputParameters in
                     let parameters = AVMutableAudioMixInputParameters(track: track)
@@ -388,7 +395,7 @@ final class PlaybackManager: NSObject, ObservableObject {
                     parameters.setVolume(vol, at: .zero)
                     return parameters
                 }
-                
+
                 let mix = AVMutableAudioMix()
                 mix.inputParameters = mixParameters
                 self.audioMix = mix
@@ -396,17 +403,17 @@ final class PlaybackManager: NSObject, ObservableObject {
             }
         }
     }
-    
+
     private func updateAudioMix() {
         guard let player = player, let playerItem = player.currentItem, audioMix != nil else { return }
-        
+
         // Simpler: re-create the mix parameters if we have the asset
         guard let asset = playerItem.asset as? AVURLAsset else { return }
-        
+
         Task {
             let tracks = try? await asset.loadTracks(withMediaType: .audio)
             guard let tracks = tracks else { return }
-            
+
             await MainActor.run {
                 let mixParameters = tracks.enumerated().map { index, track -> AVMutableAudioMixInputParameters in
                     let parameters = AVMutableAudioMixInputParameters(track: track)
@@ -487,7 +494,6 @@ final class PlaybackManager: NSObject, ObservableObject {
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: format == .aiff,
-
         ]
 
         let compTracks = try await composition.loadTracks(withMediaType: .audio)
@@ -569,7 +575,6 @@ final class PlaybackManager: NSObject, ObservableObject {
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: false,
-
         ]
 
         let compTracks = try await composition.loadTracks(withMediaType: .audio)
@@ -593,7 +598,7 @@ final class PlaybackManager: NSObject, ObservableObject {
         )
         guard createStatus == noErr, let extFile = extFileRef else {
             throw NSError(domain: "PlaybackManager", code: 11, userInfo: [
-                NSLocalizedDescriptionKey: "MP3 encoding is not available on this system (status \(createStatus))"
+                NSLocalizedDescriptionKey: "MP3 encoding is not available on this system (status \(createStatus))",
             ])
         }
         defer { ExtAudioFileDispose(extFile) }
@@ -616,7 +621,8 @@ final class PlaybackManager: NSObject, ObservableObject {
         var convRef: AudioConverterRef?
         var convRefSize = UInt32(MemoryLayout<AudioConverterRef>.size)
         if ExtAudioFileGetProperty(extFile, kExtAudioFileProperty_AudioConverter, &convRefSize, &convRef) == noErr,
-           let conv = convRef {
+           let conv = convRef
+        {
             var bitRate: UInt32 = 192_000
             AudioConverterSetProperty(conv, kAudioConverterEncodeBitRate, 4, &bitRate)
             var emptyConverterConfig: UInt32 = 0
@@ -648,14 +654,14 @@ final class PlaybackManager: NSObject, ObservableObject {
                         let writeStatus = ExtAudioFileWrite(extFile, UInt32(numFrames), &bufList)
                         if writeStatus != noErr {
                             throw NSError(domain: "PlaybackManager", code: 14, userInfo: [
-                                NSLocalizedDescriptionKey: "MP3 encoding failed (status \(writeStatus))"
+                                NSLocalizedDescriptionKey: "MP3 encoding failed (status \(writeStatus))",
                             ])
                         }
                     }
                     // nil from copyNextSampleBuffer can mean failure — surface it
                     if reader.status == .failed {
                         throw reader.error ?? NSError(domain: "PlaybackManager", code: 15, userInfo: [
-                            NSLocalizedDescriptionKey: "MP3 export incomplete — reader failed"
+                            NSLocalizedDescriptionKey: "MP3 export incomplete — reader failed",
                         ])
                     }
                     continuation.resume()
@@ -696,7 +702,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Helper Methods
-    
+
     /// Creates recording info from an entity
     ///
     /// - Parameter recording: The recording entity
@@ -719,7 +725,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Remote Control
-    
+
     /// Configures remote control command handlers
     private func configureRemoteCommands() {
         let center = MPRemoteCommandCenter.shared()
@@ -728,7 +734,7 @@ final class PlaybackManager: NSObject, ObservableObject {
             (center.pauseCommand, { [weak self] _ in self?.handlePauseCommand() ?? .commandFailed }),
             (center.togglePlayPauseCommand, { [weak self] _ in self?.handleToggleCommand() ?? .commandFailed }),
             (center.nextTrackCommand, { [weak self] _ in self?.handleSkipForwardCommand() ?? .commandFailed }),
-            (center.previousTrackCommand, { [weak self] _ in self?.handleSkipBackwardCommand() ?? .commandFailed })
+            (center.previousTrackCommand, { [weak self] _ in self?.handleSkipBackwardCommand() ?? .commandFailed }),
         ]
 
         for (command, handler) in commands {
@@ -799,7 +805,7 @@ final class PlaybackManager: NSObject, ObservableObject {
     }
 
     // MARK: - Now Playing
-    
+
     /// Updates Now Playing metadata
     ///
     /// - Parameters:
@@ -809,14 +815,14 @@ final class PlaybackManager: NSObject, ObservableObject {
         var infoDictionary: [String: Any] = [
             MPMediaItemPropertyTitle: info.title,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: CMTimeGetSeconds(player.currentTime()),
-            MPNowPlayingInfoPropertyPlaybackRate: 1.0
+            MPNowPlayingInfoPropertyPlaybackRate: 1.0,
         ]
-        
+
         Task {
             if let duration = try? await player.currentItem?.asset.load(.duration) {
                 infoDictionary[MPMediaItemPropertyPlaybackDuration] = CMTimeGetSeconds(duration)
             }
-            
+
             await MainActor.run {
                 if #available(macOS 14.0, *) {
                     infoDictionary[MPMediaItemPropertyArtist] = "System Voice Memos"

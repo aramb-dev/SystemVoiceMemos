@@ -27,17 +27,17 @@ final class WindowAnimator: ObservableObject {
 
     @Published var isMinimized = false
 
-    // Store the window reference before shrinking
+    /// Store the window reference before shrinking
     func captureWindow() {
         weakWindow = mainWindow
     }
-    
+
     func shrinkToBar() {
-        captureWindow()  // Ensure we have a reference before shrinking
+        captureWindow() // Ensure we have a reference before shrinking
         guard let window = mainWindow, !isMinimized else { return }
 
         savedFrame = window.frame
-        isMinimized = true  // Set immediately, not after animation
+        isMinimized = true // Set immediately, not after animation
 
         // Just minimize the window instead of hiding it
         window.miniaturize(nil)
@@ -55,15 +55,15 @@ final class WindowAnimator: ObservableObject {
         if window.isMiniaturized {
             window.deminiaturize(nil)
         }
-        
+
         // Restore saved frame if available
         if let targetFrame = savedFrame {
             window.setFrame(targetFrame, display: true, animate: true)
         }
-        
+
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        
+
         isMinimized = false
         savedFrame = nil
     }
@@ -90,6 +90,6 @@ final class WindowAnimator: ObservableObject {
         window.makeKey()
         NSApp.activate(ignoringOtherApps: true)
         isMinimized = false
-        self.savedFrame = nil
+        savedFrame = nil
     }
 }

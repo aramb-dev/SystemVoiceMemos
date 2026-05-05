@@ -1,21 +1,21 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct MinimalRecordingView: View {
     @ObservedObject var recorder: SystemAudioRecorder
     @Binding var isAlwaysOnTop: Bool
-    
+
     var onStop: () -> Void
     var onRestart: () -> Void
     var onExpand: () -> Void
-    
+
     private var formattedDuration: String {
         let total = Int(recorder.currentRecordingDuration)
         let minutes = total / 60
         let seconds = total % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             recordingIndicator
@@ -46,7 +46,7 @@ struct MinimalRecordingView: View {
                 .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         )
     }
-    
+
     private var recordingIndicator: some View {
         ZStack {
             // Outer glow effect
@@ -74,7 +74,7 @@ struct MinimalRecordingView: View {
                         LinearGradient(
                             colors: [
                                 Color.white.opacity(0.4),
-                                Color.clear
+                                Color.clear,
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -84,7 +84,7 @@ struct MinimalRecordingView: View {
             .frame(width: 12, height: 12)
         }
     }
-    
+
     private var indicatorColor: Color {
         switch recorder.recordingState {
         case .idle: return .gray
@@ -92,7 +92,7 @@ struct MinimalRecordingView: View {
         case .paused: return .orange
         }
     }
-    
+
     private var controlButtons: some View {
         HStack(spacing: 8) {
             // Pause/Resume button
@@ -142,7 +142,7 @@ struct MinimalRecordingView: View {
                                     LinearGradient(
                                         colors: [
                                             Color.white.opacity(0.3),
-                                            Color.clear
+                                            Color.clear,
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -183,7 +183,7 @@ struct MinimalRecordingView: View {
             .accessibilityLabel("Restart Recording")
         }
     }
-    
+
     private var pinButton: some View {
         Button {
             isAlwaysOnTop.toggle()
@@ -216,16 +216,16 @@ struct MinimalRecordingView: View {
 struct VisualEffectBlur: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode
-    
-    func makeNSView(context: Context) -> NSVisualEffectView {
+
+    func makeNSView(context _: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = material
         view.blendingMode = blendingMode
         view.state = .active
         return view
     }
-    
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+
+    func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
     }

@@ -61,7 +61,7 @@ struct RecordingRow: View {
                                 LinearGradient(
                                     colors: [
                                         Color.white.opacity(0.1),
-                                        Color.clear
+                                        Color.clear,
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom

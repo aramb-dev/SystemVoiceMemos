@@ -6,10 +6,10 @@
 //  Implements a three-column layout with sidebar, recordings list, and detail panel.
 //
 
-import SwiftUI
 import AppKit
-import SwiftData
 import AVFoundation
+import SwiftData
+import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
@@ -43,7 +43,9 @@ struct ContentView: View {
     @State private var availableMics: [AVCaptureDevice] = []
     @State private var sharePresenter = RecordingSharePresenter()
 
-    private var appState: AppState { AppState.shared }
+    private var appState: AppState {
+        AppState.shared
+    }
 
     // MARK: - Constants
 
@@ -271,7 +273,7 @@ struct ContentView: View {
             switch event {
             case .clicked: GrowthMetricsTracker.track(.shareClicked)
             case .completed: GrowthMetricsTracker.track(.shareCompleted)
-            case .failed(let msg): showShareErrorAlert(msg)
+            case let .failed(msg): showShareErrorAlert(msg)
             }
         }
     }
@@ -327,7 +329,6 @@ struct ContentView: View {
         Binding(get: { playbackManager.error }, set: { playbackManager.error = $0 })
     }
 
-    @ViewBuilder
     private func createFolderSheet() -> some View {
         CreateFolderSheet(folderName: $vm.newFolderName) { name in
             vm.createFolder(name: name, folders: folders, context: modelContext)
@@ -338,7 +339,6 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
     private func renameRecordingSheet(_ recording: RecordingEntity) -> some View {
         RenameRecordingSheet(recordingTitle: recording.title, newTitle: $vm.renameText) { newTitle in
             vm.renameRecording(recording, to: newTitle, context: modelContext, recordings: recordings, playbackManager: playbackManager)
@@ -349,7 +349,6 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
     private func moveToFolderSheet(_ recording: RecordingEntity) -> some View {
         MoveToFolderSheet(folders: folders, folderName: $vm.moveToFolderText) { folderName in
             vm.moveToFolder(recording, name: folderName, context: modelContext, folders: folders, recordings: recordings, playbackManager: playbackManager)
@@ -451,7 +450,8 @@ struct ContentView: View {
 
             if let recording = selectedRecording,
                recording.deletedAt == nil,
-               vm.shareFileURL(for: recording) != nil {
+               vm.shareFileURL(for: recording) != nil
+            {
                 Button { shareRecording(recording) } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
@@ -559,7 +559,8 @@ private final class RecordingSharePresenter: NSObject, @preconcurrency NSSharing
         self.onEvent = onEvent
 
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
-              let contentView = window.contentView else {
+              let contentView = window.contentView
+        else {
             onEvent(.failed("No active window available for sharing."))
             return
         }
@@ -570,15 +571,15 @@ private final class RecordingSharePresenter: NSObject, @preconcurrency NSSharing
         picker.show(relativeTo: anchor, of: contentView, preferredEdge: .minY)
     }
 
-    func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, didChoose service: NSSharingService?) {
+    func sharingServicePicker(_: NSSharingServicePicker, didChoose service: NSSharingService?) {
         service?.delegate = self
     }
 
-    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
+    func sharingService(_: NSSharingService, didShareItems _: [Any]) {
         onEvent?(.completed)
     }
 
-    func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
+    func sharingService(_: NSSharingService, didFailToShareItems _: [Any], error: any Error) {
         onEvent?(.failed(error.localizedDescription))
     }
 }

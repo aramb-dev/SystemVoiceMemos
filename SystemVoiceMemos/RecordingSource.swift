@@ -10,7 +10,9 @@ enum RecordingSource: String, CaseIterable, Identifiable {
     case legacyScreenCapture
     case microphoneOnly
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var title: String {
         switch self {

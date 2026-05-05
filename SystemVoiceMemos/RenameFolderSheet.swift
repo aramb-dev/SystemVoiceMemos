@@ -10,20 +10,20 @@ struct RenameFolderSheet: View {
     @Binding var newName: String
     let onRename: (String) -> Void
     let onCancel: () -> Void
-    
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Rename Folder")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("Current name: \(folderName)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                
+
                 TextField("New Folder Name", text: $newName)
                     .textFieldStyle(.roundedBorder)
                     .focused($isFocused)
@@ -33,15 +33,15 @@ struct RenameFolderSheet: View {
                         }
                     }
             }
-            
+
             HStack {
                 Button("Cancel") {
                     onCancel()
                 }
                 .keyboardShortcut(.cancelAction)
-                
+
                 Spacer()
-                
+
                 Button("Rename") {
                     onRename(newName)
                 }

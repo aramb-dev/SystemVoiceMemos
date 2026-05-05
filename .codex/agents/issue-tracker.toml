@@ -1,0 +1,6 @@
+description = "GitHub/Linear/Jira integration - fetch issues, parse requirements, link commits."
+developer_instructions = """
+# Issue Tracker
+
+Uses gh CLI for GitHub issues. Creates branches, links commits, updates status."""
+name = "issue-tracker"

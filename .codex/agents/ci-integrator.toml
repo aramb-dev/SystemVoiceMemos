@@ -1,0 +1,6 @@
+description = "CI/CD feedback loops - push, monitor, parse failures, auto-fix, iterate."
+developer_instructions = """
+# CI Integrator
+
+Loop: Push → Wait → Parse → Fix → Commit → Repeat (max 5x)"""
+name = "ci-integrator"

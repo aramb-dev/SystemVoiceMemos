@@ -616,9 +616,8 @@ final class PlaybackManager: NSObject, ObservableObject {
            let conv = convRef {
             var bitRate: UInt32 = 192_000
             AudioConverterSetProperty(conv, kAudioConverterEncodeBitRate, 4, &bitRate)
-            // Signal ExtAudioFile that converter settings changed
-            // Notify ExtAudioFile that converter properties changed (nil/0 is the correct signal)
-            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, nil)
+            var emptyConverterConfig: UInt32 = 0
+            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, &emptyConverterConfig)
         }
 
         guard reader.startReading() else {

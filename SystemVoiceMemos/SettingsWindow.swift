@@ -96,6 +96,8 @@ struct UpdatesSettingsView: View {
 struct RecordingSettingsView: View {
     @AppStorage("recordingsLocation") private var recordingsLocation = ""
     @AppStorage("audioQuality") private var audioQuality = "high"
+    @AppStorage(AppConstants.UserDefaultsKeys.recordingSource)
+    private var recordingSource = RecordingSource.defaultRawValue
     @AppStorage("locationBasedNaming") private var locationBasedNaming = false
     @AppStorage("includeMicrophone") private var includeMicrophone = false
     @AppStorage("autoDeleteEnabled") private var autoDeleteEnabled = true
@@ -105,16 +107,28 @@ struct RecordingSettingsView: View {
     var body: some View {
         Form {
             Section("Recording") {
+                Picker("Recording Source", selection: $recordingSource) {
+                    ForEach(RecordingSource.allCases) { source in
+                        Text(source.title).tag(source.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text(RecordingSource(rawValue: recordingSource)?.detail ?? "")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
                 Toggle(isOn: $includeMicrophone) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Include Microphone")
                             .font(.headline)
-                        Text("Capture your voice alongside system audio")
+                        Text("Available for legacy system audio recordings as a separate track.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .toggleStyle(.switch)
+                .disabled(recordingSource != RecordingSource.legacyScreenCapture.rawValue)
                 .onChange(of: includeMicrophone) { _, enabled in
                     if enabled {
                         Task {

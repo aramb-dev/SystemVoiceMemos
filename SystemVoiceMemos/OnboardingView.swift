@@ -204,8 +204,8 @@ struct OnboardingView: View {
 
             VStack(spacing: 20) {
                 PermissionCard(
-                    title: "Screen Recording",
-                    description: "Required to capture system audio stream (no video is recorded).",
+                    title: "Legacy Screen Recording",
+                    description: "Only needed for the legacy system-audio source. The default Core Audio source does not use screen sharing.",
                     icon: "record.circle",
                     isAuthorized: permissionManager.isScreenRecordingAuthorized,
                     action: { permissionManager.requestScreenRecordingPermission() }
@@ -237,13 +237,12 @@ struct OnboardingView: View {
                 }
             }
             .buttonStyle(GlassCapsuleButtonStyle(
-                tintColor: permissionManager.isScreenRecordingAuthorized ? .accentColor : .gray,
+                tintColor: .accentColor,
                 horizontalPadding: 60
             ))
-            .disabled(!permissionManager.isScreenRecordingAuthorized)
 
             if !permissionManager.isScreenRecordingAuthorized {
-                Text("Screen Recording permission is essential for capturing system audio.")
+                Text("You can skip legacy Screen Recording permission when using System Audio (No Screen Sharing).")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -258,63 +257,39 @@ struct OnboardingView: View {
         VStack(spacing: 32) {
             Spacer()
 
-            if permissionManager.isScreenRecordingAuthorized {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 100))
-                    .foregroundStyle(LinearGradient(colors: [.green, .blue], startPoint: .top, endPoint: .bottom))
-                    .symbolEffect(.bounce, value: currentStep)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 100))
+                .foregroundStyle(LinearGradient(colors: [.green, .blue], startPoint: .top, endPoint: .bottom))
+                .symbolEffect(.bounce, value: currentStep)
 
-                VStack(spacing: 16) {
-                    Text("You're All Set!")
-                        .font(.system(size: 40, weight: .bold))
+            VStack(spacing: 16) {
+                Text("You're All Set!")
+                    .font(.system(size: 40, weight: .bold))
 
-                    Text("SystemVoiceMemos is ready to capture your world. All recordings are stored locally and privately on your Mac.")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 80)
-                }
-            } else {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 100))
-                    .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
-
-                VStack(spacing: 16) {
-                    Text("Permission Required")
-                        .font(.system(size: 40, weight: .bold))
-
-                    Text("Screen Recording permission is required to capture system audio. Please grant permission in System Settings, then return here.")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 80)
-                }
+                Text("SystemVoiceMemos is ready to capture audio. Use System Audio (No Screen Sharing) to avoid macOS screen-sharing UI.")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 80)
             }
 
             Spacer()
 
-            Button(permissionManager.isScreenRecordingAuthorized ? "Get Started" : "Open System Settings") {
-                if permissionManager.isScreenRecordingAuthorized {
-                    withAnimation {
-                        hasCompletedOnboarding = true
-                    }
-                } else {
-                    permissionManager.requestScreenRecordingPermission()
+            Button("Get Started") {
+                withAnimation {
+                    hasCompletedOnboarding = true
                 }
             }
             .buttonStyle(GlassCapsuleButtonStyle(
-                tintColor: permissionManager.isScreenRecordingAuthorized ? .accentColor : .orange,
+                tintColor: .accentColor,
                 horizontalPadding: 60
             ))
 
             if !permissionManager.isScreenRecordingAuthorized {
                 Button {
-                    withAnimation(.spring()) {
-                        isNavigatingForward = false
-                        currentStep = .permissions
-                    }
+                    permissionManager.requestScreenRecordingPermission()
                 } label: {
-                    Text("Go Back")
+                    Text("Grant Legacy Screen Recording")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }

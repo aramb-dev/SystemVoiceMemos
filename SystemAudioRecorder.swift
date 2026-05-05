@@ -67,15 +67,36 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     
     /// Capture session for microphone
     private var captureSession: AVCaptureSession?
+
+    /// Core Audio tap backend for system audio without ScreenCaptureKit.
+    @available(macOS 14.2, *)
+    private var coreAudioTapRecorder: CoreAudioTapRecorder {
+        if let recorder = _coreAudioTapRecorder as? CoreAudioTapRecorder {
+            return recorder
+        }
+        let recorder = CoreAudioTapRecorder()
+        _coreAudioTapRecorder = recorder
+        return recorder
+    }
+
+    private var _coreAudioTapRecorder: Any?
+
+    /// The source used by the active recording.
+    private var activeRecordingSource: RecordingSource?
     
     /// Queue for processing audio sample buffers
     private let outputQueue = DispatchQueue(label: "SystemVoiceMemos.AudioOutput")
+
+    /// Tiny placeholder dimensions keep any accidental screen stream cheap.
+    /// System audio still needs a display-anchored ScreenCaptureKit stream,
+    /// but this recorder never subscribes to or writes screen frames.
+    private let audioOnlyStreamDimension = 2
 
     /// Whether a recording is currently active
     var isRecording = false
     
     /// Start time for the recording session
-    private var startTime: CMTime = .zero
+    private var startTime: CMTime = .invalid
     
     /// Date when recording started (for UI duration tracking)
     private var recordingStartDate: Date?
@@ -131,7 +152,24 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         print("🎙️ Starting recording to:", url.path)
 
-        // 1) Choose a capture target. For "system audio", the simplest is the main display.
+        let source = RecordingSource.current
+        activeRecordingSource = source
+
+        switch source {
+        case .coreAudioTap:
+            try startCoreAudioTapRecording(to: url)
+            markRecordingStarted()
+            return
+        case .microphoneOnly:
+            try startMicrophoneOnlyRecording(to: url)
+            markRecordingStarted()
+            return
+        case .legacyScreenCapture:
+            break
+        }
+
+        // 1) Choose a display only as the system-audio source anchor.
+        // No screen output is registered, so pixels are not delivered or recorded.
         let shareable = try await SCShareableContent.current
         print("📺 Available displays:", shareable.displays.count)
         print("📺 Display details:", shareable.displays.map { "ID: \($0.displayID), Width: \($0.width), Height: \($0.height)" })
@@ -142,17 +180,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         }
         print("✅ Selected display ID:", mainDisplay.displayID)
 
-        // 2) Build content filter (we don't capture windows/apps specifically; just the display)
+        // 2) Build a display filter for audio routing, not video capture.
         let filter = SCContentFilter(display: mainDisplay, excludingApplications: [], exceptingWindows: [])
 
-        // 3) Configure stream for AUDIO ONLY
-        let config = SCStreamConfiguration()
-        config.width = mainDisplay.width
-        config.height = mainDisplay.height
-        config.capturesAudio = true
-        config.sampleRate = 44_100
-        config.channelCount = 2
-        config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
+        // 3) Configure stream for audio only. Screen-related values are inert
+        // because we only add the .audio stream output below.
+        let config = makeAudioOnlyStreamConfiguration()
 
         // 4) Prepare AVAssetWriter for M4A (AAC)
         let writer = try AVAssetWriter(outputURL: url, fileType: .m4a)
@@ -210,7 +243,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         self.stream = stream
 
         print("🔊 Adding audio stream output...")
-        // 6) Add audio output
+        // 6) Add only audio output. Do not add .screen output.
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: outputQueue)
         print("✅ Audio output added")
 
@@ -218,7 +251,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         guard writer.startWriting() else {
             throw RecorderError.writerStartFailed
         }
-        startTime = .zero
+        startTime = .invalid
         pausedCMTimeDuration = .zero
         lastBufferTime = .zero
         writer.startSession(atSourceTime: .zero)
@@ -233,16 +266,87 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         
         print("✅ Capture started successfully!")
 
+        markRecordingStarted()
+    }
+
+    private func startCoreAudioTapRecording(to url: URL) throws {
+        guard #available(macOS 14.2, *) else {
+            throw CoreAudioTapRecorderError.unavailable
+        }
+        try coreAudioTapRecorder.startRecording(to: url, bitRate: AudioQuality.current.bitRate)
+        print("✅ Core Audio tap capture started successfully!")
+    }
+
+    private func startMicrophoneOnlyRecording(to url: URL) throws {
+        let writer = try AVAssetWriter(outputURL: url, fileType: .m4a)
+        let micSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderBitRateKey: AudioQuality.current.bitRate
+        ]
+
+        let input = AVAssetWriterInput(mediaType: .audio, outputSettings: micSettings)
+        input.expectsMediaDataInRealTime = true
+        guard writer.canAdd(input) else { throw RecorderError.writerCantAddInput }
+        writer.add(input)
+
+        let session = AVCaptureSession()
+        let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
+        let micDevice = storedUID.isEmpty
+            ? AVCaptureDevice.default(for: .audio)
+            : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
+
+        guard let device = micDevice,
+              let deviceInput = try? AVCaptureDeviceInput(device: device),
+              session.canAddInput(deviceInput) else {
+            throw RecorderError.noMicrophone
+        }
+
+        session.addInput(deviceInput)
+        let output = AVCaptureAudioDataOutput()
+        output.setSampleBufferDelegate(self, queue: outputQueue)
+        guard session.canAddOutput(output) else { throw RecorderError.writerCantAddInput }
+        session.addOutput(output)
+
+        guard writer.startWriting() else {
+            throw RecorderError.writerStartFailed
+        }
+        writer.startSession(atSourceTime: .zero)
+
+        self.writer = writer
+        self.audioInput = input
+        self.captureSession = session
+        session.startRunning()
+        print("✅ Microphone-only capture started successfully!")
+    }
+
+    private func markRecordingStarted() {
         isRecording = true
         recordingState = .recording
         isPaused = false
-
-        // Start real-time duration tracking
         recordingStartDate = Date()
         currentRecordingDuration = 0
         pausedDuration = 0
-        // Ensure timer starts after state is fully initialized
+        pauseStartDate = nil
+        pausedCMTimeDuration = .zero
+        startTime = .invalid
+        lastBufferTime = .zero
         startDurationTimer()
+    }
+
+    /// Builds the lowest-overhead ScreenCaptureKit configuration this recorder needs.
+    private func makeAudioOnlyStreamConfiguration() -> SCStreamConfiguration {
+        let config = SCStreamConfiguration()
+        config.width = audioOnlyStreamDimension
+        config.height = audioOnlyStreamDimension
+        config.capturesAudio = true
+        config.sampleRate = 44_100
+        config.channelCount = 2
+        config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
+        config.queueDepth = 1
+        config.showsCursor = false
+        return config
     }
     
     /// Pauses the current recording
@@ -251,6 +355,17 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// The recording can be resumed with `resumeRecording()`.
     func pauseRecording() async {
         guard isRecording, !isPaused else { return }
+
+        if activeRecordingSource == .coreAudioTap {
+            if #available(macOS 14.2, *) {
+                coreAudioTapRecorder.pauseRecording()
+            }
+            isPaused = true
+            recordingState = .paused
+            pauseStartDate = Date()
+            durationTimer?.invalidate()
+            return
+        }
         
         do {
             try await stream?.stopCapture()
@@ -279,6 +394,16 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 pausedCMTimeDuration = CMTimeAdd(pausedCMTimeDuration, pauseCMTime)
             }
             pauseStartDate = nil
+
+            if activeRecordingSource == .coreAudioTap {
+                if #available(macOS 14.2, *) {
+                    try coreAudioTapRecorder.resumeRecording()
+                }
+                isPaused = false
+                recordingState = .recording
+                startDurationTimer()
+                return
+            }
             
             try await stream?.startCapture()
             captureSession?.startRunning()
@@ -327,12 +452,21 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// 4. Cleans up resources
     func stopRecording() async {
         guard isRecording else { return }
+        let source = activeRecordingSource
         isRecording = false
         recordingState = .idle
         isPaused = false
 
         // Stop duration tracking
         stopDurationTimer()
+
+        if source == .coreAudioTap {
+            if #available(macOS 14.2, *) {
+                coreAudioTapRecorder.stopRecording()
+            }
+            activeRecordingSource = nil
+            return
+        }
 
         // Stop capture first
         do {
@@ -370,6 +504,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         micInput = nil
         captureSession = nil
         writer = nil
+        activeRecordingSource = nil
     }
 }
 
@@ -378,12 +513,14 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 /// Errors that can occur during recording
 enum RecorderError: LocalizedError {
     case noDisplay
+    case noMicrophone
     case writerCantAddInput
     case writerStartFailed
 
     var errorDescription: String? {
         switch self {
         case .noDisplay: return "No display available to capture."
+        case .noMicrophone: return "No microphone available to capture."
         case .writerCantAddInput: return "Could not add audio input to writer."
         case .writerStartFailed: return "Failed to start asset writer."
         }
@@ -420,6 +557,7 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
     /// before appending to the asset writer.
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of outputType: SCStreamOutputType) {
         guard outputType == .audio else {
+            // Defensive only: this stream never registers screen output.
             return
         }
 
@@ -428,7 +566,10 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
 
     /// Receives audio sample buffers from the microphone
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        processSampleBuffer(sampleBuffer, forMic: true)
+        Task { @MainActor in
+            let isMicOnly = self.activeRecordingSource == .microphoneOnly
+            self.processSampleBuffer(sampleBuffer, forMic: !isMicOnly)
+        }
     }
 
     /// Processes a sample buffer and appends it to the appropriate writer input
@@ -457,13 +598,16 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
     /// presentation timestamp to create seamless recordings without silent gaps.
     private func adjustSampleBufferTiming(_ sampleBuffer: CMSampleBuffer) -> CMSampleBuffer {
         let originalTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        lastBufferTime = originalTime
-        
-        if CMTimeCompare(pausedCMTimeDuration, .zero) == 0 {
-            return sampleBuffer
+        guard originalTime.isValid else { return sampleBuffer }
+
+        if !startTime.isValid {
+            startTime = originalTime
         }
-        
-        let adjustedTime = CMTimeSubtract(originalTime, pausedCMTimeDuration)
+
+        lastBufferTime = originalTime
+
+        let elapsedTime = CMTimeSubtract(originalTime, startTime)
+        let adjustedTime = CMTimeSubtract(elapsedTime, pausedCMTimeDuration)
         
         var timingInfo = CMSampleTimingInfo(
             duration: CMSampleBufferGetDuration(sampleBuffer),

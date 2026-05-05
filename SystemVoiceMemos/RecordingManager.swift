@@ -178,8 +178,12 @@ class RecordingManager {
         // Guard against concurrent calls
         guard !isRecording else { return false }
 
-        // Check microphone permission if enabled
-        if UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone) {
+        let source = RecordingSource.current
+        let needsMicrophone = source == .microphoneOnly
+            || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
+
+        // Check microphone permission if the selected source needs it.
+        if needsMicrophone {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
                 await PermissionManager.shared.requestAudioPermission()
@@ -202,7 +206,8 @@ class RecordingManager {
                 createdAt: .now,
                 duration: 0,
                 fileName: fileName,
-                hasMicTrack: UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
+                hasMicTrack: source == .microphoneOnly
+                    || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
             )
             modelContext.insert(entity)
             try? modelContext.save()

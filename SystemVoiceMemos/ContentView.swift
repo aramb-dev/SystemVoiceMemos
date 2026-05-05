@@ -34,6 +34,9 @@ struct ContentView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.includeMicrophone)
     private var includeMicrophone = false
 
+    @AppStorage(AppConstants.UserDefaultsKeys.recordingSource)
+    private var recordingSource = RecordingSource.defaultRawValue
+
     @AppStorage(AppConstants.UserDefaultsKeys.selectedMicrophoneUID)
     private var selectedMicUID = ""
 
@@ -456,7 +459,16 @@ struct ContentView: View {
             }
 
             Menu {
+                Picker("Recording Source", selection: $recordingSource) {
+                    ForEach(RecordingSource.allCases) { source in
+                        Text(source.title).tag(source.rawValue)
+                    }
+                }
+
+                Divider()
+
                 Toggle("Include Microphone", isOn: $includeMicrophone)
+                    .disabled(recordingSource != RecordingSource.legacyScreenCapture.rawValue)
 
                 if !availableMics.isEmpty {
                     Divider()
@@ -468,12 +480,9 @@ struct ContentView: View {
                     .pickerStyle(.inline)
                 }
             } label: {
-                Label(
-                    includeMicrophone ? "Mic On" : "Mic Off",
-                    systemImage: includeMicrophone ? "mic.fill" : "mic.slash"
-                )
+                Label(recordingSourceLabel, systemImage: recordingSourceIcon)
             }
-            .help(includeMicrophone ? "Microphone enabled — tap to configure" : "Microphone disabled — tap to configure")
+            .help(RecordingSource(rawValue: recordingSource)?.detail ?? "Configure recording source")
         }
 
         ToolbarItemGroup(placement: .secondaryAction) {
@@ -508,6 +517,28 @@ struct ContentView: View {
                 }
                 .keyboardShortcut(.delete, modifiers: .command)
             }
+        }
+    }
+
+    private var recordingSourceLabel: String {
+        switch RecordingSource(rawValue: recordingSource) ?? .legacyScreenCapture {
+        case .coreAudioTap:
+            return "No Screen Share"
+        case .legacyScreenCapture:
+            return includeMicrophone ? "System + Mic" : "System Audio"
+        case .microphoneOnly:
+            return "Mic Only"
+        }
+    }
+
+    private var recordingSourceIcon: String {
+        switch RecordingSource(rawValue: recordingSource) ?? .legacyScreenCapture {
+        case .coreAudioTap:
+            return "waveform"
+        case .legacyScreenCapture:
+            return "rectangle.dashed.badge.record"
+        case .microphoneOnly:
+            return "mic.fill"
         }
     }
 }

@@ -70,16 +70,22 @@ struct RecordingsListView: View {
     }
 
     private var recordingsList: some View {
-        List(selection: $selectedRecordingID) {
-            ForEach(recordings) { rec in
-                recordingRowView(for: rec)
-            }
-            .onDelete { offsets in
-                offsets.compactMap { recordings[safe: $0] }.forEach(onDelete)
+        Group {
+            if recordings.isEmpty {
+                emptyState
+            } else {
+                List(selection: $selectedRecordingID) {
+                    ForEach(recordings) { rec in
+                        recordingRowView(for: rec)
+                    }
+                    .onDelete { offsets in
+                        offsets.compactMap { recordings[safe: $0] }.forEach(onDelete)
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
     }
     
     private func recordingRowView(for rec: RecordingEntity) -> some View {
@@ -109,6 +115,62 @@ struct RecordingsListView: View {
             selectedRecordingID = rec.id
             onSelect(rec.id)
         }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: emptyStateIcon)
+                .font(.system(size: 32))
+                .foregroundStyle(.tertiary)
+
+            Text(emptyStateTitle)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text(emptyStateMessage)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .frame(maxWidth: 220)
+
+            if !searchText.isEmpty {
+                Button("Clear Search") {
+                    searchText = ""
+                }
+                .font(.system(size: 12, weight: .medium))
+                .buttonStyle(.link)
+                .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
+    }
+
+    private var emptyStateIcon: String {
+        if !searchText.isEmpty { return "magnifyingglass" }
+        if title == LibraryCategory.favorites.title { return "star" }
+        if title == LibraryCategory.recentlyDeleted.title { return "trash" }
+        return "waveform"
+    }
+
+    private var emptyStateTitle: String {
+        if !searchText.isEmpty { return "No Matches" }
+        if title == LibraryCategory.favorites.title { return "No Favorites Yet" }
+        if title == LibraryCategory.recentlyDeleted.title { return "Trash Is Empty" }
+        return "No Recordings Yet"
+    }
+
+    private var emptyStateMessage: String {
+        if !searchText.isEmpty {
+            return "Try a different search or clear the field to see every recording in this view."
+        }
+        if title == LibraryCategory.favorites.title {
+            return "Mark recordings with the star button to keep important clips close."
+        }
+        if title == LibraryCategory.recentlyDeleted.title {
+            return "Deleted recordings will appear here before they are removed permanently."
+        }
+        return "Press the record button to capture your first system audio memo."
     }
 }
 

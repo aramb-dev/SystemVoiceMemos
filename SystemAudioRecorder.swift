@@ -203,6 +203,11 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         // 4b) Prepare microphone input if needed
         if UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone) {
+            let micAuthStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+            guard micAuthStatus == .authorized else {
+                throw micAuthStatus == .notDetermined ? RecorderError.noMicrophone : RecorderError.permissionDenied
+            }
+
             let micSettings: [String: Any] = [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: 44100,
@@ -221,19 +226,27 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             let micDevice = storedUID.isEmpty
                 ? AVCaptureDevice.default(for: .audio)
                 : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
-            if let device = micDevice,
-               let deviceInput = try? AVCaptureDeviceInput(device: device)
-            {
-                if session.canAddInput(deviceInput) {
-                    session.addInput(deviceInput)
-                }
-                let output = AVCaptureAudioDataOutput()
-                output.setSampleBufferDelegate(self, queue: outputQueue)
-                if session.canAddOutput(output) {
-                    session.addOutput(output)
-                }
-                captureSession = session
+
+            guard let device = micDevice else {
+                throw RecorderError.noMicrophone
             }
+
+            let deviceInput: AVCaptureDeviceInput
+            do {
+                deviceInput = try AVCaptureDeviceInput(device: device)
+            } catch {
+                throw RecorderError.deviceUnavailable(error.localizedDescription)
+            }
+
+            if session.canAddInput(deviceInput) {
+                session.addInput(deviceInput)
+            }
+            let output = AVCaptureAudioDataOutput()
+            output.setSampleBufferDelegate(self, queue: outputQueue)
+            if session.canAddOutput(output) {
+                session.addOutput(output)
+            }
+            captureSession = session
         }
 
         self.writer = writer
@@ -308,10 +321,23 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             ? AVCaptureDevice.default(for: .audio)
             : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
 
-        guard let device = micDevice,
-              let deviceInput = try? AVCaptureDeviceInput(device: device),
-              session.canAddInput(deviceInput)
-        else {
+        let authStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+        guard authStatus == .authorized else {
+            throw authStatus == .notDetermined ? RecorderError.noMicrophone : RecorderError.permissionDenied
+        }
+
+        guard let device = micDevice else {
+            throw RecorderError.noMicrophone
+        }
+
+        let deviceInput: AVCaptureDeviceInput
+        do {
+            deviceInput = try AVCaptureDeviceInput(device: device)
+        } catch {
+            throw RecorderError.deviceUnavailable(error.localizedDescription)
+        }
+
+        guard session.canAddInput(deviceInput) else {
             throw RecorderError.noMicrophone
         }
 
@@ -529,6 +555,8 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 enum RecorderError: LocalizedError {
     case noDisplay
     case noMicrophone
+    case permissionDenied
+    case deviceUnavailable(String)
     case writerCantAddInput
     case writerStartFailed
 
@@ -536,6 +564,8 @@ enum RecorderError: LocalizedError {
         switch self {
         case .noDisplay: return "No display available to capture."
         case .noMicrophone: return "No microphone available to capture."
+        case .permissionDenied: return "Microphone access is denied. Enable it in System Settings > Privacy & Security."
+        case .deviceUnavailable(let reason): return "Microphone unavailable: \(reason)"
         case .writerCantAddInput: return "Could not add audio input to writer."
         case .writerStartFailed: return "Failed to start asset writer."
         }

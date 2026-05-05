@@ -14,6 +14,7 @@ enum AppConstants {
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let hideFromScreenSharing = "hideFromScreenSharing"
         static let audioQuality = "audioQuality"
+        static let recordingSource = "recordingSource"
         static let locationBasedNaming = "locationBasedNaming"
         static let includeMicrophone = "includeMicrophone"
         static let selectedMicrophoneUID = "selectedMicrophoneUID"

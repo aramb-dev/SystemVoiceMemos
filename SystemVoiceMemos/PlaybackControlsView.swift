@@ -14,13 +14,13 @@ struct PlaybackControlsView: View {
         VStack(spacing: 16) {
             // Waveform visualization
             waveformSection
-            
+
             // Seek slider
-            Slider(value: sliderBinding, in: 0...max(playbackManager.duration, 1))
+            Slider(value: sliderBinding, in: 0 ... max(playbackManager.duration, 1))
                 .disabled(!playbackManager.hasActivePlayer)
                 .accessibilityLabel("Playback position")
                 .accessibilityValue(TimeFormatter.formatPlayback(playbackManager.currentTime))
-            
+
             // Time labels
             HStack {
                 Text(TimeFormatter.formatPlayback(playbackManager.currentTime))
@@ -29,7 +29,7 @@ struct PlaybackControlsView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-            
+
             // Playback controls
             HStack(spacing: 24) {
                 // System Audio Toggle
@@ -96,8 +96,7 @@ struct PlaybackControlsView: View {
             await loadWaveform()
         }
     }
-    
-    @ViewBuilder
+
     private func trackVolumeToggle(title: String, icon: String, mutedIcon: String, volume: Binding<Float>) -> some View {
         Button {
             withAnimation(.spring(duration: 0.2)) {
@@ -117,7 +116,7 @@ struct PlaybackControlsView: View {
         .buttonStyle(.plain)
         .help("\(volume.wrappedValue > 0 ? "Mute" : "Unmute") \(title)")
     }
-    
+
     @ViewBuilder
     private var waveformSection: some View {
         if waveformAnalyzer.isAnalyzing && waveformAnalyzer.waveformData.isEmpty {
@@ -143,11 +142,11 @@ struct PlaybackControlsView: View {
             )
         } else {
             // Fallback slider
-            Slider(value: sliderBinding, in: 0...max(playbackManager.duration, 1))
+            Slider(value: sliderBinding, in: 0 ... max(playbackManager.duration, 1))
                 .disabled(!playbackManager.hasActivePlayer)
         }
     }
-    
+
     private func loadWaveform() async {
         guard let recordingsDir = try? AppDirectories.recordingsDir() else { return }
         let url = recordingsDir.appendingPathComponent(recording.fileName)
@@ -161,4 +160,3 @@ struct PlaybackControlsView: View {
         )
     }
 }
-

@@ -5,10 +5,10 @@
 //  Core test suite covering view model logic, models, and app state.
 //
 
-import Testing
 import Foundation
 import SwiftData
 @testable import SystemVoiceMemos
+import Testing
 
 // MARK: - Test Helpers
 
@@ -42,9 +42,8 @@ private func makeRecording(
 
 @Suite("RecordingEntity")
 struct RecordingEntityTests {
-
     @MainActor @Test("defaults are correct")
-    func defaults() throws {
+    func defaults() {
         let rec = makeRecording()
         #expect(rec.isFavorite == false)
         #expect(rec.deletedAt == nil)
@@ -77,7 +76,6 @@ struct RecordingEntityTests {
 
 @Suite("FolderEntity")
 struct FolderEntityTests {
-
     @MainActor @Test("init sets properties")
     func initProperties() {
         let folder = FolderEntity(name: "Music", sortOrder: 3)
@@ -112,7 +110,6 @@ struct FolderEntityTests {
 
 @Suite("AppState")
 struct AppStateTests {
-
     @MainActor @Test("triggers increment")
     func triggerIncrements() {
         let state = AppState.shared
@@ -144,7 +141,6 @@ struct AppStateTests {
 
 @Suite("ContentViewModel")
 struct ContentViewModelTests {
-
     // MARK: - Filtering
 
     @MainActor @Test("filteredRecordings shows all non-deleted by default")
@@ -271,7 +267,7 @@ struct ContentViewModelTests {
         let folders = [
             FolderEntity(name: "Zebra", sortOrder: 0),
             FolderEntity(name: "Alpha", sortOrder: 1),
-            FolderEntity(name: "Middle", sortOrder: 2)
+            FolderEntity(name: "Middle", sortOrder: 2),
         ]
         let result = vm.userFolders(from: folders)
         #expect(result == ["Alpha", "Middle", "Zebra"])

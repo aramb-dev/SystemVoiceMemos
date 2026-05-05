@@ -21,19 +21,19 @@ import SwiftData
 final class RecordingEntity: Identifiable {
     /// Unique identifier
     var id: UUID
-    
+
     /// User-visible title
     var title: String
-    
+
     /// Creation timestamp
     var createdAt: Date
-    
+
     /// Duration in seconds
     var duration: Double
-    
+
     /// File name in recordings directory
     var fileName: String
-    
+
     /// Whether marked as favorite
     var isFavorite: Bool
 
@@ -50,7 +50,9 @@ final class RecordingEntity: Identifiable {
     var hasMicTrack: Bool
 
     /// Convenience accessor for the folder name
-    var folderName: String? { folderRef?.name }
+    var folderName: String? {
+        folderRef?.name
+    }
 
     init(id: UUID = UUID(),
          title: String,
@@ -60,7 +62,8 @@ final class RecordingEntity: Identifiable {
          isFavorite: Bool = false,
          folderRef: FolderEntity? = nil,
          deletedAt: Date? = nil,
-         hasMicTrack: Bool = false) {
+         hasMicTrack: Bool = false)
+    {
         self.id = id
         self.title = title
         self.createdAt = createdAt

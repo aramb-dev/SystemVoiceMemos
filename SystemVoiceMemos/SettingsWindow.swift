@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Settings Tab View Controllers
 
@@ -49,7 +49,7 @@ struct GeneralSettingsView: View {
 struct UpdatesSettingsView: View {
     @AppStorage("updateCheckInterval") private var updateCheckInterval = 86400
     @AppStorage("automaticUpdateChecks") private var automaticUpdateChecks = true
-    
+
     var body: some View {
         Form {
             Section("Automatic Updates") {
@@ -63,20 +63,20 @@ struct UpdatesSettingsView: View {
                     }
                 }
                 .toggleStyle(.switch)
-                
+
                 if automaticUpdateChecks {
                     Picker("Check for updates", selection: $updateCheckInterval) {
                         Text("Every hour").tag(3600)
                         Text("Every 6 hours").tag(21600)
                         Text("Every 12 hours").tag(43200)
                         Text("Daily").tag(86400)
-                        Text("Weekly").tag(604800)
+                        Text("Weekly").tag(604_800)
                     }
                     .pickerStyle(.menu)
                     .disabled(!automaticUpdateChecks)
                 }
             }
-            
+
             Section("Manual Check") {
                 Button("Check for Updates Now") {
                     checkForUpdatesNow()
@@ -87,7 +87,7 @@ struct UpdatesSettingsView: View {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     private func checkForUpdatesNow() {
         AppState.shared.requestCheckForUpdates()
     }
@@ -96,25 +96,39 @@ struct UpdatesSettingsView: View {
 struct RecordingSettingsView: View {
     @AppStorage("recordingsLocation") private var recordingsLocation = ""
     @AppStorage("audioQuality") private var audioQuality = "high"
+    @AppStorage(AppConstants.UserDefaultsKeys.recordingSource)
+    private var recordingSource = RecordingSource.defaultRawValue
     @AppStorage("locationBasedNaming") private var locationBasedNaming = false
     @AppStorage("includeMicrophone") private var includeMicrophone = false
     @AppStorage("autoDeleteEnabled") private var autoDeleteEnabled = true
     @AppStorage("autoDeleteAfterDays") private var autoDeleteAfterDays = 30
     @State private var showingLocationPicker = false
-    
+
     var body: some View {
         Form {
             Section("Recording") {
+                Picker("Recording Source", selection: $recordingSource) {
+                    ForEach(RecordingSource.allCases) { source in
+                        Text(source.title).tag(source.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text(RecordingSource(rawValue: recordingSource)?.detail ?? "")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
                 Toggle(isOn: $includeMicrophone) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Include Microphone")
                             .font(.headline)
-                        Text("Capture your voice alongside system audio")
+                        Text("Available for legacy system audio recordings as a separate track.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .toggleStyle(.switch)
+                .disabled(recordingSource != RecordingSource.legacyScreenCapture.rawValue)
                 .onChange(of: includeMicrophone) { _, enabled in
                     if enabled {
                         Task {
@@ -138,7 +152,7 @@ struct RecordingSettingsView: View {
                         chooseRecordingsLocation()
                     }
                 }
-                
+
                 Toggle(isOn: $locationBasedNaming) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Location-based Naming")
@@ -155,7 +169,7 @@ struct RecordingSettingsView: View {
                     }
                 }
             }
-            
+
             Section("Quality") {
                 Picker("Audio Quality", selection: $audioQuality) {
                     Text("Low (64 kbps)").tag("low")
@@ -165,7 +179,7 @@ struct RecordingSettingsView: View {
                 }
                 .pickerStyle(.menu)
             }
-            
+
             Section("Cleanup") {
                 Toggle(isOn: $autoDeleteEnabled) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -181,7 +195,7 @@ struct RecordingSettingsView: View {
                 HStack(spacing: 12) {
                     Text("Retention")
                     Spacer()
-                    Stepper(value: $autoDeleteAfterDays, in: 1...365) {
+                    Stepper(value: $autoDeleteAfterDays, in: 1 ... 365) {
                         Text("\(autoDeleteAfterDays) \(autoDeleteDayLabel)")
                             .monospacedDigit()
                             .frame(minWidth: 84, alignment: .trailing)
@@ -203,7 +217,7 @@ struct RecordingSettingsView: View {
                 }
 
                 Divider()
-                
+
                 Button("Clear All Deleted Recordings") {
                     clearDeletedRecordings()
                 }
@@ -217,7 +231,7 @@ struct RecordingSettingsView: View {
             autoDeleteAfterDays = min(max(autoDeleteAfterDays, 1), 365)
         }
     }
-    
+
     private var recordingsLocationDisplay: String {
         if recordingsLocation.isEmpty {
             return "Default (~/Library/Application Support/SystemVoiceMemos)"
@@ -228,19 +242,19 @@ struct RecordingSettingsView: View {
     private var autoDeleteDayLabel: String {
         autoDeleteAfterDays == 1 ? "day" : "days"
     }
-    
+
     private func chooseRecordingsLocation() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.message = "Choose where to save recordings"
-        
+
         if panel.runModal() == .OK, let url = panel.url {
             recordingsLocation = url.path
         }
     }
-    
+
     private func clearDeletedRecordings() {
         let alert = NSAlert()
         alert.messageText = "Clear All Deleted Recordings"
@@ -248,7 +262,7 @@ struct RecordingSettingsView: View {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Clear")
         alert.addButton(withTitle: "Cancel")
-        
+
         if alert.runModal() == .alertFirstButtonReturn {
             AppState.shared.requestClearDeletedRecordings()
         }
@@ -258,7 +272,6 @@ struct RecordingSettingsView: View {
 // MARK: - Toolbar Tab View Controller
 
 private final class SettingsToolbarTabViewController: NSTabViewController {
-
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -297,7 +310,8 @@ final class SettingsWindowController: NSWindowController {
         super.init(window: window)
     }
 
-    required init?(coder: NSCoder) {
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 

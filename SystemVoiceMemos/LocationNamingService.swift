@@ -5,8 +5,8 @@
 //  Resolves the user's current city for location-based recording names.
 //
 
-import Foundation
 import CoreLocation
+import Foundation
 
 @MainActor
 final class LocationNamingService: NSObject {
@@ -19,7 +19,7 @@ final class LocationNamingService: NSObject {
     private var timeoutTask: Task<Void, Never>?
     private var isRequestingLocation = false
 
-    private override init() {
+    override private init() {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
@@ -90,18 +90,18 @@ final class LocationNamingService: NSObject {
         }
     }
 
-    nonisolated private static func sanitizeLocationToken(_ input: String?) -> String? {
+    private nonisolated static func sanitizeLocationToken(_ input: String?) -> String? {
         guard let input = input, !input.isEmpty else { return nil }
         let compact = input.replacingOccurrences(of: " ", with: "")
         let sanitized = compact.filter { $0.isLetter || $0.isNumber }
         return sanitized.isEmpty ? nil : sanitized
     }
 
-    nonisolated private static func isLocationAuthorized(_ status: CLAuthorizationStatus) -> Bool {
+    private nonisolated static func isLocationAuthorized(_ status: CLAuthorizationStatus) -> Bool {
         #if os(macOS)
-        return status == .authorizedAlways
+            return status == .authorizedAlways
         #else
-        return status == .authorizedAlways || status == .authorizedWhenInUse
+            return status == .authorizedAlways || status == .authorizedWhenInUse
         #endif
     }
 
@@ -127,7 +127,7 @@ extension LocationNamingService: CLLocationManagerDelegate {
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated func locationManager(_: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         Task { @MainActor in
             guard let location = locations.last else {
                 finish(with: nil)
@@ -137,7 +137,7 @@ extension LocationNamingService: CLLocationManagerDelegate {
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    nonisolated func locationManager(_: CLLocationManager, didFailWithError _: Error) {
         Task { @MainActor in
             finish(with: nil)
         }

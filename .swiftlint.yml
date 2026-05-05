@@ -1,0 +1,103 @@
+# SwiftLint 0.63.2
+# Linting/static analysis only. SwiftFormat owns mechanical formatting.
+
+included:
+  - SystemAudioPlayer.swift
+  - SystemAudioRecorder.swift
+  - SystemVoiceMemos
+  - SystemVoiceMemosTests
+  - SystemVoiceMemosUITests
+
+excluded:
+  - .git
+  - .codex
+  - .agents
+  - build
+  - dist
+  - DerivedData
+  - SystemVoiceMemos/SystemVoiceMemos.help
+  - SystemVoiceMemos.xcodeproj
+
+disabled_rules:
+  # Covered by SwiftFormat.
+  - attribute_name_spacing
+  - closing_brace
+  - colon
+  - comma
+  - comment_spacing
+  - computed_accessors_order
+  - control_statement
+  - empty_enum_arguments
+  - empty_parameters
+  - empty_parentheses_with_trailing_closure
+  - implicit_optional_initialization
+  - leading_whitespace
+  - mark
+  - no_space_in_method_call
+  - opening_brace
+  - function_name_whitespace
+  - trailing_comma
+  - trailing_whitespace
+  - vertical_whitespace
+  - void_return
+
+opt_in_rules:
+  - array_init
+  - async_without_await
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - no_empty_block
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - unavailable_function
+
+line_length:
+  warning: 180
+  error: 240
+  ignores_comments: true
+  ignores_urls: true
+  ignores_function_declarations: true
+
+file_length:
+  warning: 700
+  error: 1000
+
+function_body_length:
+  warning: 80
+  error: 140
+
+cyclomatic_complexity:
+  warning: 12
+  error: 20
+
+function_parameter_count:
+  warning: 6
+  error: 8
+
+type_body_length:
+  warning: 350
+  error: 500
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - i
+    - vm
+    - x
+    - y
+
+type_name:
+  min_length: 3
+  max_length:
+    warning: 60
+    error: 80
+
+reporter: xcode

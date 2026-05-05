@@ -7,12 +7,11 @@
 //  Uses URL resource keys to detect cloud-only files without triggering downloads.
 //
 
+import AVFoundation
 import Foundation
 import SwiftData
-import AVFoundation
 
 enum DirectoryScanner {
-
     /// Reconciles the filesystem with SwiftData.
     /// - Discovers untracked .m4a files and creates RecordingEntity entries
     /// - Marks existing entries whose files are cloud-only
@@ -110,7 +109,8 @@ enum DirectoryScanner {
 
         // Try iCloud-specific resource key
         if let values = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]),
-           let status = values.ubiquitousItemDownloadingStatus {
+           let status = values.ubiquitousItemDownloadingStatus
+        {
             switch status {
             case .current, .downloaded:
                 return false
@@ -127,7 +127,8 @@ enum DirectoryScanner {
         // .m4a stubs from cloud providers are typically very small.
         if fm.fileExists(atPath: url.path) {
             if let attrs = try? fm.attributesOfItem(atPath: url.path),
-               let size = attrs[.size] as? UInt64 {
+               let size = attrs[.size] as? UInt64
+            {
                 // A real M4A file should be at least a few KB;
                 // cloud placeholder stubs are typically < 1KB
                 return size < 1024

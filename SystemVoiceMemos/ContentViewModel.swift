@@ -6,10 +6,10 @@
 //  Owns mutable state and data operations; the view owns @Query and layout.
 //
 
-import Foundation
-import SwiftUI
-import SwiftData
 import AVFoundation
+import Foundation
+import SwiftData
+import SwiftUI
 
 @Observable
 @MainActor
@@ -53,8 +53,8 @@ final class ContentViewModel {
     func sidebarTitle(from folders: [FolderEntity]) -> String {
         guard let item = selectedSidebarItem else { return "Library" }
         switch item {
-        case .library(let category): return category.title
-        case .folder(let id):
+        case let .library(category): return category.title
+        case let .folder(id):
             return folders.first(where: { $0.id == id })?.name ?? "Folder"
         }
     }
@@ -79,7 +79,7 @@ final class ContentViewModel {
             base = recordings.filter { $0.deletedAt == nil && $0.isFavorite }
         case .library(.recentlyDeleted):
             base = recordings.filter { $0.deletedAt != nil }
-        case .folder(let id):
+        case let .folder(id):
             base = recordings.filter { $0.deletedAt == nil && $0.folderRef?.id == id }
         }
 
@@ -121,7 +121,8 @@ final class ContentViewModel {
 
         if keepExisting,
            let currentID = selectedRecordingID,
-           filtered.contains(where: { $0.id == currentID }) {
+           filtered.contains(where: { $0.id == currentID })
+        {
             updatePlayback(for: currentID, recordings: recordings, playbackManager: playbackManager)
             return
         }
@@ -225,10 +226,10 @@ final class ContentViewModel {
 
     func promptForFolder(
         _ rec: RecordingEntity,
-        context: ModelContext,
-        folders: [FolderEntity],
-        recordings: [RecordingEntity],
-        playbackManager: PlaybackManager
+        context _: ModelContext,
+        folders _: [FolderEntity],
+        recordings _: [RecordingEntity],
+        playbackManager _: PlaybackManager
     ) {
         moveToFolderText = rec.folderName ?? ""
         movingRecording = rec
@@ -354,7 +355,7 @@ final class ContentViewModel {
         context.delete(folder)
         try? context.save()
 
-        if case .folder(let id) = selectedSidebarItem, id == folder.id {
+        if case let .folder(id) = selectedSidebarItem, id == folder.id {
             selectedSidebarItem = .library(.all)
         }
 
@@ -377,7 +378,7 @@ final class ContentViewModel {
             do {
                 let cmDuration = try await asset.load(.duration)
                 let seconds = CMTimeGetSeconds(cmDuration)
-                if seconds.isFinite && seconds > 0.01 {
+                if seconds.isFinite, seconds > 0.01 {
                     recording.duration = seconds
                     didUpdate = true
                 }
@@ -463,7 +464,7 @@ final class ContentViewModel {
     // MARK: - Screen Sharing
 
     func applyScreenSharingPreference(_ exclude: Bool) {
-        NSApp.windows.forEach { window in
+        for window in NSApp.windows {
             window.sharingType = exclude ? .none : .readOnly
         }
         recordingManager.setScreenCaptureExclusion(exclude)

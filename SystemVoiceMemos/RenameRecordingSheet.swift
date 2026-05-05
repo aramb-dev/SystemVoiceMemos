@@ -10,20 +10,20 @@ struct RenameRecordingSheet: View {
     @Binding var newTitle: String
     let onRename: (String) -> Void
     let onCancel: () -> Void
-    
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Rename Recording")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("Current: \(recordingTitle)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                
+
                 TextField("New Name", text: $newTitle)
                     .textFieldStyle(.roundedBorder)
                     .focused($isFocused)
@@ -33,15 +33,15 @@ struct RenameRecordingSheet: View {
                         }
                     }
             }
-            
+
             HStack {
                 Button("Cancel") {
                     onCancel()
                 }
                 .keyboardShortcut(.cancelAction)
-                
+
                 Spacer()
-                
+
                 Button("Rename") {
                     onRename(newTitle)
                 }

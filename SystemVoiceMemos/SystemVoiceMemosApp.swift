@@ -5,13 +5,13 @@
 //  Created by Abdur-Rahman Abu Musa Bilal on 10/8/25.
 //
 
-import SwiftUI
-import SwiftData
 import AppKit
 import Sparkle
+import SwiftData
+import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    func applicationShouldTerminateAfterLastWindowClosed(_: NSApplication) -> Bool {
         !AppState.shared.isRecording
     }
 }
@@ -24,7 +24,9 @@ struct SystemVoiceMemosApp: App {
     @StateObject private var updaterManager = UpdaterManager()
     @State private var showOnboarding = false
 
-    private var appState: AppState { AppState.shared }
+    private var appState: AppState {
+        AppState.shared
+    }
 
     var body: some Scene {
         WindowGroup(id: "main") {

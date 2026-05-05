@@ -6,8 +6,8 @@
 //  Views observe trigger properties via .onChange(of:) for type-safe signalling.
 //
 
-import Foundation
 import AppKit
+import Foundation
 
 @Observable
 @MainActor
@@ -37,14 +37,37 @@ final class AppState {
     private var statusItem: NSStatusItem?
     private let menuActions = AppStateMenuActions()
 
-    func requestStartRecording() { startRecordingTrigger &+= 1 }
-    func requestStopRecording() { stopRecordingTrigger &+= 1 }
-    func requestToggleSidebar() { toggleSidebarTrigger &+= 1 }
-    func requestClearDeletedRecordings() { clearDeletedRecordingsTrigger &+= 1 }
-    func requestCheckForUpdates() { checkForUpdatesTrigger &+= 1 }
-    func requestDeleteRecording() { deleteRecordingTrigger &+= 1 }
-    func requestRevealRecording() { revealRecordingTrigger &+= 1 }
-    func requestOpenInQuickTime() { openInQuickTimeTrigger &+= 1 }
+    func requestStartRecording() {
+        startRecordingTrigger &+= 1
+    }
+
+    func requestStopRecording() {
+        stopRecordingTrigger &+= 1
+    }
+
+    func requestToggleSidebar() {
+        toggleSidebarTrigger &+= 1
+    }
+
+    func requestClearDeletedRecordings() {
+        clearDeletedRecordingsTrigger &+= 1
+    }
+
+    func requestCheckForUpdates() {
+        checkForUpdatesTrigger &+= 1
+    }
+
+    func requestDeleteRecording() {
+        deleteRecordingTrigger &+= 1
+    }
+
+    func requestRevealRecording() {
+        revealRecordingTrigger &+= 1
+    }
+
+    func requestOpenInQuickTime() {
+        openInQuickTimeTrigger &+= 1
+    }
 
     private func updateStatusItem() {
         if isRecording {

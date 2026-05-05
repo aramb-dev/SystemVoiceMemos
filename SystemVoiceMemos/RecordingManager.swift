@@ -6,9 +6,9 @@
 //  Manages recording lifecycle and coordinates with SystemAudioRecorder.
 //
 
+import AVFoundation
 import Foundation
 import SwiftData
-import AVFoundation
 
 /// Manages the recording workflow and UI coordination
 ///
@@ -33,29 +33,35 @@ class RecordingManager {
 
     /// The recording entity being created (not yet finalized)
     private(set) var pendingRecording: RecordingEntity?
-    
+
     /// The audio recorder instance
     private let recorder = SystemAudioRecorder()
-    
+
     /// The floating recording panel UI
     private let floatingPanel = FloatingRecordingPanel()
-    
+
     /// Handles main window animations
     private let windowAnimator = WindowAnimator()
-    
+
     // MARK: - Public Accessors
-    
+
     /// Access to the recorder for UI binding
-    var recorderInstance: SystemAudioRecorder { recorder }
-    
+    var recorderInstance: SystemAudioRecorder {
+        recorder
+    }
+
     /// Access to the floating panel for UI binding
-    var floatingPanelInstance: FloatingRecordingPanel { floatingPanel }
-    
+    var floatingPanelInstance: FloatingRecordingPanel {
+        floatingPanel
+    }
+
     /// Access to the window animator for UI binding
-    var windowAnimatorInstance: WindowAnimator { windowAnimator }
-    
+    var windowAnimatorInstance: WindowAnimator {
+        windowAnimator
+    }
+
     // MARK: - Recording Flow
-    
+
     /// Starts a new recording workflow
     ///
     /// This method:
@@ -79,35 +85,35 @@ class RecordingManager {
 
         guard await startNewRecording(modelContext: modelContext) else { return }
         isRecording = true
-        
+
         floatingPanel.onStop = { [weak self] in
             Task { @MainActor in
                 await self?.stopRecordingFlow(modelContext: modelContext)
                 onComplete()
             }
         }
-        
+
         floatingPanel.onRestart = { [weak self] in
             Task { @MainActor in
                 await self?.restartRecordingFlow(modelContext: modelContext)
             }
         }
-        
+
         floatingPanel.onExpand = { [weak self] in
             Task { @MainActor in
                 self?.expandToFullWindow()
             }
         }
-        
+
         windowAnimator.shrinkToBar()
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
             guard let self else { return }
             self.floatingPanel.show(recorder: self.recorder)
             self.floatingPanel.setScreenCaptureExclusion(hideFromScreenSharing)
         }
     }
-    
+
     /// Stops the current recording workflow
     ///
     /// This method:
@@ -123,16 +129,16 @@ class RecordingManager {
         await recorder.stopRecording()
         isRecording = false
         floatingPanel.hide()
-        
+
         if windowAnimator.isMinimized {
             windowAnimator.expandToFull()
         } else {
             windowAnimator.restoreWithoutAnimation()
         }
-        
+
         await finalizePendingRecording(modelContext: modelContext)
     }
-    
+
     /// Restarts the current recording
     ///
     /// Discards the current recording and starts a new one.
@@ -140,7 +146,7 @@ class RecordingManager {
     /// - Parameter modelContext: SwiftData context for persistence
     func restartRecordingFlow(modelContext: ModelContext) async {
         await recorder.stopRecording()
-        
+
         if let pending = pendingRecording {
             let fileURL = (try? AppDirectories.recordingsDir())?.appendingPathComponent(pending.fileName)
             if let url = fileURL {
@@ -149,26 +155,26 @@ class RecordingManager {
             modelContext.delete(pending)
             pendingRecording = nil
         }
-        
+
         await startNewRecording(modelContext: modelContext)
         floatingPanel.show(recorder: recorder)
     }
-    
+
     /// Expands from floating panel to full window
     func expandToFullWindow() {
         floatingPanel.hide()
         windowAnimator.expandToFull()
     }
-    
+
     /// Sets screen capture exclusion for the floating panel
     ///
     /// - Parameter exclude: Whether to exclude from screen capture
     func setScreenCaptureExclusion(_ exclude: Bool) {
         floatingPanel.setScreenCaptureExclusion(exclude)
     }
-    
+
     // MARK: - Private Methods
-    
+
     /// Creates and starts a new recording
     ///
     /// - Parameter modelContext: SwiftData context for persistence
@@ -178,11 +184,21 @@ class RecordingManager {
         // Guard against concurrent calls
         guard !isRecording else { return false }
 
-        // Check microphone permission if enabled
-        if UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone) {
+        let source = RecordingSource.current
+        let needsMicrophone = source == .microphoneOnly
+            || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
+
+        // Check microphone permission if the selected source needs it.
+        if needsMicrophone {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
                 await PermissionManager.shared.requestAudioPermission()
+                // Re-check after the prompt — user may have denied.
+                let updated = AVCaptureDevice.authorizationStatus(for: .audio)
+                if updated != .authorized {
+                    lastError = "Microphone access is denied. Please enable it in System Settings."
+                    return false
+                }
             } else if status == .denied || status == .restricted {
                 lastError = "Microphone access is denied. Please enable it in System Settings."
                 return false
@@ -202,7 +218,8 @@ class RecordingManager {
                 createdAt: .now,
                 duration: 0,
                 fileName: fileName,
-                hasMicTrack: UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
+                hasMicTrack: source == .microphoneOnly
+                    || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
             )
             modelContext.insert(entity)
             try? modelContext.save()
@@ -246,27 +263,27 @@ class RecordingManager {
             pendingRecording = nil
             return
         }
-        
+
         guard let url = try? recordingURL(for: recording) else {
             pendingRecording = nil
             return
         }
-        
+
         let asset = AVURLAsset(url: url)
         do {
             let (cmDuration, tracks) = try await asset.load(.duration, .tracks)
             let seconds = CMTimeGetSeconds(cmDuration)
-            if seconds.isFinite && seconds > 0.01 {
+            if seconds.isFinite, seconds > 0.01 {
                 recording.duration = seconds
             }
-            recording.hasMicTrack = tracks.count > 1
+            recording.hasMicTrack = tracks.count > 1 || recording.hasMicTrack
             try? modelContext.save()
         } catch {
             print("duration load error:", error)
         }
         pendingRecording = nil
     }
-    
+
     /// Gets the file URL for a recording
     ///
     /// - Parameter recording: The recording entity

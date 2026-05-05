@@ -5,9 +5,9 @@
 //  Created by aramb-dev on 10/8/25.
 //
 
-import Foundation
-import AVFoundation
 import Accelerate
+import AVFoundation
+import Foundation
 
 @MainActor
 class WaveformAnalyzer: ObservableObject {
@@ -17,7 +17,7 @@ class WaveformAnalyzer: ObservableObject {
 
     private let analysisQueue = DispatchQueue(label: "waveform.analysis", qos: .userInitiated)
     private var currentAnalysisTask: Task<Void, Never>?
-    
+
     func analyzeAudioFile(at url: URL, duration: TimeInterval) async {
         // Cancel any ongoing analysis
         currentAnalysisTask?.cancel()
@@ -65,30 +65,31 @@ class WaveformAnalyzer: ObservableObject {
 
         await currentAnalysisTask?.value
     }
-    
+
     private func generatePlaceholderWaveform(duration: TimeInterval) -> [Float] {
         // Generate a realistic-looking placeholder waveform
-        let targetPoints = min(1000, Int(duration * 20)) // ~20 points per second
+        let safeDuration = duration.isFinite ? max(0, duration) : 0
+        let targetPoints = max(1, min(1000, Int(safeDuration * 20))) // ~20 points per second
         var placeholder: [Float] = []
         placeholder.reserveCapacity(targetPoints)
-        
-        for i in 0..<targetPoints {
+
+        for i in 0 ..< targetPoints {
             // Create a more realistic waveform pattern
             let progress = Float(i) / Float(targetPoints)
-            
+
             // Add some variation based on position
             let baseAmplitude: Float = 0.3 + 0.4 * sin(progress * .pi * 4) * cos(progress * .pi * 8)
-            let noise = Float.random(in: -0.1...0.1)
+            let noise = Float.random(in: -0.1 ... 0.1)
             let variation = sin(progress * .pi * 12) * 0.2
-            
+
             let amplitude = max(0.05, min(1.0, baseAmplitude + noise + variation))
             placeholder.append(amplitude)
         }
-        
+
         return placeholder
     }
-    
-    nonisolated private func extractWaveformData(from url: URL) -> [Float] {
+
+    private nonisolated func extractWaveformData(from url: URL) -> [Float] {
         // Validate file exists before trying to open it
         guard FileManager.default.fileExists(atPath: url.path) else {
             print("⚠️ Waveform: File not found at \(url.path)")
@@ -149,7 +150,7 @@ class WaveformAnalyzer: ObservableObject {
                     break
                 }
 
-                for i in 0..<actualFrameCount {
+                for i in 0 ..< actualFrameCount {
                     let amplitude = abs(channelData[i])
                     maxAmplitude = max(maxAmplitude, amplitude)
                     sampleCount += 1
@@ -169,7 +170,7 @@ class WaveformAnalyzer: ObservableObject {
         }
 
         // Add any remaining sample data
-        if sampleCount > 0 && maxAmplitude > 0 {
+        if sampleCount > 0, maxAmplitude > 0 {
             waveformData.append(maxAmplitude)
         }
 
@@ -187,7 +188,7 @@ class WaveformAnalyzer: ObservableObject {
         print("✅ Waveform: Successfully extracted \(waveformData.count) data points")
         return waveformData
     }
-    
+
     func clearData() {
         // Cancel any ongoing analysis
         currentAnalysisTask?.cancel()

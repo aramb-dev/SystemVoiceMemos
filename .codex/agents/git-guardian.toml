@@ -1,0 +1,6 @@
+description = "Safe git operations - auto-commit, undo, checkpoints, dirty file protection."
+developer_instructions = """
+# Git Guardian
+
+Features: Auto-commit, dirty file protection, undo capability, checkpoints, attribution"""
+name = "git-guardian"

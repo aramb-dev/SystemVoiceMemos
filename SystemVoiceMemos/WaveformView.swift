@@ -31,7 +31,7 @@ struct LoadingWaveformView: View {
                         LinearGradient(
                             colors: [
                                 Color.white.opacity(0.05),
-                                Color.clear
+                                Color.clear,
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -125,7 +125,7 @@ struct WaveformView: View {
                 path.move(to: CGPoint(x: 0, y: waveformHeight))
 
                 // Draw the top edge of the waveform
-                for i in 0..<dataCount {
+                for i in 0 ..< dataCount {
                     let amplitude = CGFloat(waveformData[i])
                     let x = CGFloat(i) * barWidth + barWidth / 2
                     let barHeight = max(2, amplitude * halfHeight * 1.8)
@@ -181,9 +181,9 @@ struct WaveformView: View {
         .position(x: xPosition, y: waveformHeight / 2)
         .animation(.easeInOut(duration: 0.08), value: playbackProgress)
     }
-    
+
     private var timelineView: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             HStack {
                 ForEach(timelineMarkers, id: \.self) { second in
                     VStack(spacing: 2) {
@@ -202,7 +202,7 @@ struct WaveformView: View {
         .frame(height: timelineHeight)
     }
 
-    // Generate smart timeline markers (max 20 ticks)
+    /// Generate smart timeline markers (max 20 ticks)
     private var timelineMarkers: [Int] {
         let totalSeconds = Int(duration.rounded())
         guard totalSeconds > 0 else { return [0] }
@@ -212,7 +212,7 @@ struct WaveformView: View {
 
         // If duration is short enough, show all seconds
         if totalSeconds <= maxMarkers {
-            return Array(0...totalSeconds)
+            return Array(0 ... totalSeconds)
         }
 
         // Calculate interval to show approximately maxMarkers
@@ -246,7 +246,6 @@ struct WaveformView: View {
             }
         }
     }
-    
 }
 
 struct OverviewWaveformView: View {
@@ -315,7 +314,7 @@ struct OverviewWaveformView: View {
                 path.move(to: CGPoint(x: 0, y: overviewHeight))
 
                 // Draw the top edge
-                for i in 0..<dataCount {
+                for i in 0 ..< dataCount {
                     let amplitude = CGFloat(waveformData[i])
                     let x = CGFloat(i) * barWidth + barWidth / 2
                     let barHeight = max(1, amplitude * halfHeight * 1.6)
@@ -378,7 +377,7 @@ struct OverviewWaveformView: View {
             .frame(height: 100)
 
         WaveformView(
-            waveformData: Array(0..<100).map { _ in Float.random(in: 0.2...1) },
+            waveformData: Array(0 ..< 100).map { _ in Float.random(in: 0.2 ... 1) },
             currentTime: 15.5,
             duration: 60.0,
             onSeek: { _ in },
@@ -387,7 +386,7 @@ struct OverviewWaveformView: View {
         .frame(height: 120)
 
         OverviewWaveformView(
-            waveformData: Array(0..<100).map { _ in Float.random(in: 0.2...1) },
+            waveformData: Array(0 ..< 100).map { _ in Float.random(in: 0.2 ... 1) },
             currentTime: 15.5,
             duration: 60.0,
             onSeek: { _ in },

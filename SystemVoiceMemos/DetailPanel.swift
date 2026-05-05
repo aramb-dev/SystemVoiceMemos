@@ -8,7 +8,7 @@ import SwiftUI
 struct DetailPanel: View {
     let recording: RecordingEntity?
     @EnvironmentObject var playbackManager: PlaybackManager
-    
+
     var body: some View {
         if recording != nil {
             VStack(spacing: 20) {
@@ -52,7 +52,7 @@ struct DetailPanel: View {
                                         LinearGradient(
                                             colors: [
                                                 Color.white.opacity(0.25),
-                                                Color.clear
+                                                Color.clear,
                                             ],
                                             startPoint: .top,
                                             endPoint: .bottom
@@ -106,7 +106,7 @@ struct DetailPanel: View {
                     Slider(value: Binding(
                         get: { Double(playbackManager.volume) },
                         set: { playbackManager.setVolume(Float($0)) }
-                    ), in: 0...1)
+                    ), in: 0 ... 1)
                         .frame(width: 140)
                 }
             }
@@ -123,7 +123,7 @@ struct DetailPanel: View {
                                 colors: [
                                     Color.white.opacity(0.06),
                                     Color.clear,
-                                    Color.black.opacity(0.02)
+                                    Color.black.opacity(0.02),
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -139,7 +139,7 @@ struct DetailPanel: View {
             emptyDetailState
         }
     }
-    
+
     private var emptyDetailState: some View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: "music.note")

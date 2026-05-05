@@ -3,8 +3,8 @@
 //  SystemVoiceMemos
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct MoveToFolderSheet: View {
     let folders: [FolderEntity]
@@ -32,7 +32,7 @@ struct MoveToFolderSheet: View {
 
                 if !folders.isEmpty {
                     Divider()
-                    
+
                     ScrollView {
                         VStack(spacing: 4) {
                             ForEach(folders) { folder in
@@ -65,9 +65,9 @@ struct MoveToFolderSheet: View {
                     onMove("")
                 }
                 .disabled(folderName.isEmpty)
-                
+
                 Spacer()
-                
+
                 Button("Cancel") {
                     onCancel()
                 }

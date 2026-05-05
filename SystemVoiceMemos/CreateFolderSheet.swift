@@ -9,15 +9,15 @@ struct CreateFolderSheet: View {
     @Binding var folderName: String
     let onCreate: (String) -> Void
     let onCancel: () -> Void
-    
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Create New Folder")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             TextField("Folder Name", text: $folderName)
                 .textFieldStyle(.roundedBorder)
                 .focused($isFocused)
@@ -26,15 +26,15 @@ struct CreateFolderSheet: View {
                         onCreate(folderName)
                     }
                 }
-            
+
             HStack {
                 Button("Cancel") {
                     onCancel()
                 }
                 .keyboardShortcut(.cancelAction)
-                
+
                 Spacer()
-                
+
                 Button("Create") {
                     onCreate(folderName)
                 }

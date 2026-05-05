@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "BashTool",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p .claude/audit && echo \"$(date -u +%FT%TZ) $CLAUDE_TOOL_INPUT\" >> .claude/audit/commands.log 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "EditTool|WriteTool",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "swiftformat \"$CLAUDE_FILE_PATH\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

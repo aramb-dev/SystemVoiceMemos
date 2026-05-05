@@ -11,7 +11,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location is used to prefix recording names with your current city when location-based naming is enabled.</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>Required to capture the system audio stream from your displays.</string>
+	<string>Required only for the Legacy System Audio source (ScreenCaptureKit). SystemVoiceMemos records audio only and does not save screen video or screenshots.</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>

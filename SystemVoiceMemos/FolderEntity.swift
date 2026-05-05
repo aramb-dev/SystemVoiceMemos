@@ -33,11 +33,12 @@ final class FolderEntity: Identifiable {
     init(id: UUID = UUID(),
          name: String,
          createdAt: Date = .now,
-         sortOrder: Int = 0) {
+         sortOrder: Int = 0)
+    {
         self.id = id
         self.name = name
         self.createdAt = createdAt
         self.sortOrder = sortOrder
-        self.recordings = []
+        recordings = []
     }
 }

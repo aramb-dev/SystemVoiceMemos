@@ -426,13 +426,15 @@ log_success "Sparkle signature generated."
 # Patch appcast.xml in place if it has placeholder values for this version
 APPCAST_PATH="$PWD/appcast.xml"
 if [[ -f "$APPCAST_PATH" ]]; then
-    if grep -q "FILL_IN_FILE_SIZE" "$APPCAST_PATH" || grep -q "FILL_IN_SIGNATURE" "$APPCAST_PATH"; then
+    if grep -q "FILL_IN_FILE_SIZE\\|FILE_SIZE_IN_BYTES" "$APPCAST_PATH" || grep -q "FILL_IN_SIGNATURE\\|SIGNATURE_FROM_SIGN_UPDATE_TOOL" "$APPCAST_PATH"; then
         log_info "Patching appcast.xml with size and signature..."
         sed -i '' \
-            "s|length=\"FILL_IN_FILE_SIZE\"|length=\"${FILE_SIZE}\"|g" \
+            -e "s|length=\"FILL_IN_FILE_SIZE\"|length=\"${FILE_SIZE}\"|g" \
+            -e "s|length=\"FILE_SIZE_IN_BYTES\"|length=\"${FILE_SIZE}\"|g" \
             "$APPCAST_PATH"
         sed -i '' \
-            "s|sparkle:edSignature=\"FILL_IN_SIGNATURE\"|sparkle:edSignature=\"${SPARKLE_SIGNATURE}\"|g" \
+            -e "s|sparkle:edSignature=\"FILL_IN_SIGNATURE\"|sparkle:edSignature=\"${SPARKLE_SIGNATURE}\"|g" \
+            -e "s|sparkle:edSignature=\"SIGNATURE_FROM_SIGN_UPDATE_TOOL\"|sparkle:edSignature=\"${SPARKLE_SIGNATURE}\"|g" \
             "$APPCAST_PATH"
         log_success "appcast.xml updated."
     else

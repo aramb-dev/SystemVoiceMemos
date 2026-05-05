@@ -14,6 +14,14 @@ enum RecordingSource: String, CaseIterable, Identifiable {
         rawValue
     }
 
+    // Override to hide coreAudioTap on macOS < 14.2 where the tap API is unavailable.
+    static var allCases: [RecordingSource] {
+        if #available(macOS 14.2, *) {
+            return [.coreAudioTap, .legacyScreenCapture, .microphoneOnly]
+        }
+        return [.legacyScreenCapture, .microphoneOnly]
+    }
+
     var title: String {
         switch self {
         case .coreAudioTap:
@@ -44,8 +52,14 @@ enum RecordingSource: String, CaseIterable, Identifiable {
     }
 
     static var current: RecordingSource {
-        let rawValue = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.recordingSource)
-            ?? defaultRawValue
-        return RecordingSource(rawValue: rawValue) ?? RecordingSource(rawValue: defaultRawValue) ?? .legacyScreenCapture
+        let stored = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.recordingSource)
+        // Validate against allCases so a persisted coreAudioTap on macOS < 14.2
+        // automatically falls back to legacyScreenCapture instead of failing at start.
+        if let source = stored.flatMap(RecordingSource.init(rawValue:)),
+           allCases.contains(source)
+        {
+            return source
+        }
+        return RecordingSource(rawValue: defaultRawValue) ?? .legacyScreenCapture
     }
 }

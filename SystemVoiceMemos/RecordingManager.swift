@@ -270,7 +270,7 @@ class RecordingManager {
             if seconds.isFinite, seconds > 0.01 {
                 recording.duration = seconds
             }
-            recording.hasMicTrack = tracks.count > 1
+            recording.hasMicTrack = tracks.count > 1 || recording.hasMicTrack
             try? modelContext.save()
         } catch {
             print("duration load error:", error)

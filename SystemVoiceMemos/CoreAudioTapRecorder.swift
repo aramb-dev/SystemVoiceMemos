@@ -21,6 +21,9 @@ final class CoreAudioTapRecorder {
     private var _isPaused = false
     private var _lastWriteStatus: OSStatus = noErr
 
+    // Stored so cleanup() can drain in-flight callbacks before disposing extAudioFile.
+    private let callbackQueue = DispatchQueue(label: "SystemVoiceMemos.CoreAudioTap.IO")
+
     var isPaused: Bool { stateLock.withLock { _isPaused } }
 
     /// Non-nil after `stopRecording()` if any async write failed during capture.
@@ -156,7 +159,6 @@ final class CoreAudioTapRecorder {
             throw CoreAudioTapRecorderError.setupFailed("Core Audio tap file writer is missing.")
         }
 
-        let callbackQueue = DispatchQueue(label: "SystemVoiceMemos.CoreAudioTap.IO")
         let block: AudioDeviceIOBlock = { [weak self] _, inputData, _, _, _ in
             guard let self,
                   !self.stateLock.withLock({ self._isPaused }),
@@ -211,6 +213,10 @@ final class CoreAudioTapRecorder {
             _ = AudioDeviceDestroyIOProcID(aggregateDeviceID, ioProcID)
         }
         ioProcID = nil
+
+        // Drain any in-flight IO callbacks before disposing extAudioFile to
+        // prevent a use-after-free when a callback reads the ref after disposal.
+        callbackQueue.sync {}
 
         if let extAudioFile {
             _ = ExtAudioFileDispose(extAudioFile)

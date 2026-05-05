@@ -68,7 +68,8 @@ class WaveformAnalyzer: ObservableObject {
 
     private func generatePlaceholderWaveform(duration: TimeInterval) -> [Float] {
         // Generate a realistic-looking placeholder waveform
-        let targetPoints = min(1000, Int(duration * 20)) // ~20 points per second
+        let safeDuration = duration.isFinite ? max(0, duration) : 0
+        let targetPoints = max(1, min(1000, Int(safeDuration * 20))) // ~20 points per second
         var placeholder: [Float] = []
         placeholder.reserveCapacity(targetPoints)
 

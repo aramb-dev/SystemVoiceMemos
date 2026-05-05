@@ -625,8 +625,7 @@ final class PlaybackManager: NSObject, ObservableObject {
         {
             var bitRate: UInt32 = 192_000
             AudioConverterSetProperty(conv, kAudioConverterEncodeBitRate, 4, &bitRate)
-            var emptyConverterConfig: UInt32 = 0
-            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, &emptyConverterConfig)
+            ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ConverterConfig, 0, nil)
         }
 
         guard reader.startReading() else {

@@ -34,7 +34,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         var bitRate: Int {
             switch self {
             case .low:
-                return 64000
+                return 64_000
             case .medium:
                 return 128_000
             case .high:
@@ -464,6 +464,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         if source == .coreAudioTap {
             if #available(macOS 14.2, *) {
                 coreAudioTapRecorder.stopRecording()
+                if let writeError = coreAudioTapRecorder.lastWriteError {
+                    print("CoreAudioTap write error during recording:", writeError)
+                }
             }
             activeRecordingSource = nil
             return

@@ -14,9 +14,24 @@ final class CoreAudioTapRecorder {
     private var ioProcID: AudioDeviceIOProcID?
     private var extAudioFile: ExtAudioFileRef?
     private var clientFormat = AudioStreamBasicDescription()
-    private var isPaused = false
+
+    // Lock protecting _isPaused and _lastWriteStatus — both are read from the
+    // Core Audio IO callback queue and written from the caller (main actor).
+    private let stateLock = NSLock()
+    private var _isPaused = false
+    private var _lastWriteStatus: OSStatus = noErr
+
+    var isPaused: Bool { stateLock.withLock { _isPaused } }
+
+    /// Non-nil after `stopRecording()` if any async write failed during capture.
+    var lastWriteError: (any Error)? {
+        let status = stateLock.withLock { _lastWriteStatus }
+        guard status != noErr else { return nil }
+        return CoreAudioTapRecorderError.osStatus(status, context: "write audio buffer")
+    }
 
     func startRecording(to url: URL, bitRate: Int) throws {
+        stateLock.withLock { _lastWriteStatus = noErr }
         cleanup()
 
         do {
@@ -47,13 +62,13 @@ final class CoreAudioTapRecorder {
         if aggregateDeviceID != kAudioObjectUnknown {
             _ = AudioDeviceStop(aggregateDeviceID, ioProcID)
         }
-        isPaused = true
+        stateLock.withLock { _isPaused = true }
     }
 
     func resumeRecording() throws {
         guard isPaused else { return }
         try checkStatus(AudioDeviceStart(aggregateDeviceID, ioProcID), context: "resume Core Audio tap device")
-        isPaused = false
+        stateLock.withLock { _isPaused = false }
     }
 
     func stopRecording() {
@@ -144,7 +159,7 @@ final class CoreAudioTapRecorder {
         let callbackQueue = DispatchQueue(label: "SystemVoiceMemos.CoreAudioTap.IO")
         let block: AudioDeviceIOBlock = { [weak self] _, inputData, _, _, _ in
             guard let self,
-                  !self.isPaused,
+                  !self.stateLock.withLock({ self._isPaused }),
                   let extAudioFile = self.extAudioFile
             else {
                 return
@@ -155,7 +170,7 @@ final class CoreAudioTapRecorder {
 
             let status = ExtAudioFileWriteAsync(extAudioFile, frameCount, inputData)
             if status != noErr {
-                print("Core Audio tap write error:", status)
+                self.stateLock.withLock { self._lastWriteStatus = status }
             }
         }
 
@@ -212,7 +227,7 @@ final class CoreAudioTapRecorder {
             tapID = AudioObjectID(kAudioObjectUnknown)
         }
 
-        isPaused = false
+        stateLock.withLock { _isPaused = false }
     }
 
     private func checkStatus(_ status: OSStatus, context: String) throws {

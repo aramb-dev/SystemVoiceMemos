@@ -483,6 +483,7 @@ struct ContentView: View {
                 Label(recordingSourceLabel, systemImage: recordingSourceIcon)
             }
             .help(RecordingSource(rawValue: recordingSource)?.detail ?? "Configure recording source")
+            .disabled(vm.recordingManager.isRecording)
         }
 
         ToolbarItemGroup(placement: .secondaryAction) {

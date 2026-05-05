@@ -155,6 +155,10 @@ struct ContentView: View {
         Group {
             RecordingsListView(
                 title: vm.sidebarTitle(from: folders),
+                category: {
+                    if case let .library(cat) = vm.selectedSidebarItem { return cat }
+                    return nil
+                }(),
                 recordings: filteredRecordings,
                 selectedRecordingID: $vm.selectedRecordingID,
                 searchText: $vm.searchText,

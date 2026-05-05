@@ -193,6 +193,12 @@ class RecordingManager {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
                 await PermissionManager.shared.requestAudioPermission()
+                // Re-check after the prompt — user may have denied.
+                let updated = AVCaptureDevice.authorizationStatus(for: .audio)
+                if updated != .authorized {
+                    lastError = "Microphone access is denied. Please enable it in System Settings."
+                    return false
+                }
             } else if status == .denied || status == .restricted {
                 lastError = "Microphone access is denied. Please enable it in System Settings."
                 return false

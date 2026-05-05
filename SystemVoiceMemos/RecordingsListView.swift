@@ -7,6 +7,7 @@ import SwiftUI
 
 struct RecordingsListView: View {
     let title: String
+    let category: LibraryCategory?
     let recordings: [RecordingEntity]
     @Binding var selectedRecordingID: RecordingEntity.ID?
     @Binding var searchText: String
@@ -148,29 +149,34 @@ struct RecordingsListView: View {
 
     private var emptyStateIcon: String {
         if !searchText.isEmpty { return "magnifyingglass" }
-        if title == LibraryCategory.favorites.title { return "star" }
-        if title == LibraryCategory.recentlyDeleted.title { return "trash" }
-        return "waveform"
+        switch category {
+        case .favorites: return "star"
+        case .recentlyDeleted: return "trash"
+        default: return "waveform"
+        }
     }
 
     private var emptyStateTitle: String {
         if !searchText.isEmpty { return "No Matches" }
-        if title == LibraryCategory.favorites.title { return "No Favorites Yet" }
-        if title == LibraryCategory.recentlyDeleted.title { return "Trash Is Empty" }
-        return "No Recordings Yet"
+        switch category {
+        case .favorites: return "No Favorites Yet"
+        case .recentlyDeleted: return "Trash Is Empty"
+        default: return "No Recordings Yet"
+        }
     }
 
     private var emptyStateMessage: String {
         if !searchText.isEmpty {
             return "Try a different search or clear the field to see every recording in this view."
         }
-        if title == LibraryCategory.favorites.title {
+        switch category {
+        case .favorites:
             return "Mark recordings with the star button to keep important clips close."
-        }
-        if title == LibraryCategory.recentlyDeleted.title {
+        case .recentlyDeleted:
             return "Deleted recordings will appear here before they are removed permanently."
+        default:
+            return "Press the record button to capture your first system audio memo."
         }
-        return "Press the record button to capture your first system audio memo."
     }
 }
 

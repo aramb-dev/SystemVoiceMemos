@@ -238,35 +238,46 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         self.writer = writer
 
-        // 5) Create stream
-        let stream = SCStream(filter: filter, configuration: config, delegate: self)
-        self.stream = stream
+        do {
+            // 5) Create stream
+            let stream = SCStream(filter: filter, configuration: config, delegate: self)
+            self.stream = stream
 
-        print("🔊 Adding audio stream output...")
-        // 6) Add only audio output. Do not add .screen output.
-        try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: outputQueue)
-        print("✅ Audio output added")
+            print("🔊 Adding audio stream output...")
+            // 6) Add only audio output. Do not add .screen output.
+            try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: outputQueue)
+            print("✅ Audio output added")
 
-        // 7) Start
-        guard writer.startWriting() else {
-            throw RecorderError.writerStartFailed
+            // 7) Start
+            guard writer.startWriting() else {
+                throw RecorderError.writerStartFailed
+            }
+            startTime = .invalid
+            pausedCMTimeDuration = .zero
+            lastBufferTime = .zero
+            writer.startSession(atSourceTime: .zero)
+            print("📝 Writer started")
+
+            print("🚀 Starting capture...")
+            try await stream.startCapture()
+
+            if let session = captureSession {
+                session.startRunning()
+            }
+
+            print("✅ Capture started successfully!")
+            markRecordingStarted()
+        } catch {
+            captureSession?.stopRunning()
+            if writer.status == .writing { writer.cancelWriting() }
+            self.stream = nil
+            self.writer = nil
+            self.audioInput = nil
+            self.micInput = nil
+            self.captureSession = nil
+            self.activeRecordingSource = nil
+            throw error
         }
-        startTime = .invalid
-        pausedCMTimeDuration = .zero
-        lastBufferTime = .zero
-        writer.startSession(atSourceTime: .zero)
-        print("📝 Writer started")
-
-        print("🚀 Starting capture...")
-        try await stream.startCapture()
-
-        if let session = captureSession {
-            session.startRunning()
-        }
-
-        print("✅ Capture started successfully!")
-
-        markRecordingStarted()
     }
 
     private func startCoreAudioTapRecording(to url: URL) throws {
@@ -573,8 +584,17 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
     /// Receives audio sample buffers from the microphone
     nonisolated func captureOutput(_: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from _: AVCaptureConnection) {
         Task { @MainActor in
+            guard let writer = self.writer,
+                  writer.status == .writing || writer.status == .unknown
+            else { return }
+            // Mic-only: append to audioInput (single primary track).
+            // Legacy+mic: append to micInput (secondary track alongside system audio).
             let isMicOnly = self.activeRecordingSource == .microphoneOnly
-            self.processSampleBuffer(sampleBuffer, forMic: !isMicOnly)
+            let input = isMicOnly ? self.audioInput : self.micInput
+            if let input, input.isReadyForMoreMediaData {
+                let adjusted = self.adjustSampleBufferTiming(sampleBuffer)
+                _ = input.append(adjusted)
+            }
         }
     }
 

@@ -1,0 +1,22 @@
+# SwiftFormat 0.61.1
+# Formatting only. SwiftLint is the lint/style gate for this project.
+# Keep this conservative so formatting stays close to Xcode's Swift style.
+# Use an explicit rules allowlist so SwiftFormat upgrades do not opt into
+# new rewrite rules automatically.
+
+--swift-version 5.0
+--indent 4
+--linebreaks lf
+--semicolons never
+--trim-whitespace always
+--header ignore
+
+# Match the repo preference for sorted imports and trailing commas.
+--import-grouping alpha
+--trailing-commas always
+--max-width none
+
+# Layout-only rules.
+--rules blankLineAfterImports,blankLinesBetweenImports,indent,linebreakAtEndOfFile,linebreaks,semicolons,sortImports,trailingCommas,trailingSpace
+
+--exclude .git,dist,build,DerivedData

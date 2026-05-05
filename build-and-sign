@@ -363,6 +363,16 @@ log_success "DMG created: $DMG_PATH"
 NOTARIZED="false"
 if notarize_and_staple "$DMG_PATH"; then
     NOTARIZED="true"
+else
+    # Credentials were configured but notarization failed — abort so we don't
+    # sign a pre-staple DMG. Stapling later would change the file and invalidate
+    # the Sparkle signature.
+    if [[ -n "${NOTARY_PROFILE:-}" ]] || [[ -n "${APPLE_ID:-}" ]]; then
+        log_error "Notarization failed. Aborting to prevent an invalid Sparkle signature."
+        log_error "Fix the issue above and re-run build-and-sign."
+        exit 1
+    fi
+    log_warn "Notarization skipped (no credentials). Sparkle signature will be over the un-stapled DMG."
 fi
 
 if [[ ! -f "$SPARKLE_PRIVATE_KEY" ]]; then

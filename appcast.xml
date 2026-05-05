@@ -31,7 +31,32 @@
                 sparkle:edSignature="ZhARPUI1Hb3ot53oK4ve405wR8OqJTyqqYNnsImbl0sFE0DhMcpHwsIhlF3fh9YugCXkKhMYkPRXOykh0Pw+CQ==" />
         </item>
         -->
-        
+
+        <!-- Version 0.10.1 -->
+        <item>
+            <title>Version 0.10.1</title>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>0.10.1</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.10.1</h2>
+                <ul>
+                    <li><strong>System Audio without Screen Recording</strong> - New Core Audio tap source captures system audio directly with no screen-sharing UI or Screen Recording permission required (macOS 14.2+)</li>
+                    <li><strong>Recording source picker</strong> - Choose between Core Audio tap, legacy ScreenCaptureKit, or microphone-only from the toolbar before each session</li>
+                    <li><strong>Explicit mic error handling</strong> - Permission denied and device unavailable errors are now surfaced clearly instead of silently proceeding</li>
+                    <li><strong>Thread safety</strong> - Core Audio IO callback state protected behind NSLock; in-flight callbacks drained before file disposal</li>
+                    <li><strong>Bug fixes</strong> - hasMicTrack finalization, RecordingSource availability gating on macOS &lt; 14.2, waveform crash on non-finite duration</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 05 May 2026 18:30:00 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.10.1/SystemVoiceMemos-0.10.1.dmg"
+                sparkle:version="10"
+                sparkle:shortVersionString="0.10.1"
+                length="4779587"
+                type="application/octet-stream"
+                sparkle:edSignature="ZhARPUI1Hb3ot53oK4ve405wR8OqJTyqqYNnsImbl0sFE0DhMcpHwsIhlF3fh9YugCXkKhMYkPRXOykh0Pw+CQ==" />
+        </item>
+
         <!-- Version 0.8.0 -->
         <item>
             <title>Version 0.8.0</title>

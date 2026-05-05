@@ -510,7 +510,10 @@ final class PlaybackManager: NSObject, ObservableObject {
         guard reader.startReading() else {
             throw reader.error ?? NSError(domain: "PlaybackManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to start reading audio"])
         }
-        writer.startWriting()
+        guard writer.startWriting() else {
+            reader.cancelReading()
+            throw writer.error ?? NSError(domain: "PlaybackManager", code: 17, userInfo: [NSLocalizedDescriptionKey: "Failed to start writing audio"])
+        }
         writer.startSession(atSourceTime: .zero)
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in

@@ -39,7 +39,7 @@ final class CoreAudioTapRecorder {
 
         do {
             let tapDescription = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
-            tapDescription.name = "SystemVoiceMemos System Audio"
+            tapDescription.name = "System Voice Memos System Audio"
             tapDescription.uuid = UUID()
             tapDescription.isPrivate = true
             tapDescription.muteBehavior = .unmuted
@@ -86,7 +86,7 @@ final class CoreAudioTapRecorder {
         ]
 
         let aggregateDescription: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "SystemVoiceMemos Tap",
+            kAudioAggregateDeviceNameKey: "System Voice Memos Tap",
             kAudioAggregateDeviceUIDKey: "SystemVoiceMemos.Tap.\(UUID().uuidString)",
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceTapAutoStartKey: true,

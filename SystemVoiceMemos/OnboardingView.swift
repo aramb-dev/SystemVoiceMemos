@@ -168,7 +168,7 @@ struct OnboardingView: View {
             Spacer()
 
             VStack(spacing: 16) {
-                Text("Welcome to SystemVoiceMemos")
+                Text("Welcome to System Voice Memos")
                     .font(.system(size: 48, weight: .bold))
                     .multilineTextAlignment(.center)
 
@@ -267,13 +267,13 @@ struct OnboardingView: View {
                     .font(.system(size: 40, weight: .bold))
 
                 if #available(macOS 14.2, *) {
-                    Text("SystemVoiceMemos is ready to capture audio. Use System Audio (No Screen Sharing) to avoid macOS screen-sharing UI.")
+                    Text("System Voice Memos is ready to capture audio. Use System Audio (No Screen Sharing) to avoid macOS screen-sharing UI.")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 80)
                 } else {
-                    Text("SystemVoiceMemos uses the legacy Screen Recording source on this macOS version. Grant Screen Recording permission below before getting started.")
+                    Text("System Voice Memos uses the legacy Screen Recording source on this macOS version. Grant Screen Recording permission below before getting started.")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

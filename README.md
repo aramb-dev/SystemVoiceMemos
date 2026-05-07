@@ -1,6 +1,6 @@
-# SystemVoiceMemos
+# System Voice Memos
 
-SystemVoiceMemos captures system audio on macOS using ScreenCaptureKit and stores each session as an M4A file. The SwiftUI client provides quick controls for starting and stopping a recording, browsing recent captures, and revealing them in Finder.
+System Voice Memos captures system audio on macOS using ScreenCaptureKit and stores each session as an M4A file. The SwiftUI client provides quick controls for starting and stopping a recording, browsing recent captures, and revealing them in Finder.
 
 ## Features
 - Records system audio from the primary display using ScreenCaptureKit.

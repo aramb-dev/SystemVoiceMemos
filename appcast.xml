@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
-        <title>SystemVoiceMemos Updates</title>
+        <title>System Voice Memos Updates</title>
         <link>https://github.com/aramb-dev/SystemVoiceMemos</link>
-        <description>Updates for SystemVoiceMemos</description>
+        <description>Updates for System Voice Memos</description>
         <language>en</language>
         
         <!-- 

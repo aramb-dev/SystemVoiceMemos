@@ -32,6 +32,35 @@
         </item>
         -->
 
+        <!-- Version 0.10.2 -->
+        <item>
+            <title>Version 0.10.2</title>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>0.10.2</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 0.10.2</h2>
+                <p>This release includes the Core Audio tap work originally prepared for 0.10.1, plus new recording controls, toolbar behavior, and interface polish.</p>
+                <ul>
+                    <li><strong>Core Audio system capture</strong> - System audio can now be captured through a Core Audio tap on macOS 14.2 and later, avoiding the screen-sharing UI and Screen Recording permission for the default recording path.</li>
+                    <li><strong>Legacy capture moved to Settings</strong> - The older ScreenCaptureKit-based engine is now a Settings option labeled <em>Use Legacy Screen Sharing Engine</em>, with a warning that it may slow the screen when ScreenCaptureKit is active in multiple places or on lower-end Apple computers.</li>
+                    <li><strong>Separate microphone tracks</strong> - Microphone audio can be recorded as its own track when using the legacy engine, so you can keep mic and system audio separate instead of committing to one mixed file.</li>
+                    <li><strong>Track-aware playback and export</strong> - Recordings with microphone audio can play both tracks together, system audio only, or microphone only, and exports can be mixed or track-specific.</li>
+                    <li><strong>Floating toolbar controls</strong> - The recording toolbar can be customized from its own Settings pane, restored from the app menu, and automatically shown again when the main window is brought back during an active recording.</li>
+                    <li><strong>Cleaner recording UI</strong> - The floating toolbar has softer visual edges, the no-selection detail state now looks intentional, and the empty detail icon now uses a waveform instead of a music note.</li>
+                    <li><strong>What's New and Help updates</strong> - The app now shows a per-version What's New sheet after updates and includes a refreshed Apple Help book covering recording, playback, folders, exports, toolbar settings, and troubleshooting.</li>
+                    <li><strong>Reliability fixes</strong> - The new recording path includes clearer mic permission errors, better unavailable-device handling, safer Core Audio callback state, macOS availability checks, mic-track finalization fixes, and waveform edge-case protection.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Thu, 07 May 2026 14:44:25 +0000</pubDate>
+            <enclosure
+                url="https://github.com/aramb-dev/SystemVoiceMemos/releases/download/v0.10.2/SystemVoiceMemos-0.10.2.dmg"
+                sparkle:version="11"
+                sparkle:shortVersionString="0.10.2"
+                length="4805308"
+                type="application/octet-stream"
+                sparkle:edSignature="dh1oxlU0u9M1VIgVv1FkrgEiDObv2fftYkUKGZSsQNvm9bvzjCH8CEW4iqMojcP8dRWkvNEDyHv5Wh+P3fewDA==" />
+        </item>
+
         <!-- Version 0.10.1 -->
         <item>
             <title>Version 0.10.1</title>

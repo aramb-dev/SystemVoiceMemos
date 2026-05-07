@@ -48,7 +48,7 @@ enum DirectoryScanner {
 
         var foundFileNames: Set<String> = []
 
-        for case let fileURL as URL in enumerator {
+        while let fileURL = enumerator.nextObject() as? URL {
             guard fileURL.pathExtension.lowercased() == "m4a" else { continue }
 
             let fileName = fileURL.lastPathComponent

@@ -127,13 +127,8 @@ final class ContentViewModel {
             return
         }
 
-        if let first = filtered.first {
-            selectedRecordingID = first.id
-            updatePlayback(for: first.id, recordings: recordings, playbackManager: playbackManager)
-        } else {
-            selectedRecordingID = nil
-            playbackManager.select(recording: nil)
-        }
+        selectedRecordingID = nil
+        playbackManager.select(recording: nil)
     }
 
     func updatePlayback(

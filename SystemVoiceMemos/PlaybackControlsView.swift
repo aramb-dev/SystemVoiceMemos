@@ -30,6 +30,10 @@ struct PlaybackControlsView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
+            if playbackManager.hasMicTrack {
+                playbackTrackPicker
+            }
+
             // Playback controls
             HStack(spacing: 24) {
                 // System Audio Toggle
@@ -115,6 +119,18 @@ struct PlaybackControlsView: View {
         }
         .buttonStyle(.plain)
         .help("\(volume.wrappedValue > 0 ? "Mute" : "Unmute") \(title)")
+    }
+
+    private var playbackTrackPicker: some View {
+        Picker("Playback Tracks", selection: $playbackManager.playbackMode) {
+            Text("Together").tag(PlaybackManager.PlaybackMode.both)
+            Text("System").tag(PlaybackManager.PlaybackMode.systemOnly)
+            Text("Mic").tag(PlaybackManager.PlaybackMode.micOnly)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(maxWidth: 320)
+        .help("Choose which tracks to hear while playing this recording")
     }
 
     @ViewBuilder

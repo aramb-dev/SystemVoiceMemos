@@ -101,16 +101,17 @@ class RecordingManager {
 
         floatingPanel.onExpand = { [weak self] in
             Task { @MainActor in
-                self?.expandToFullWindow()
+                self?.expandToFullWindow(restoreToolbarIfNeeded: true)
             }
         }
 
-        windowAnimator.shrinkToBar()
+        if UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.minimizeWindowDuringRecording) as? Bool ?? true {
+            windowAnimator.shrinkToBar()
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
             guard let self else { return }
-            self.floatingPanel.show(recorder: self.recorder)
-            self.floatingPanel.setScreenCaptureExclusion(hideFromScreenSharing)
+            self.showFloatingToolbar(hideFromScreenSharing: hideFromScreenSharing)
         }
     }
 
@@ -157,13 +158,35 @@ class RecordingManager {
         }
 
         await startNewRecording(modelContext: modelContext)
-        floatingPanel.show(recorder: recorder)
+        showFloatingToolbar()
     }
 
     /// Expands from floating panel to full window
-    func expandToFullWindow() {
+    func expandToFullWindow(restoreToolbarIfNeeded: Bool = false) {
         floatingPanel.hide()
         windowAnimator.expandToFull()
+
+        guard restoreToolbarIfNeeded,
+              recorder.isRecording,
+              UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.restoreToolbarAfterExpand) as? Bool ?? true
+        else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            self?.showFloatingToolbar()
+        }
+    }
+
+    /// Shows the floating recording toolbar for the active recording.
+    func showFloatingToolbar(hideFromScreenSharing: Bool? = nil) {
+        guard recorder.isRecording,
+              UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.showFloatingRecordingToolbar) as? Bool ?? true
+        else { return }
+
+        floatingPanel.show(recorder: recorder)
+
+        if let hideFromScreenSharing {
+            floatingPanel.setScreenCaptureExclusion(hideFromScreenSharing)
+        }
     }
 
     /// Sets screen capture exclusion for the floating panel

@@ -13,6 +13,25 @@ import AVFoundation
 import Foundation
 import MediaPlayer
 
+private final class PCMExportPipeline: @unchecked Sendable {
+    let reader: AVAssetReader
+    let readerOutput: AVAssetReaderAudioMixOutput
+    let writer: AVAssetWriter
+    let writerInput: AVAssetWriterInput
+
+    init(
+        reader: AVAssetReader,
+        readerOutput: AVAssetReaderAudioMixOutput,
+        writer: AVAssetWriter,
+        writerInput: AVAssetWriterInput
+    ) {
+        self.reader = reader
+        self.readerOutput = readerOutput
+        self.writer = writer
+        self.writerInput = writerInput
+    }
+}
+
 /// Manages audio playback for recordings
 ///
 /// This class:
@@ -43,6 +62,13 @@ final class PlaybackManager: NSObject, ObservableObject {
         case systemOnly
         case micOnly
         case bothMixed
+    }
+
+    /// Which recorded tracks should be audible during playback.
+    enum PlaybackMode {
+        case both
+        case systemOnly
+        case micOnly
     }
 
     /// Output format for export
@@ -97,6 +123,11 @@ final class PlaybackManager: NSObject, ObservableObject {
 
     /// Microphone track volume
     @Published var micVolume: Float = 1.0 {
+        didSet { updateAudioMix() }
+    }
+
+    /// Which tracks are active during playback.
+    @Published var playbackMode: PlaybackMode = .both {
         didSet { updateAudioMix() }
     }
 
@@ -189,6 +220,9 @@ final class PlaybackManager: NSObject, ObservableObject {
             selectedRecording = info
             selectedRecordingID = info.id
             hasMicTrack = info.hasMicTrack
+            if !info.hasMicTrack, playbackMode == .micOnly {
+                playbackMode = .systemOnly
+            }
 
             if autoPlay {
                 play(info: info)
@@ -391,7 +425,7 @@ final class PlaybackManager: NSObject, ObservableObject {
                 let mixParameters = tracks.enumerated().map { index, track -> AVMutableAudioMixInputParameters in
                     let parameters = AVMutableAudioMixInputParameters(track: track)
                     // Track 0 = System, Track 1 = Mic
-                    let vol = index == 0 ? self.systemVolume : self.micVolume
+                    let vol = self.volume(forTrackAt: index)
                     parameters.setVolume(vol, at: .zero)
                     return parameters
                 }
@@ -417,7 +451,7 @@ final class PlaybackManager: NSObject, ObservableObject {
             await MainActor.run {
                 let mixParameters = tracks.enumerated().map { index, track -> AVMutableAudioMixInputParameters in
                     let parameters = AVMutableAudioMixInputParameters(track: track)
-                    let vol = index == 0 ? self.systemVolume : self.micVolume
+                    let vol = self.volume(forTrackAt: index)
                     parameters.setVolume(vol, at: .zero)
                     return parameters
                 }
@@ -426,6 +460,17 @@ final class PlaybackManager: NSObject, ObservableObject {
                 self.audioMix = mix
                 playerItem.audioMix = mix
             }
+        }
+    }
+
+    private func volume(forTrackAt index: Int) -> Float {
+        switch playbackMode {
+        case .both:
+            return index == 0 ? systemVolume : micVolume
+        case .systemOnly:
+            return index == 0 ? systemVolume : 0
+        case .micOnly:
+            return index == 0 ? 0 : micVolume
         }
     }
 
@@ -451,17 +496,17 @@ final class PlaybackManager: NSObject, ObservableObject {
                 throw NSError(domain: "PlaybackManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "System audio track not found"])
             }
             let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-            try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: systemTrack, at: .zero)
+            try compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: systemTrack, at: .zero)
         case .micOnly:
             guard tracks.count > 1 else {
                 throw NSError(domain: "PlaybackManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Microphone track not found"])
             }
             let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-            try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: tracks[1], at: .zero)
+            try compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: tracks[1], at: .zero)
         case .bothMixed:
             for track in tracks {
                 let compTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-                try await compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: track, at: .zero)
+                try compTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: track, at: .zero)
             }
         }
 
@@ -522,33 +567,40 @@ final class PlaybackManager: NSObject, ObservableObject {
         }
         writer.startSession(atSourceTime: .zero)
 
+        let pipeline = PCMExportPipeline(
+            reader: reader,
+            readerOutput: readerOutput,
+            writer: writer,
+            writerInput: writerInput
+        )
+
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            writerInput.requestMediaDataWhenReady(on: DispatchQueue(label: "SVM.PCMExport")) {
-                while writerInput.isReadyForMoreMediaData {
-                    if reader.status == .reading, let buffer = readerOutput.copyNextSampleBuffer() {
-                        if !writerInput.append(buffer) {
-                            writerInput.markAsFinished()
-                            writer.cancelWriting()
-                            continuation.resume(throwing: writer.error ?? NSError(
+            pipeline.writerInput.requestMediaDataWhenReady(on: DispatchQueue(label: "SVM.PCMExport")) {
+                while pipeline.writerInput.isReadyForMoreMediaData {
+                    if pipeline.reader.status == .reading, let buffer = pipeline.readerOutput.copyNextSampleBuffer() {
+                        if !pipeline.writerInput.append(buffer) {
+                            pipeline.writerInput.markAsFinished()
+                            pipeline.writer.cancelWriting()
+                            continuation.resume(throwing: pipeline.writer.error ?? NSError(
                                 domain: "PlaybackManager", code: 7,
                                 userInfo: [NSLocalizedDescriptionKey: "Failed to write audio data"]
                             ))
                             return
                         }
                     } else {
-                        if reader.status == .failed {
-                            writerInput.markAsFinished()
-                            writer.cancelWriting()
-                            continuation.resume(throwing: reader.error ?? NSError(
+                        if pipeline.reader.status == .failed {
+                            pipeline.writerInput.markAsFinished()
+                            pipeline.writer.cancelWriting()
+                            continuation.resume(throwing: pipeline.reader.error ?? NSError(
                                 domain: "PlaybackManager", code: 16,
                                 userInfo: [NSLocalizedDescriptionKey: "Audio read failed during PCM export"]
                             ))
                             return
                         }
-                        writerInput.markAsFinished()
-                        writer.finishWriting {
-                            if writer.status == .failed {
-                                continuation.resume(throwing: writer.error ?? NSError(
+                        pipeline.writerInput.markAsFinished()
+                        pipeline.writer.finishWriting {
+                            if pipeline.writer.status == .failed {
+                                continuation.resume(throwing: pipeline.writer.error ?? NSError(
                                     domain: "PlaybackManager", code: 8,
                                     userInfo: [NSLocalizedDescriptionKey: "Export failed"]
                                 ))

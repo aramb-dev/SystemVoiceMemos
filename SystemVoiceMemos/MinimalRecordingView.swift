@@ -43,8 +43,10 @@ struct MinimalRecordingView: View {
         .background(
             Capsule()
                 .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         )
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        .padding(6)
     }
 
     private var recordingIndicator: some View {

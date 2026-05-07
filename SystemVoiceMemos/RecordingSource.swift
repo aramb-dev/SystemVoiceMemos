@@ -27,7 +27,7 @@ enum RecordingSource: String, CaseIterable, Identifiable {
         case .coreAudioTap:
             return "System Audio (No Screen Sharing)"
         case .legacyScreenCapture:
-            return "System Audio (Legacy)"
+            return "Legacy Screen Sharing Engine"
         case .microphoneOnly:
             return "Microphone Only"
         }
@@ -38,7 +38,7 @@ enum RecordingSource: String, CaseIterable, Identifiable {
         case .coreAudioTap:
             return "Captures computer audio with Core Audio taps and should not show macOS screen sharing."
         case .legacyScreenCapture:
-            return "Uses ScreenCaptureKit and may show macOS screen-sharing UI."
+            return "Captures system audio through Apple's ScreenCaptureKit API without saving screen video."
         case .microphoneOnly:
             return "Records regular microphone input, like ChatGPT voice mode."
         }

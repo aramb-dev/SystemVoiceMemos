@@ -141,15 +141,6 @@ struct DetailPanel: View {
     }
 
     private var emptyDetailState: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: "music.note")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("No Recording Selected")
-                .font(.title3)
-            Text("Choose a recording from the list to see its details and controls.")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
+        EmptyDetailState()
     }
 }

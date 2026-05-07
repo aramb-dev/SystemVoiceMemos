@@ -23,6 +23,8 @@ final class AppState {
     private(set) var deleteRecordingTrigger = 0
     private(set) var revealRecordingTrigger = 0
     private(set) var openInQuickTimeTrigger = 0
+    private(set) var showMainWindowTrigger = 0
+    private(set) var showRecordingToolbarTrigger = 0
 
     /// Whether a recording is currently selected (updated by ContentViewModel)
     var hasSelectedRecording = false
@@ -69,6 +71,14 @@ final class AppState {
         openInQuickTimeTrigger &+= 1
     }
 
+    func requestShowMainWindow() {
+        showMainWindowTrigger &+= 1
+    }
+
+    func requestShowRecordingToolbar() {
+        showRecordingToolbarTrigger &+= 1
+    }
+
     private func updateStatusItem() {
         if isRecording {
             if statusItem == nil {
@@ -86,6 +96,9 @@ final class AppState {
             stopItem.target = menuActions
             menu.addItem(stopItem)
             menu.addItem(.separator())
+            let toolbarItem = NSMenuItem(title: "Show Recording Toolbar", action: #selector(AppStateMenuActions.showRecordingToolbar), keyEquivalent: "")
+            toolbarItem.target = menuActions
+            menu.addItem(toolbarItem)
             let showItem = NSMenuItem(title: "Show Window", action: #selector(AppStateMenuActions.showMainWindow), keyEquivalent: "")
             showItem.target = menuActions
             menu.addItem(showItem)
@@ -108,10 +121,10 @@ final class AppState {
     }
 
     @MainActor @objc func showMainWindow() {
-        NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows where window.identifier?.rawValue == "main_window" {
-            window.makeKeyAndOrderFront(nil)
-            return
-        }
+        AppState.shared.requestShowMainWindow()
+    }
+
+    @MainActor @objc func showRecordingToolbar() {
+        AppState.shared.requestShowRecordingToolbar()
     }
 }

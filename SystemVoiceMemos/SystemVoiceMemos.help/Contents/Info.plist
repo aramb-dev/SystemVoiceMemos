@@ -9,15 +9,23 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>SystemVoiceMemos Help</string>
+    <string>System Voice Memos Help</string>
     <key>CFBundlePackageType</key>
     <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1</string>
+    <key>CFBundleSignature</key>
+    <string>hbwr</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
     <key>HPDBookAccessPath</key>
-    <string>index.html</string>
+    <string>SystemVoiceMemos.html</string>
+    <key>HPDBookIconPath</key>
+    <string>shrd/shhl.png</string>
     <key>HPDBookIndexPath</key>
-    <string>search.index</string>
+    <string>SystemVoiceMemos.helpindex</string>
     <key>HPDBookTitle</key>
-    <string>SystemVoiceMemos Help</string>
+    <string>System Voice Memos Help</string>
     <key>HPDBookType</key>
     <string>3</string>
 </dict>

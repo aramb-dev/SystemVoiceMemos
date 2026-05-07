@@ -15,6 +15,12 @@ private class RecordingSettingsViewController: NSViewController {
     }
 }
 
+private class ToolbarSettingsViewController: NSViewController {
+    override func loadView() {
+        view = NSHostingView(rootView: ToolbarSettingsView())
+    }
+}
+
 private class UpdatesSettingsViewController: NSViewController {
     override func loadView() {
         view = NSHostingView(rootView: UpdatesSettingsView())
@@ -93,6 +99,73 @@ struct UpdatesSettingsView: View {
     }
 }
 
+struct ToolbarSettingsView: View {
+    @AppStorage(AppConstants.UserDefaultsKeys.showFloatingRecordingToolbar)
+    private var showFloatingRecordingToolbar = true
+    @AppStorage("minimalRecordingAlwaysOnTop") private var floatingToolbarAlwaysOnTop = true
+    @AppStorage(AppConstants.UserDefaultsKeys.minimizeWindowDuringRecording)
+    private var minimizeWindowDuringRecording = true
+    @AppStorage(AppConstants.UserDefaultsKeys.restoreToolbarAfterExpand)
+    private var restoreToolbarAfterExpand = true
+
+    var body: some View {
+        Form {
+            Section("Floating Toolbar") {
+                Toggle(isOn: $showFloatingRecordingToolbar) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Show Floating Recording Toolbar")
+                            .font(.headline)
+                        Text("Display recording controls while a recording is active.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Toggle(isOn: $floatingToolbarAlwaysOnTop) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Keep Toolbar on Top")
+                            .font(.headline)
+                        Text("Keep the floating toolbar above other windows.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .disabled(!showFloatingRecordingToolbar)
+            }
+
+            Section("Window Behavior") {
+                Toggle(isOn: $minimizeWindowDuringRecording) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Minimize Main Window When Recording Starts")
+                            .font(.headline)
+                        Text("Move the app out of the way and use the floating toolbar for recording controls.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Toggle(isOn: $restoreToolbarAfterExpand) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Restore Toolbar After Showing App")
+                            .font(.headline)
+                        Text("If the app is brought back while recording, automatically show the floating toolbar again.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .disabled(!showFloatingRecordingToolbar)
+            }
+        }
+        .formStyle(.grouped)
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 struct RecordingSettingsView: View {
     @AppStorage("recordingsLocation") private var recordingsLocation = ""
     @AppStorage("audioQuality") private var audioQuality = "high"
@@ -107,22 +180,37 @@ struct RecordingSettingsView: View {
     var body: some View {
         Form {
             Section("Recording") {
-                Picker("Recording Source", selection: $recordingSource) {
-                    ForEach(RecordingSource.allCases) { source in
-                        Text(source.title).tag(source.rawValue)
+                Toggle(isOn: legacyEngineBinding) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Use Legacy Screen Sharing Engine")
+                            .font(.headline)
+                        Text("Captures system audio through Apple's ScreenCaptureKit API without saving screen video.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .pickerStyle(.menu)
+                .toggleStyle(.switch)
+                .disabled(!supportsCoreAudioTap)
 
-                Text(RecordingSource(rawValue: recordingSource)?.detail ?? "")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if recordingSource == RecordingSource.legacyScreenCapture.rawValue {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Legacy capture can make your screen feel slow, especially when ScreenCaptureKit is active in multiple apps or on lower-end Apple computers.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("Default: captures system audio with Core Audio and avoids macOS screen-sharing capture.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
 
                 Toggle(isOn: $includeMicrophone) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Include Microphone")
+                        Text("Record Microphone as Separate Track")
                             .font(.headline)
-                        Text("Available for legacy system audio recordings as a separate track.")
+                        Text("Available with the legacy engine. Export it separately, export a mixed file, or choose which track to hear during playback.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -232,6 +320,22 @@ struct RecordingSettingsView: View {
         }
     }
 
+    private var supportsCoreAudioTap: Bool {
+        if #available(macOS 14.2, *) {
+            return true
+        }
+        return false
+    }
+
+    private var legacyEngineBinding: Binding<Bool> {
+        Binding(
+            get: { recordingSource == RecordingSource.legacyScreenCapture.rawValue },
+            set: { useLegacy in
+                recordingSource = useLegacy ? RecordingSource.legacyScreenCapture.rawValue : RecordingSource.defaultRawValue
+            }
+        )
+    }
+
     private var recordingsLocationDisplay: String {
         if recordingsLocation.isEmpty {
             return "Default (~/Library/Application Support/SystemVoiceMemos)"
@@ -282,6 +386,7 @@ private final class SettingsToolbarTabViewController: NSTabViewController {
         // Add panes
         addTab(title: "General", symbol: "slider.horizontal.3", controller: GeneralSettingsViewController())
         addTab(title: "Recording", symbol: "waveform", controller: RecordingSettingsViewController())
+        addTab(title: "Toolbar", symbol: "rectangle.on.rectangle", controller: ToolbarSettingsViewController())
         addTab(title: "Updates", symbol: "arrow.down.circle", controller: UpdatesSettingsViewController())
     }
 

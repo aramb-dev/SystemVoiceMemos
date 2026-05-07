@@ -20,12 +20,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct SystemVoiceMemosApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
+    @AppStorage(AppConstants.UserDefaultsKeys.lastSeenWhatsNewVersion) private var lastSeenWhatsNewVersion = ""
     @StateObject private var playbackManager = PlaybackManager()
     @StateObject private var updaterManager = UpdaterManager()
     @State private var showOnboarding = false
+    @State private var showWhatsNew = false
 
     private var appState: AppState {
         AppState.shared
+    }
+
+    private var currentVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.10.2"
     }
 
     var body: some Scene {
@@ -39,12 +45,26 @@ struct SystemVoiceMemosApp: App {
 
                     if !hasCompletedOnboarding {
                         showOnboarding = true
+                    } else {
+                        showWhatsNewIfNeeded()
                     }
                 }
                 .sheet(isPresented: $showOnboarding) {
                     OnboardingView()
                         .frame(width: 800, height: 600)
                         .interactiveDismissDisabled(!hasCompletedOnboarding)
+                }
+                .sheet(isPresented: $showWhatsNew) {
+                    WhatsNewView(version: currentVersion) {
+                        lastSeenWhatsNewVersion = currentVersion
+                        showWhatsNew = false
+                    }
+                    .frame(width: 560, height: 520)
+                }
+                .onChange(of: hasCompletedOnboarding) { _, completed in
+                    if completed {
+                        showWhatsNewIfNeeded()
+                    }
                 }
                 .onChange(of: appState.checkForUpdatesTrigger) { _, _ in
                     updaterManager.checkForUpdates()
@@ -90,6 +110,17 @@ struct SystemVoiceMemosApp: App {
                     AppState.shared.requestToggleSidebar()
                 }
                 .keyboardShortcut("s", modifiers: [.command, .option])
+
+                Divider()
+
+                Button("Show Main Window") {
+                    AppState.shared.requestShowMainWindow()
+                }
+
+                Button("Show Recording Toolbar") {
+                    AppState.shared.requestShowRecordingToolbar()
+                }
+                .disabled(!appState.isRecording)
             }
         }
         .commands {
@@ -122,9 +153,8 @@ struct SystemVoiceMemosApp: App {
             }
 
             CommandGroup(after: .help) {
-                // Native macOS Help - opens Help Viewer
-                Button("SystemVoiceMemos Help") {
-                    NSApplication.shared.showHelp(nil)
+                Button("What’s New") {
+                    showWhatsNew = true
                 }
 
                 Divider()
@@ -133,7 +163,6 @@ struct SystemVoiceMemosApp: App {
                 Button("Show Welcome Guide") {
                     showOnboarding = true
                 }
-                .keyboardShortcut("?", modifiers: [.command])
             }
 
             CommandGroup(replacing: .appInfo) {
@@ -151,6 +180,127 @@ struct SystemVoiceMemosApp: App {
                     SettingsWindowController.shared.show()
                 }
                 .keyboardShortcut(",", modifiers: [.command])
+            }
+        }
+    }
+
+    private func showWhatsNewIfNeeded() {
+        guard hasCompletedOnboarding, lastSeenWhatsNewVersion != currentVersion else { return }
+        showWhatsNew = true
+    }
+}
+
+// MARK: - What's New
+
+private struct WhatsNewView: View {
+    let version: String
+    let onContinue: () -> Void
+
+    private var releaseTitle: String {
+        "What’s New in \(version)"
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    header
+
+                    VStack(alignment: .leading, spacing: 20) {
+                        WhatsNewFeatureRow(
+                            icon: "waveform",
+                            tint: .accentColor,
+                            title: "System Audio Without Screen Recording",
+                            description: "The 0.10.1 Core Audio tap recorder captures system audio directly on macOS 14.2 and later, without showing the screen-sharing UI or needing Screen Recording permission."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "shield.checkered",
+                            tint: .green,
+                            title: "Safer Audio Capture",
+                            description: "The Core Audio path now handles mic permission errors, unavailable devices, callback thread safety, older macOS availability, mic-track finalization, and waveform edge cases more reliably."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "mic.badge.plus",
+                            tint: .red,
+                            title: "Mic Tracks, Playback, and Export",
+                            description: "Record microphone audio as its own track, then listen to system audio, mic audio, or both together, with export options for mixed or separate files."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "rectangle.on.rectangle",
+                            tint: .blue,
+                            title: "Recording Toolbar Controls",
+                            description: "Customize the floating recording toolbar, restore it from the View or menu bar controls, and choose how it behaves when the main window is minimized or reopened."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "sparkles",
+                            tint: .purple,
+                            title: "Cleaner Recording UI",
+                            description: "No recording can now be selected cleanly, the empty detail view uses a waveform treatment, and the floating toolbar has softer edges with less visual artifacting."
+                        )
+                    }
+                }
+                .padding(.horizontal, 36)
+                .padding(.top, 34)
+                .padding(.bottom, 24)
+            }
+
+            Divider()
+
+            HStack {
+                Spacer()
+                Button("Continue") {
+                    onContinue()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(20)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Image(systemName: "app.badge")
+                .font(.system(size: 42, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+
+            Text(releaseTitle)
+                .font(.largeTitle.bold())
+
+            Text("Includes the 0.10.1 Core Audio tap work plus new track controls, toolbar settings, and interface polish.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct WhatsNewFeatureRow: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

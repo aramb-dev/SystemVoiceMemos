@@ -76,6 +76,16 @@ struct RecordingRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.12))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.accentColor.opacity(0.18), lineWidth: 1)
+                    }
+            }
+        }
     }
 
     private var iconName: String {

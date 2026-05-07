@@ -75,7 +75,7 @@ struct RecordingsListView: View {
             if recordings.isEmpty {
                 emptyState
             } else {
-                List(selection: $selectedRecordingID) {
+                List {
                     ForEach(recordings) { rec in
                         recordingRowView(for: rec)
                     }
@@ -99,6 +99,7 @@ struct RecordingsListView: View {
         .tag(rec.id)
         .listRowSeparator(.hidden)
         .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+        .contentShape(Rectangle())
         .contextMenu {
             Button(rec.isFavorite ? "Remove from Favorites" : "Add to Favorites") {
                 onToggleFavorite(rec)
@@ -113,8 +114,13 @@ struct RecordingsListView: View {
             }
         }
         .onTapGesture {
-            selectedRecordingID = rec.id
-            onSelect(rec.id)
+            if selectedRecordingID == rec.id {
+                selectedRecordingID = nil
+                onSelect(nil)
+            } else {
+                selectedRecordingID = rec.id
+                onSelect(rec.id)
+            }
         }
     }
 

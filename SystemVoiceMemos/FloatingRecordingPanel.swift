@@ -3,6 +3,8 @@ import SwiftUI
 
 @MainActor
 final class FloatingRecordingPanel: ObservableObject {
+    private let panelSize = NSSize(width: 344, height: 64)
+
     private var panel: NSPanel?
     private var recorder: SystemAudioRecorder?
 
@@ -39,7 +41,7 @@ final class FloatingRecordingPanel: ObservableObject {
 
     private func createPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 52),
+            contentRect: NSRect(origin: .zero, size: panelSize),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false
@@ -62,7 +64,7 @@ final class FloatingRecordingPanel: ObservableObject {
         // Center horizontally at bottom of screen
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
-            let x = screenFrame.midX - 160
+            let x = screenFrame.midX - (panelSize.width / 2)
             let y = screenFrame.minY + 80
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -92,6 +94,8 @@ final class FloatingRecordingPanel: ObservableObject {
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.frame = panel.contentView?.bounds ?? .zero
         hostingView.autoresizingMask = [.width, .height]
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
 
         panel.contentView = hostingView
     }

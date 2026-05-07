@@ -82,14 +82,34 @@ struct CloudOnlyRecordingMessage: View {
 
 struct EmptyDetailState: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: "music.note")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("No Recording Selected")
-                .font(.title3)
-            Text("Choose a recording from the list to see its details and controls.")
-                .foregroundStyle(.secondary)
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(.thinMaterial)
+                    .frame(width: 76, height: 76)
+                    .overlay {
+                        Circle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    }
+
+                Image(systemName: "waveform")
+                    .font(.system(size: 30, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 6) {
+                Text("No Recording Selected")
+                    .font(.title3.weight(.semibold))
+
+                Text("Select a recording to review playback, tracks, export options, and file details.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .frame(maxWidth: 300)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(32)
     }
 }

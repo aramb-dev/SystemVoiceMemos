@@ -111,6 +111,12 @@ struct ContentView: View {
             .onChange(of: appState.openInQuickTimeTrigger) { _, _ in
                 if let rec = selectedRecording { vm.openInQuickTime(rec) }
             }
+            .onChange(of: appState.showMainWindowTrigger) { _, _ in
+                showMainWindow()
+            }
+            .onChange(of: appState.showRecordingToolbarTrigger) { _, _ in
+                vm.recordingManager.showFloatingToolbar(hideFromScreenSharing: hideFromScreenSharing)
+            }
             .onChange(of: vm.selectedRecordingID) { _, newValue in
                 appState.hasSelectedRecording = newValue != nil
                 vm.updatePlayback(for: newValue, recordings: recordings, playbackManager: playbackManager)
@@ -264,6 +270,21 @@ struct ContentView: View {
         Task {
             await vm.recordingManager.stopRecordingFlow(modelContext: modelContext)
             recalcSelection()
+        }
+    }
+
+    private func showMainWindow() {
+        if vm.recordingManager.isRecording {
+            vm.recordingManager.expandToFullWindow(restoreToolbarIfNeeded: true)
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+            for window in NSApp.windows where window.identifier?.rawValue == "main_window" {
+                if window.isMiniaturized {
+                    window.deminiaturize(nil)
+                }
+                window.makeKeyAndOrderFront(nil)
+                return
+            }
         }
     }
 
@@ -443,6 +464,18 @@ struct ContentView: View {
                 Label(vm.recordingManager.isRecording ? "Stop Recording" : "New Recording",
                       systemImage: vm.recordingManager.isRecording ? "stop.circle.fill" : "record.circle")
             }
+
+            Button {
+                toggleMicrophoneRecording()
+            } label: {
+                Label(includeMicrophone ? "Mic On" : "Record Mic",
+                      systemImage: includeMicrophone ? "mic.fill" : "mic")
+            }
+            .help(includeMicrophone
+                ? "Microphone will be recorded as a separate track"
+                : "Record microphone as a separate track using the legacy engine")
+            .disabled(vm.recordingManager.isRecording)
+
             Button {
                 playbackManager.togglePlayPause()
             } label: {
@@ -463,19 +496,7 @@ struct ContentView: View {
             }
 
             Menu {
-                Picker("Recording Source", selection: $recordingSource) {
-                    ForEach(RecordingSource.allCases) { source in
-                        Text(source.title).tag(source.rawValue)
-                    }
-                }
-
-                Divider()
-
-                Toggle("Include Microphone", isOn: $includeMicrophone)
-                    .disabled(recordingSource != RecordingSource.legacyScreenCapture.rawValue)
-
                 if !availableMics.isEmpty {
-                    Divider()
                     Picker("Input Device", selection: $selectedMicUID) {
                         ForEach(availableMics, id: \.uniqueID) { device in
                             Text(device.localizedName).tag(device.uniqueID)
@@ -483,10 +504,16 @@ struct ContentView: View {
                     }
                     .pickerStyle(.inline)
                 }
+
+                Divider()
+
+                Button("Recording Settings...") {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                }
             } label: {
-                Label(recordingSourceLabel, systemImage: recordingSourceIcon)
+                Label("Recording Options", systemImage: "slider.horizontal.3")
             }
-            .help(RecordingSource(rawValue: recordingSource)?.detail ?? "Configure recording source")
+            .help("Choose microphone input or open recording settings")
             .disabled(vm.recordingManager.isRecording)
         }
 
@@ -513,9 +540,9 @@ struct ContentView: View {
                 Button {
                     showExportStemsPanel(for: recording)
                 } label: {
-                    Label("Export Stems...", systemImage: "square.and.arrow.down")
+                    Label("Export...", systemImage: "square.and.arrow.down")
                 }
-                .help("Export system or mic stems separately")
+                .help("Export a mixed file, system audio only, or microphone only")
 
                 Button(role: .destructive) { vm.confirmDelete(recording) } label: {
                     Label("Delete", systemImage: "trash")
@@ -525,26 +552,15 @@ struct ContentView: View {
         }
     }
 
-    private var recordingSourceLabel: String {
-        switch RecordingSource(rawValue: recordingSource) ?? .legacyScreenCapture {
-        case .coreAudioTap:
-            return "No Screen Share"
-        case .legacyScreenCapture:
-            return includeMicrophone ? "System + Mic" : "System Audio"
-        case .microphoneOnly:
-            return "Mic Only"
+    private func toggleMicrophoneRecording() {
+        let shouldEnable = !includeMicrophone
+        if shouldEnable {
+            recordingSource = RecordingSource.legacyScreenCapture.rawValue
+            Task {
+                await PermissionManager.shared.requestAudioPermission()
+            }
         }
-    }
-
-    private var recordingSourceIcon: String {
-        switch RecordingSource(rawValue: recordingSource) ?? .legacyScreenCapture {
-        case .coreAudioTap:
-            return "waveform"
-        case .legacyScreenCapture:
-            return "rectangle.dashed.badge.record"
-        case .microphoneOnly:
-            return "mic.fill"
-        }
+        includeMicrophone = shouldEnable
     }
 }
 
@@ -625,13 +641,19 @@ struct ExportAccessoryView: View {
             Text("Tracks")
                 .font(.headline)
             Picker("", selection: $settings.selectedMode) {
-                Text("Both (Mixed)").tag(PlaybackManager.ExportMode.bothMixed)
+                Text("Together (Mixed)").tag(PlaybackManager.ExportMode.bothMixed)
                 Text("System Audio Only").tag(PlaybackManager.ExportMode.systemOnly)
                 if settings.hasMic {
                     Text("Microphone Only").tag(PlaybackManager.ExportMode.micOnly)
                 }
             }
             .pickerStyle(.radioGroup)
+
+            if settings.hasMic {
+                Text("The original recording keeps system audio and mic as separate tracks.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Divider()
 

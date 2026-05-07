@@ -18,6 +18,10 @@ enum AppConstants {
         static let locationBasedNaming = "locationBasedNaming"
         static let includeMicrophone = "includeMicrophone"
         static let selectedMicrophoneUID = "selectedMicrophoneUID"
+        static let showFloatingRecordingToolbar = "showFloatingRecordingToolbar"
+        static let minimizeWindowDuringRecording = "minimizeWindowDuringRecording"
+        static let restoreToolbarAfterExpand = "restoreToolbarAfterExpand"
+        static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
 
         static let shareClickedCount = "shareClickedCount"
         static let shareCompletedCount = "shareCompletedCount"

@@ -21,6 +21,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
     private var systemFramePosition: Int64 = 0
     private var micStartTime: CMTime = .invalid
     private var micPausedDuration: CMTime = .zero
+    // Set once on the first mic buffer: the system track's PTS at that moment,
+    // so both tracks share the same 0-based timeline.
+    private var micSystemAnchorOffset: CMTime = .zero
 
     // Lock protecting _isPaused and _lastWriteError — both are read from the
     // Core Audio IO callback queue and written from the caller (main actor).
@@ -371,10 +374,17 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
 
         if !micStartTime.isValid {
             micStartTime = originalTime
+            // Snapshot the system track's current position so mic PTSs are placed
+            // relative to the same origin as the frame-counted system PTSs.
+            // systemFramePosition is written on callbackQueue; reading it here
+            // (writerQueue) without a lock is safe in practice on Apple platforms
+            // (64-bit aligned read) and the class is already @unchecked Sendable.
+            let sampleRate = CMTimeScale(clientFormat.mSampleRate > 0 ? clientFormat.mSampleRate : 44100)
+            micSystemAnchorOffset = CMTime(value: CMTimeValue(systemFramePosition), timescale: sampleRate)
         }
 
-        let elapsedTime = CMTimeSubtract(originalTime, micStartTime)
-        let adjustedTime = CMTimeSubtract(elapsedTime, micPausedDuration)
+        let elapsed = CMTimeSubtract(originalTime, micStartTime)
+        let adjustedTime = CMTimeSubtract(CMTimeAdd(elapsed, micSystemAnchorOffset), micPausedDuration)
         var timingInfo = CMSampleTimingInfo(
             duration: CMSampleBufferGetDuration(sampleBuffer),
             presentationTimeStamp: adjustedTime,
@@ -531,6 +541,7 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         systemFramePosition = 0
         micStartTime = .invalid
         micPausedDuration = .zero
+        micSystemAnchorOffset = .zero
     }
 
     /// Records the first write error observed during capture.

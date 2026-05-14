@@ -40,6 +40,14 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         stateLock.withLock { _lastWriteError }
     }
 
+    /// Begins capturing system audio and writes it to an M4A file at the given URL, optionally adding a microphone track.
+    /// 
+    /// Sets up a Core Audio process tap, reads the tap format, creates a `CMAudioFormatDescription` and an `AVAssetWriter` (with a system audio input and an optional microphone input), creates a private aggregate device that hosts the tap, installs the IO proc that converts incoming buffers to `CMSampleBuffer`, and starts the aggregate device.
+    /// - Parameters:
+    ///   - url: Destination file URL for the resulting M4A file.
+    ///   - bitRate: Target audio bit rate for the system audio track (in bits per second).
+    ///   - includeMicrophone: If `true`, also creates and enables a microphone AAC track in the writer.
+    /// - Throws: An error if any part of the setup fails — for example, Core Audio `OSStatus` failures (wrapped as `CoreAudioTapRecorderError.osStatus(...)`), writer/setup failures (`CoreAudioTapRecorderError.setupFailed(...)`), or other errors propagated from helper routines.
     func startRecording(to url: URL, bitRate: Int, includeMicrophone: Bool = false) throws {
         stateLock.withLock {
             _lastWriteError = nil
@@ -72,6 +80,8 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Pauses the recorder and records when the pause began.
+    /// - Discussion: If an aggregate device is active, hardware capture is stopped. The paused flag and `pauseStartedAt` timestamp are set atomically.
     func pauseRecording() {
         guard !isPaused else { return }
         if aggregateDeviceID != kAudioObjectUnknown {
@@ -83,6 +93,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Resumes audio capture, compensates microphone timestamps for the paused interval, and restarts the Core Audio tap device.
+    /// - Note: If recording is not paused, this method returns immediately.
+    /// - Throws: `CoreAudioTapRecorderError.osStatus` if starting the Core Audio tap device fails.
     func resumeRecording() throws {
         guard isPaused else { return }
         let pauseInterval = stateLock.withLock { () -> TimeInterval in
@@ -102,6 +115,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Stops hardware capture, drains any in-flight Core Audio callbacks, finalizes pending writer work, and resets internal recording state.
+    /// 
+    /// This will stop the underlying audio hardware and IO callback, ensure any in-progress sample writes are finished, clear writer-related resources, and clear the paused flag and pause timestamp.
     func stopRecording() async {
         stopHardware()
         callbackQueue.sync {}
@@ -113,6 +129,8 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Appends a microphone audio sample buffer to the recorder's microphone input after adjusting its timestamps for paused intervals.
+    /// - Parameter sampleBuffer: A `CMSampleBuffer` containing microphone audio; its presentation timestamps will be adjusted to account for accumulated paused duration before being appended. If the recorder is paused, the writer is not ready, or appending fails, the buffer is discarded. On the first append failure the recorder records the write error.
     func appendMicrophoneSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         guard !isPaused else { return }
         writerQueue.async { [weak self] in
@@ -131,6 +149,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Creates a private aggregate audio device that exposes the given process tap and stores its device ID.
+    /// - Parameter tapUUID: The UUID of the process tap to include in the aggregate device's tap list.
+    /// - Throws: `CoreAudioTapRecorderError.osStatus` if creating the aggregate device fails.
     private func createAggregateDevice(tapUUID: UUID) throws {
         let tapDescription: [String: Any] = [
             kAudioSubTapUIDKey: tapUUID.uuidString,
@@ -152,6 +173,10 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         )
     }
 
+    /// Register the Core Audio IO callback that converts process-tap input into `CMSampleBuffer` objects and appends them to the recorder's system `AVAssetWriterInput`.
+    /// 
+    /// The installed callback timestamps incoming frames using `systemFramePosition`, increments that position, and records the first write or buffer-creation error observed during capture.
+    /// - Throws: `CoreAudioTapRecorderError.setupFailed` if required writer inputs or format description are missing; `CoreAudioTapRecorderError.osStatus` if creating the IO proc with Core Audio fails.
     private func createIOProc() throws {
         guard systemInput != nil, systemFormatDescription != nil else {
             throw CoreAudioTapRecorderError.setupFailed("Core Audio tap asset writer is missing.")
@@ -188,6 +213,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         )
     }
 
+    /// Compute the number of audio frames represented by the first buffer in the provided `AudioBufferList`.
+    /// - Parameter audioBufferList: Pointer to an `AudioBufferList`; the first buffer's `mDataByteSize` is used for the calculation.
+    /// - Returns: The frame count computed as `firstBuffer.mDataByteSize / clientFormat.mBytesPerFrame`, or `0` if `clientFormat.mBytesPerFrame` is not positive or the buffer list contains no buffers.
     private func frameCount(from audioBufferList: UnsafePointer<AudioBufferList>) -> UInt32 {
         guard clientFormat.mBytesPerFrame > 0 else { return 0 }
         guard audioBufferList.pointee.mNumberBuffers > 0 else { return 0 }
@@ -195,6 +223,13 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         return firstBuffer.mDataByteSize / clientFormat.mBytesPerFrame
     }
 
+    /// Configure and start an `AVAssetWriter` to write system audio (and optionally microphone audio) to an M4A file.
+    /// - Parameters:
+    ///   - url: Destination file URL for the resulting `.m4a`.
+    ///   - bitRate: Target encoder bit rate (in bits per second) for the system audio track.
+    ///   - includeMicrophone: If `true`, also add a mono microphone AAC track at 44.1 kHz and 64 kbps.
+    /// - Throws: `CoreAudioTapRecorderError.setupFailed` on configuration failures or the writer's error if `startWriting()` fails.
+    /// - Postconditions: On success the recorder's `writer`, `systemInput`, and optional `micInput` are set and timing state (`systemFramePosition`, `micStartTime`, `micPausedDuration`) is reset.
     private func createWriter(at url: URL, bitRate: Int, includeMicrophone: Bool) throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .m4a)
         let sampleRate = clientFormat.mSampleRate > 0 ? clientFormat.mSampleRate : 44100
@@ -242,6 +277,10 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         micPausedDuration = .zero
     }
 
+    /// Appends a system audio sample buffer to the asset writer's system input.
+    /// - Description: If the writer is not in a writable state or the system input is not ready for more media data, the buffer is ignored. If appending fails, the first write error is recorded for later inspection.
+    /// - Parameters:
+    ///   - sampleBuffer: A `CMSampleBuffer` containing system audio and its presentation timing.
     private func appendSystemSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         writerQueue.async { [weak self] in
             guard let self,
@@ -258,6 +297,14 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Create a `CMSampleBuffer` that wraps the provided Core Audio `AudioBufferList`
+    /// and assigns timing based on a presentation frame index using the tap's sample rate.
+    /// - Parameters:
+    ///   - audioBufferList: Pointer to the audio buffers produced by the Core Audio tap.
+    ///   - frameCount: Number of audio frames contained in `audioBufferList`.
+    ///   - presentationFrame: Monotonic presentation frame index used to compute the buffer's presentation timestamp (measured in tap sample frames).
+    /// - Returns: A `CMSampleBuffer` containing `frameCount` frames and timing derived from `presentationFrame`.
+    /// - Throws: `CoreAudioTapRecorderError.setupFailed` if the recorder's format description is missing or the sample buffer fails to be created; `CoreAudioTapRecorderError.osStatus` when underlying Core Media/Core Audio calls return a non-`noErr` status.
     private func makeSystemSampleBuffer(
         from audioBufferList: UnsafePointer<AudioBufferList>,
         frameCount: UInt32,
@@ -307,6 +354,12 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         return sampleBuffer
     }
 
+    /// Adjusts a microphone sample buffer's presentation timestamp to account for the recorder's start time and accumulated paused duration.
+    /// 
+    /// If this is the first valid microphone buffer, `micStartTime` is set to its original timestamp. The returned buffer's presentation timestamp
+    /// is (originalTimestamp - micStartTime - micPausedDuration). If the original timestamp is invalid, or creating a new buffer fails,
+    /// the original `sampleBuffer` is returned; a failure to create a new buffer is also recorded via `recordWriteError`.
+    /// - Returns: A `CMSampleBuffer` with its presentation timestamp adjusted for recorder start and pauses, or the original buffer if adjustment failed.
     private func adjustMicrophoneTiming(_ sampleBuffer: CMSampleBuffer) -> CMSampleBuffer {
         let originalTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         guard originalTime.isValid else { return sampleBuffer }
@@ -339,6 +392,10 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         return sampleBuffer
     }
 
+    /// Create a `CMAudioFormatDescription` from an `AudioStreamBasicDescription`.
+    /// - Parameter format: An `AudioStreamBasicDescription` describing the audio stream format to convert.
+    /// - Returns: A `CMAudioFormatDescription` representing the provided audio stream format.
+    /// - Throws: `CoreAudioTapRecorderError.osStatus` if the underlying Core Media call returns an error; `CoreAudioTapRecorderError.setupFailed` if no format description is produced.
     private func makeFormatDescription(from format: AudioStreamBasicDescription) throws -> CMAudioFormatDescription {
         var format = format
         var description: CMAudioFormatDescription?
@@ -359,6 +416,10 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         return description
     }
 
+    /// Reads the audio stream format for the specified Core Audio process tap.
+    /// - Parameter tapID: The `AudioObjectID` of the process tap to query.
+    /// - Returns: The tap's `AudioStreamBasicDescription`.
+    /// - Throws: `CoreAudioTapRecorderError.osStatus` if the Core Audio property query fails.
     private func readTapFormat(_ tapID: AudioObjectID) throws -> AudioStreamBasicDescription {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioTapPropertyFormat,
@@ -374,6 +435,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         return format
     }
 
+    /// Stop hardware capture and destroy the associated Core Audio resources.
+    /// 
+    /// Stops the aggregate audio device if active, destroys the registered IO proc, destroys the aggregate device and process tap, and resets `ioProcID`, `aggregateDeviceID`, and `tapID` to unknown values. Core Audio call results are ignored.
     private func stopHardware() {
         if aggregateDeviceID != kAudioObjectUnknown {
             _ = AudioDeviceStop(aggregateDeviceID, ioProcID)
@@ -395,6 +459,8 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Stops hardware capture, waits for any in-flight Core Audio callbacks, optionally cancels and resets writer state, and clears the paused flag.
+    /// - Parameter cancelWriting: If `true`, cancels any in-progress AVAssetWriter work and resets writer-related state before clearing pause state.
     private func cleanup(cancelWriting: Bool) {
         stopHardware()
         callbackQueue.sync {}
@@ -410,6 +476,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Finalizes the current AVAssetWriter session and waits for completion.
+    /// 
+    /// Marks the system and microphone inputs as finished, invokes the writer's completion handler to finish writing, and records the first write error observed (if any). Returns only after the writer has completed or there is no active writer to finish.
     private func finishWriter() async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             writerQueue.async { [weak self] in
@@ -439,12 +508,16 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Clears the AVAssetWriter, its inputs, cached format description, and related timing state.
+    /// - Note: This operation runs synchronously on the internal `writerQueue`, ensuring writer-related state is reset on the writer queue.
     private func resetWriterState() {
         writerQueue.sync {
             resetWriterStateOnWriterQueue()
         }
     }
 
+    /// Reset writer-related references and timing state to their initial (cleared or invalid) values.
+    /// - Note: This should be invoked on the `writerQueue`.
     private func resetWriterStateOnWriterQueue() {
         writer = nil
         systemInput = nil
@@ -455,6 +528,9 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         micPausedDuration = .zero
     }
 
+    /// Records the first write error observed during capture.
+    /// - Parameters:
+    ///   - error: The write error to record; ignored if a previous error has already been recorded.
     private func recordWriteError(_ error: any Error) {
         stateLock.withLock {
             if _lastWriteError == nil {
@@ -463,6 +539,11 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         }
     }
 
+    /// Validates an `OSStatus` and throws a `CoreAudioTapRecorderError` if it indicates failure.
+    /// - Parameters:
+    ///   - status: The `OSStatus` result to validate.
+    ///   - context: A short description of the operation being performed; included in the thrown error.
+    /// - Throws: `CoreAudioTapRecorderError.osStatus(status, context: ...)` when `status` is not `noErr`.
     private func checkStatus(_ status: OSStatus, context: String) throws {
         guard status == noErr else {
             throw CoreAudioTapRecorderError.osStatus(status, context: context)

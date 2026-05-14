@@ -145,7 +145,15 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// 2. Configures ScreenCaptureKit for audio-only capture
     /// 3. Sets up AVAssetWriter with AAC encoding
     /// 4. Starts the capture stream
-    /// 5. Begins real-time duration tracking
+    /// Starts recording system audio to the specified file URL using the currently selected recording source.
+    /// 
+    /// Depending on `RecordingSource.current` this will start one of:
+    /// - the core-audio-tap backend,
+    /// - a microphone-only capture, or
+    /// - a display-anchored audio capture that writes AAC audio to an `.m4a` file.
+    /// The function configures and starts the necessary capture session(s), AVAssetWriter inputs, and stream outputs, and updates recorder state and timing for pause/resume tracking.
+    /// - Parameter url: Destination file URL for the recorded `.m4a`.
+    /// - Throws: `RecorderError.noDisplay` when no suitable display can be selected for display-anchored audio; `RecorderError.noMicrophone` when a required microphone is unavailable; `RecorderError.permissionDenied` when microphone permission is denied; `RecorderError.writerCantAddInput` when an AVAssetWriter input cannot be added; `RecorderError.writerStartFailed` when the writer fails to start; or other errors propagated from underlying capture/stream components.
     func startRecording(to url: URL) async throws {
         guard !isRecording else { return }
 
@@ -268,6 +276,10 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         }
     }
 
+    /// Starts a Core Audio Tap recording and writes captured audio to the provided file URL.
+    /// - Parameter url: Destination file URL for the recorded audio (.m4a).
+    /// - Throws: `CoreAudioTapRecorderError.unavailable` if Core Audio Tap is not supported on the running macOS version. Rethrows any error produced while configuring or starting the Core Audio Tap recorder or while creating the optional microphone capture session.
+    /// - Important: If the user preference to include the microphone is enabled, a microphone `AVCaptureSession` will be created and started alongside the Core Audio Tap recording.
     private func startCoreAudioTapRecording(to url: URL) async throws {
         guard #available(macOS 14.2, *) else {
             throw CoreAudioTapRecorderError.unavailable
@@ -293,6 +305,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         print("✅ Core Audio tap capture started successfully!")
     }
 
+    /// Configure an AAC microphone-only AVAssetWriter, start an AVCaptureSession for the selected microphone, and begin writing audio to the provided file URL.
+    /// - Parameter to: Destination file URL for the resulting `.m4a` recording.
+    /// - Throws: `RecorderError.writerCantAddInput` if the writer cannot accept the audio input; `RecorderError.noMicrophone` if microphone permission has not been determined; `RecorderError.permissionDenied` if microphone access is denied; `RecorderError.writerStartFailed` if the writer fails to start. Errors thrown by `AVAssetWriter` initializers or `makeMicrophoneCaptureSession()` are propagated.
     private func startMicrophoneOnlyRecording(to url: URL) throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .m4a)
         let micSettings: [String: Any] = [
@@ -325,6 +340,14 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         print("✅ Microphone-only capture started successfully!")
     }
 
+    /// Creates and returns an AVCaptureSession configured to capture microphone audio.
+    /// 
+    /// The session selects a microphone by the stored `selectedMicrophoneUID` user default when present, falling back to the system default microphone if not. The returned session includes an audio input for the chosen device and an AVCaptureAudioDataOutput whose sample-buffer delegate is set on the recorder's audio queue.
+    /// - Returns: An `AVCaptureSession` configured for microphone capture and ready to be started.
+    /// - Throws:
+    ///   - `RecorderError.noMicrophone` if no suitable audio device is available or the device cannot be added to the session.
+    ///   - `RecorderError.deviceUnavailable(_)` if creating an `AVCaptureDeviceInput` for the chosen device fails (includes the underlying error message).
+    ///   - `RecorderError.writerCantAddInput` if the session cannot accept the audio output.
     private func makeMicrophoneCaptureSession() throws -> AVCaptureSession {
         let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
         let micDevice = storedUID.isEmpty
@@ -357,6 +380,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         return session
     }
 
+    /// Marks the recorder as started and initializes recording state and timing.
+    /// 
+    /// Resets pause-related trackers, sample-buffer timing anchors, and UI duration counters, sets `isRecording`/`recordingState`/`isPaused` appropriately, and starts the duration timer.
     private func markRecordingStarted() {
         isRecording = true
         recordingState = .recording
@@ -388,7 +414,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// Pauses the current recording
     ///
     /// Stops the capture stream and tracks pause duration for timestamp adjustment.
-    /// The recording can be resumed with `resumeRecording()`.
+    /// Pauses an active recording and updates internal state and timers.
+    /// 
+    /// If no recording is active or recording is already paused, the call returns immediately.
+    /// For the core-audio-tap source, the recorder's pause is invoked and the microphone capture session is stopped.
+    /// For other sources, the stream capture is stopped and the microphone capture session is stopped.
+    /// In all cases the recorder's paused state, recordingState, pause start timestamp are set and the duration timer is invalidated.
     func pauseRecording() async {
         guard isRecording, !isPaused else { return }
 
@@ -419,7 +450,14 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// Resumes a paused recording
     ///
     /// Restarts the capture stream and accumulates pause duration.
-    /// Sample buffer timestamps will be adjusted to remove the pause gap.
+    /// Resumes an in-progress, paused recording and updates recording timing and state.
+    /// 
+    /// If a pause was active, accumulates the wall-clock pause time into `pausedDuration` and converts it
+    /// to a `CMTime` added to `pausedCMTimeDuration` for sample timestamp adjustment. Then resumes capture
+    /// according to the current `activeRecordingSource`: for the core-audio-tap path the tap is resumed
+    /// and the microphone `AVCaptureSession` is started; for other paths the `SCStream` capture is restarted
+    /// and the microphone session is started. Finally clears `pauseStartDate`, sets `isPaused` to `false`,
+    /// updates `recordingState` to `.recording`, and restarts the duration timer.
     func resumeRecording() async {
         guard isRecording, isPaused else { return }
 
@@ -487,7 +525,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// 1. Stops the capture stream
     /// 2. Removes stream outputs
     /// 3. Finalizes the asset writer
-    /// 4. Cleans up resources
+    /// Stops an active recording, finalizes any in-progress asset writing, and releases capture resources.
+    /// 
+    /// When called while recording, this updates recorder state to idle and stops duration tracking. For the core-audio-tap recording path it stops the tap and the microphone capture session; for the AVAssetWriter/SCStream path it stops stream capture, detaches the stream output, marks writer inputs finished, waits for the writer to finish, and then clears all capture/writer-related properties. Any finish or capture errors are logged to the console.
     func stopRecording() async {
         guard isRecording else { return }
         let source = activeRecordingSource
@@ -613,7 +653,10 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
         processSampleBuffer(sampleBuffer, forMic: false)
     }
 
-    /// Receives audio sample buffers from the microphone
+    /// Handles incoming microphone audio sample buffers and forwards them to the active recording backend.
+    /// 
+    /// When the recorder's active source is the Core Audio Tap, forwards the buffer to the Core Audio Tap recorder. Otherwise, if an `AVAssetWriter` is active and in a writable state, adjusts the sample buffer's timing and appends it to the appropriate writer input (uses the primary audio track for microphone-only recordings, and the secondary mic track when recording system audio alongside the microphone). This work is performed on the main actor.
+    /// - Parameter sampleBuffer: A CMSampleBuffer containing the captured microphone audio frames.
     nonisolated func captureOutput(_: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from _: AVCaptureConnection) {
         Task { @MainActor in
             if self.activeRecordingSource == .coreAudioTap {

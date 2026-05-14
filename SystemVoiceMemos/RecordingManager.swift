@@ -201,7 +201,12 @@ class RecordingManager {
     /// Creates and starts a new recording
     ///
     /// - Parameter modelContext: SwiftData context for persistence
-    /// - Returns: Whether the recording started successfully
+    /// Begins a new audio recording, creates and inserts a corresponding `RecordingEntity`, and prepares the manager to track the in-progress recording.
+    ///
+    /// Checks and requests microphone permission when required by the selected recording source, starts the recorder writing to a new `.m4a` file in the app recordings directory, inserts a `RecordingEntity` (with `hasMicTrack` set according to the recording source and user preference), and assigns it to `pendingRecording`. On failure this method sets `lastError`.
+    /// - Parameters:
+    ///   - modelContext: The SwiftData model context used to insert and save the new `RecordingEntity`.
+    /// - Returns: `true` if recording was successfully started and a pending entity created, `false` otherwise.
     @discardableResult
     private func startNewRecording(modelContext: ModelContext) async -> Bool {
         // Guard against concurrent calls

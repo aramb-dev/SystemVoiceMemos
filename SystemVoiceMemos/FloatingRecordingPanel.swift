@@ -20,6 +20,8 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
     var onRestart: (() -> Void)?
     var onExpand: (() -> Void)?
 
+    /// Displays the floating recording panel for the given recorder and makes it visible.
+    /// - Parameter recorder: The `SystemAudioRecorder` instance to associate with the panel; its state is shown and controlled by the panel.
     func show(recorder: SystemAudioRecorder) {
         self.recorder = recorder
 
@@ -35,11 +37,17 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         isVisible = true
     }
 
+    /// Hides the floating recording panel and updates the published visibility state.
+    /// 
+    /// The panel is ordered out but not closed or released, allowing it to be shown again later.
     func hide() {
         panel?.orderOut(nil)
         isVisible = false
     }
 
+    /// Closes the floating panel and clears the panel-related state.
+    /// 
+    /// If a panel exists, removes its delegate, closes the window, sets the stored `panel` to `nil`, and updates `isVisible` to `false`.
     func close() {
         panel?.delegate = nil
         panel?.close()
@@ -47,6 +55,9 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         isVisible = false
     }
 
+    /// Creates and configures the floating `NSPanel` used to host the recording UI and assigns it to `self.panel`.
+    /// 
+    /// The panel is configured for non-activating, borderless presentation, floating behavior, screen-sharing exclusion when requested, and an initial on-screen position near the bottom center of the main screen. The panel's delegate is set to `self` and its level and collection behavior are initialized.
     private func createPanel() {
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: currentPanelSize),
@@ -84,6 +95,12 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         self.panel = panel
     }
 
+    /// Updates the panel's SwiftUI content to a `MinimalRecordingView` bound to the current recorder and UI state.
+    /// 
+    /// If the panel or recorder is not available, the method has no effect. The view receives bindings that:
+    /// - update window behavior when `isAlwaysOnTop` changes, and
+    /// - resize, clamp to the visible screen, and refresh the hosted content when `isCompact` changes.
+    /// The `MinimalRecordingView` is hosted in an `NSHostingView` sized to the panel's content bounds.
     private func updateContent() {
         guard let panel = panel, let recorder = recorder else { return }
 
@@ -123,6 +140,8 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         panel.contentView = hostingView
     }
 
+    /// Updates the panel's window level to match the current always-on-top setting.
+    /// When `isAlwaysOnTop` is true the panel is placed at the `.statusBar` level; otherwise it is set to `.normal`.
     private func updateWindowLevel() {
         panel?.level = isAlwaysOnTop ? .statusBar : .normal
     }
@@ -131,6 +150,9 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         isCompact ? compactPanelSize : fullPanelSize
     }
 
+    /// Resize the panel to the current preferred size while preserving its on-screen center.
+    /// 
+    /// If there is no panel or the panel already matches the preferred size, this method does nothing. The panel's origin is adjusted so the panel remains centered on its previous midpoint.
     private func updatePanelSize() {
         guard let panel else { return }
 
@@ -152,6 +174,9 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         return [.canJoinAllSpaces, .fullScreenAuxiliary, .moveToActiveSpace]
     }
 
+    /// Updates the panel's window behavior to match current settings, refreshes its window level, and re-clamps the panel frame to the visible screen.
+    /// 
+    /// This sets `collectionBehavior`, `hidesOnDeactivate`, and `canHide`, then calls `updateWindowLevel()` and `clampToVisibleScreen()`.
     private func updateWindowBehavior() {
         panel?.collectionBehavior = collectionBehavior
         panel?.hidesOnDeactivate = false
@@ -160,24 +185,35 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         clampToVisibleScreen()
     }
 
+    /// Toggle whether the floating panel is excluded from screen capture.
+    /// - Parameter isExcluded: `true` to exclude the panel from screen sharing (sets the panel's `sharingType` to `.none`), `false` to allow read-only sharing (sets the panel's `sharingType` to `.readOnly`).
     func setScreenCaptureExclusion(_ isExcluded: Bool) {
         excludeFromScreenCapture = isExcluded
         panel?.sharingType = isExcluded ? .none : .readOnly
     }
 
+    /// Invoked when the window moves to ensure the panel is repositioned inside the visible screen bounds.
+    /// 
+    /// This schedules a clamp operation that will adjust the panel's frame if needed to keep it within the current screen's visible area.
     func windowDidMove(_: Notification) {
         scheduleClampToVisibleScreen()
     }
 
+    /// Schedules a clamp operation to keep the panel within the visible screen when the window is resized.
+    /// - Parameter _: The resize notification (unused).
     func windowDidResize(_: Notification) {
         scheduleClampToVisibleScreen()
     }
 
+    /// Called when the panel is about to close; clears the stored panel reference and marks the panel as not visible.
+    /// - Note: The incoming `Notification` is unused.
     func windowWillClose(_: Notification) {
         panel = nil
         isVisible = false
     }
 
+    /// Schedules a deferred clamping of the panel's frame to the visible screen bounds.
+    /// - Note: If a clamp is already in progress, this is a no-op. The actual clamp is enqueued to run on the main queue on the next run loop cycle.
     private func scheduleClampToVisibleScreen() {
         guard !isClampingFrame else { return }
         DispatchQueue.main.async { [weak self] in
@@ -185,6 +221,9 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         }
     }
 
+    /// Ensures the panel's origin lies within the current screen's visible area plus the configured margin, moving the panel if necessary.
+    /// 
+    /// If the panel is outside the visible bounds of its containing screen, adjusts its origin so the entire panel fits within the screen's visibleFrame inset by `screenMargin`. Temporarily sets `isClampingFrame` to prevent re-entrant frame adjustments while repositioning the panel. Does nothing if the panel is already within the allowed area or if no screen is available.
     private func clampToVisibleScreen() {
         guard let panel else { return }
         guard !isClampingFrame else { return }
@@ -208,6 +247,9 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         isClampingFrame = false
     }
 
+    /// Selects the screen whose frame contains the center of the given rectangle, or if none, the first screen that intersects it.
+    /// - Parameter frame: The rectangle (in global screen coordinates) to locate.
+    /// - Returns: The matching `NSScreen` if found, or `nil` when no screen contains or intersects the rectangle.
     private func screen(containing frame: NSRect) -> NSScreen? {
         let center = NSPoint(x: frame.midX, y: frame.midY)
         return NSScreen.screens.first { $0.frame.contains(center) }

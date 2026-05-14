@@ -66,6 +66,9 @@ struct MinimalRecordingView: View {
                 .accessibilityLabel("Recording duration: \(formattedDuration)")
 
             compactPauseButton
+            if recorder.hasMicTrack {
+                compactMicMuteButton
+            }
             compactStopButton
         }
         .padding(.horizontal, 10)
@@ -118,6 +121,30 @@ struct MinimalRecordingView: View {
         .contentShape(Circle())
         .help("Stop Recording")
         .accessibilityLabel("Stop Recording")
+    }
+
+    private var compactMicMuteButton: some View {
+        Button {
+            recorder.isMicMuted.toggle()
+        } label: {
+            Image(systemName: recorder.isMicMuted ? "mic.slash.fill" : "mic.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(recorder.isMicMuted ? .orange : .primary)
+                .frame(width: 24, height: 24)
+                .background(
+                    Group {
+                        if recorder.isMicMuted {
+                            Circle().fill(Color.orange.opacity(0.2))
+                        } else {
+                            Circle().fill(.regularMaterial)
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .help(recorder.isMicMuted ? "Unmute Mic" : "Mute Mic")
+        .accessibilityLabel(recorder.isMicMuted ? "Unmute Microphone" : "Mute Microphone")
     }
 
     private var recordingIndicator: some View {
@@ -254,7 +281,40 @@ struct MinimalRecordingView: View {
             .contentShape(Circle())
             .help("Restart Recording")
             .accessibilityLabel("Restart Recording")
+
+            // Mic mute button — only visible when the recording has a mic track
+            if recorder.hasMicTrack {
+                micMuteButton
+            }
         }
+    }
+
+    private var micMuteButton: some View {
+        Button {
+            recorder.isMicMuted.toggle()
+        } label: {
+            Image(systemName: recorder.isMicMuted ? "mic.slash.fill" : "mic.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(recorder.isMicMuted ? .orange : .primary)
+                .frame(width: 32, height: 32)
+                .background(
+                    Group {
+                        if recorder.isMicMuted {
+                            Circle()
+                                .fill(Color.orange.opacity(0.15))
+                                .overlay { Circle().stroke(Color.orange.opacity(0.3), lineWidth: 1) }
+                        } else {
+                            Circle()
+                                .fill(.regularMaterial)
+                                .overlay { Circle().stroke(Color.white.opacity(0.1), lineWidth: 1) }
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .help(recorder.isMicMuted ? "Unmute Mic" : "Mute Mic")
+        .accessibilityLabel(recorder.isMicMuted ? "Unmute Microphone" : "Mute Microphone")
     }
 
     private var pinButton: some View {

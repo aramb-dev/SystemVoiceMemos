@@ -21,17 +21,19 @@ struct SystemVoiceMemosApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @AppStorage(AppConstants.UserDefaultsKeys.lastSeenWhatsNewVersion) private var lastSeenWhatsNewVersion = ""
+    @AppStorage(AppConstants.UserDefaultsKeys.lastSeenMicGuideVersion) private var lastSeenMicGuideVersion = ""
     @StateObject private var playbackManager = PlaybackManager()
     @StateObject private var updaterManager = UpdaterManager()
     @State private var showOnboarding = false
     @State private var showWhatsNew = false
+    @State private var showMicGuide = false
 
     private var appState: AppState {
         AppState.shared
     }
 
     private var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.10.2"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.11.0"
     }
 
     var body: some Scene {
@@ -58,8 +60,17 @@ struct SystemVoiceMemosApp: App {
                     WhatsNewView(version: currentVersion) {
                         lastSeenWhatsNewVersion = currentVersion
                         showWhatsNew = false
+                        // After dismissing What's New, show mic guide if not yet seen for this version
+                        showMicGuideIfNeeded()
                     }
                     .frame(width: 560, height: 520)
+                }
+                .sheet(isPresented: $showMicGuide) {
+                    MicSetupGuideView {
+                        lastSeenMicGuideVersion = currentVersion
+                        showMicGuide = false
+                    }
+                    .frame(width: 680, height: 560)
                 }
                 .onChange(of: hasCompletedOnboarding) { _, completed in
                     if completed {
@@ -157,6 +168,10 @@ struct SystemVoiceMemosApp: App {
                     showWhatsNew = true
                 }
 
+                Button("Microphone Setup Guide") {
+                    showMicGuide = true
+                }
+
                 Divider()
 
                 // Existing onboarding - stays as separate entry
@@ -185,8 +200,17 @@ struct SystemVoiceMemosApp: App {
     }
 
     private func showWhatsNewIfNeeded() {
-        guard hasCompletedOnboarding, lastSeenWhatsNewVersion != currentVersion else { return }
+        guard hasCompletedOnboarding, lastSeenWhatsNewVersion != currentVersion else {
+            // What's New already seen — check if mic guide is still pending
+            if hasCompletedOnboarding { showMicGuideIfNeeded() }
+            return
+        }
         showWhatsNew = true
+    }
+
+    private func showMicGuideIfNeeded() {
+        guard hasCompletedOnboarding, lastSeenMicGuideVersion != currentVersion else { return }
+        showMicGuide = true
     }
 }
 
@@ -208,38 +232,38 @@ private struct WhatsNewView: View {
 
                     VStack(alignment: .leading, spacing: 20) {
                         WhatsNewFeatureRow(
+                            icon: "mic.fill",
+                            tint: .blue,
+                            title: "Microphone Track Recording",
+                            description: "Record your microphone alongside system audio as a separate track. Enable it in Settings, then control system and mic levels independently in playback."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "mic.slash.fill",
+                            tint: .orange,
+                            title: "Mic Mute in the Toolbar",
+                            description: "Tap the new mic button in the floating recording toolbar to mute your microphone mid-recording. Recording keeps going — your system audio track is never affected."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "arrow.down.right.and.arrow.up.left",
+                            tint: .purple,
+                            title: "Compact Recording Toolbar",
+                            description: "Shrink the floating toolbar to a tiny pill that shows just the timer, pause, and stop — so it stays out of your way while you work."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "pin.fill",
+                            tint: .green,
+                            title: "Toolbar Always-on-Top & Screen Clamping",
+                            description: "The toolbar now stays visible on top of full-screen apps and snaps back if you drag it near a screen edge."
+                        )
+
+                        WhatsNewFeatureRow(
                             icon: "waveform",
                             tint: .accentColor,
-                            title: "System Audio Without Screen Recording",
-                            description: "The 0.10.1 Core Audio tap recorder captures system audio directly on macOS 14.2 and later, without showing the screen-sharing UI or needing Screen Recording permission."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "shield.checkered",
-                            tint: .green,
-                            title: "Safer Audio Capture",
-                            description: "The Core Audio path now handles mic permission errors, unavailable devices, callback thread safety, older macOS availability, mic-track finalization, and waveform edge cases more reliably."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "mic.badge.plus",
-                            tint: .red,
-                            title: "Mic Tracks, Playback, and Export",
-                            description: "Record microphone audio as its own track, then listen to system audio, mic audio, or both together, with export options for mixed or separate files."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "rectangle.on.rectangle",
-                            tint: .blue,
-                            title: "Recording Toolbar Controls",
-                            description: "Customize the floating recording toolbar, restore it from the View or menu bar controls, and choose how it behaves when the main window is minimized or reopened."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "sparkles",
-                            tint: .purple,
-                            title: "Cleaner Recording UI",
-                            description: "No recording can now be selected cleanly, the empty detail view uses a waveform treatment, and the floating toolbar has softer edges with less visual artifacting."
+                            title: "Improved Core Audio Tap",
+                            description: "More reliable mic-track finalization, better device selection, and a smoother experience when switching sources or devices mid-session."
                         )
                     }
                 }
@@ -272,7 +296,7 @@ private struct WhatsNewView: View {
             Text(releaseTitle)
                 .font(.largeTitle.bold())
 
-            Text("Includes the 0.10.1 Core Audio tap work plus new track controls, toolbar settings, and interface polish.")
+            Text("Mic track mute, compact toolbar, better Core Audio tap, and screen-clamping for the recording panel.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

@@ -126,6 +126,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// Current recording state
     @Published var recordingState: RecordingState = .idle
 
+    /// Whether the microphone track is currently muted (recording continues; mic samples are silenced)
+    @Published var isMicMuted = false
+
+    /// Whether the active recording includes a microphone track (used to show/hide mute button)
+    @Published var hasMicTrack = false
+
     /// Recording state enumeration
     enum RecordingState {
         case idle
@@ -387,6 +393,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         isRecording = true
         recordingState = .recording
         isPaused = false
+        isMicMuted = false
         recordingStartDate = Date()
         currentRecordingDuration = 0
         pausedDuration = 0
@@ -394,6 +401,10 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         pausedCMTimeDuration = .zero
         startTime = .invalid
         lastBufferTime = .zero
+        // Reflect whether this recording will contain a mic track.
+        let source = activeRecordingSource ?? RecordingSource.current
+        hasMicTrack = source == .microphoneOnly
+            || (source != .microphoneOnly && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
         startDurationTimer()
     }
 
@@ -534,6 +545,8 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         isRecording = false
         recordingState = .idle
         isPaused = false
+        isMicMuted = false
+        hasMicTrack = false
 
         // Stop duration tracking
         stopDurationTimer()
@@ -659,6 +672,9 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
     /// - Parameter sampleBuffer: A CMSampleBuffer containing the captured microphone audio frames.
     nonisolated func captureOutput(_: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from _: AVCaptureConnection) {
         Task { @MainActor in
+            // When mic is muted, discard the buffer — recording continues without mic audio.
+            guard !self.isMicMuted else { return }
+
             if self.activeRecordingSource == .coreAudioTap {
                 if #available(macOS 14.2, *) {
                     self.coreAudioTapRecorder.appendMicrophoneSampleBuffer(sampleBuffer)

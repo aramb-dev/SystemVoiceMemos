@@ -251,6 +251,20 @@ private struct WhatsNewView: View {
                             title: "Smoother Permission Flow",
                             description: "Microphone permission is requested only when you need it, with clearer guidance if access is denied."
                         )
+
+                        WhatsNewFeatureRow(
+                            icon: "waveform",
+                            tint: .purple,
+                            title: "Reliable Mic Session Control",
+                            description: "Pause, resume, and stop now fully wait for the microphone session to start or stop before changing recording state, preventing stray buffer races."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "clock.arrow.circlepath",
+                            tint: .accentColor,
+                            title: "Safer Core Audio Timing",
+                            description: "Synchronized frame-position reads keep microphone and system audio tracks perfectly aligned, even under heavy system load."
+                        )
                     }
                 }
                 .padding(.horizontal, 36)
@@ -282,7 +296,7 @@ private struct WhatsNewView: View {
             Text(releaseTitle)
                 .font(.largeTitle.bold())
 
-            Text("Microphone recording now works with Core Audio tap, easier one-click mic toggle, and improved permission handling.")
+            Text("Microphone recording with Core Audio tap, one-click mic toggle, smoother permissions, reliable session control, and safer cross-track timing.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

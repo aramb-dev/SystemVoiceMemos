@@ -51,6 +51,8 @@ final class WindowAnimator: ObservableObject {
             return
         }
 
+        NSApp.unhide(nil)
+
         // Deminiaturize if minimized
         if window.isMiniaturized {
             window.deminiaturize(nil)
@@ -72,6 +74,8 @@ final class WindowAnimator: ObservableObject {
         // Ensure we have a valid window reference
         captureWindow()
         guard let window = mainWindow else { return }
+
+        NSApp.unhide(nil)
 
         let defaultFrame: NSRect = {
             let screen = NSScreen.main ?? NSScreen.screens.first!

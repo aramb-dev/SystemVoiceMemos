@@ -210,13 +210,13 @@ struct RecordingSettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Record Microphone as Separate Track")
                             .font(.headline)
-                        Text("Available with the legacy engine. Export it separately, export a mixed file, or choose which track to hear during playback.")
+                        Text("Available with system audio engines. Export it separately, export a mixed file, or choose which track to hear during playback.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .toggleStyle(.switch)
-                .disabled(recordingSource != RecordingSource.legacyScreenCapture.rawValue)
+                .disabled(recordingSource == RecordingSource.microphoneOnly.rawValue)
                 .onChange(of: includeMicrophone) { _, enabled in
                     if enabled {
                         Task {

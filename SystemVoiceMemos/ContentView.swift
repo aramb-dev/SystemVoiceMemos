@@ -274,6 +274,7 @@ struct ContentView: View {
     }
 
     private func showMainWindow() {
+        NSApp.unhide(nil)
         if vm.recordingManager.isRecording {
             vm.recordingManager.expandToFullWindow(restoreToolbarIfNeeded: true)
         } else {

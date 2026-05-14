@@ -156,7 +156,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         switch source {
         case .coreAudioTap:
-            try startCoreAudioTapRecording(to: url)
+            try await startCoreAudioTapRecording(to: url)
             markRecordingStarted()
             return
         case .microphoneOnly:
@@ -221,32 +221,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 self.micInput = micInput
             }
 
-            let session = AVCaptureSession()
-            let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
-            let micDevice = storedUID.isEmpty
-                ? AVCaptureDevice.default(for: .audio)
-                : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
-
-            guard let device = micDevice else {
-                throw RecorderError.noMicrophone
-            }
-
-            let deviceInput: AVCaptureDeviceInput
-            do {
-                deviceInput = try AVCaptureDeviceInput(device: device)
-            } catch {
-                throw RecorderError.deviceUnavailable(error.localizedDescription)
-            }
-
-            if session.canAddInput(deviceInput) {
-                session.addInput(deviceInput)
-            }
-            let output = AVCaptureAudioDataOutput()
-            output.setSampleBufferDelegate(self, queue: outputQueue)
-            if session.canAddOutput(output) {
-                session.addOutput(output)
-            }
-            captureSession = session
+            captureSession = try makeMicrophoneCaptureSession()
         }
 
         self.writer = writer
@@ -293,11 +268,28 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         }
     }
 
-    private func startCoreAudioTapRecording(to url: URL) throws {
+    private func startCoreAudioTapRecording(to url: URL) async throws {
         guard #available(macOS 14.2, *) else {
             throw CoreAudioTapRecorderError.unavailable
         }
-        try coreAudioTapRecorder.startRecording(to: url, bitRate: AudioQuality.current.bitRate)
+
+        let includeMicrophone = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
+        let session = includeMicrophone ? try makeMicrophoneCaptureSession() : nil
+
+        do {
+            try coreAudioTapRecorder.startRecording(
+                to: url,
+                bitRate: AudioQuality.current.bitRate,
+                includeMicrophone: includeMicrophone
+            )
+            captureSession = session
+            captureSession?.startRunning()
+        } catch {
+            session?.stopRunning()
+            captureSession = nil
+            await coreAudioTapRecorder.stopRecording()
+            throw error
+        }
         print("✅ Core Audio tap capture started successfully!")
     }
 
@@ -315,16 +307,29 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         guard writer.canAdd(input) else { throw RecorderError.writerCantAddInput }
         writer.add(input)
 
-        let session = AVCaptureSession()
-        let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
-        let micDevice = storedUID.isEmpty
-            ? AVCaptureDevice.default(for: .audio)
-            : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
-
         let authStatus = AVCaptureDevice.authorizationStatus(for: .audio)
         guard authStatus == .authorized else {
             throw authStatus == .notDetermined ? RecorderError.noMicrophone : RecorderError.permissionDenied
         }
+        let session = try makeMicrophoneCaptureSession()
+
+        guard writer.startWriting() else {
+            throw RecorderError.writerStartFailed
+        }
+        writer.startSession(atSourceTime: .zero)
+
+        self.writer = writer
+        audioInput = input
+        captureSession = session
+        session.startRunning()
+        print("✅ Microphone-only capture started successfully!")
+    }
+
+    private func makeMicrophoneCaptureSession() throws -> AVCaptureSession {
+        let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
+        let micDevice = storedUID.isEmpty
+            ? AVCaptureDevice.default(for: .audio)
+            : AVCaptureDevice(uniqueID: storedUID) ?? AVCaptureDevice.default(for: .audio)
 
         guard let device = micDevice else {
             throw RecorderError.noMicrophone
@@ -337,26 +342,19 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             throw RecorderError.deviceUnavailable(error.localizedDescription)
         }
 
+        let session = AVCaptureSession()
         guard session.canAddInput(deviceInput) else {
             throw RecorderError.noMicrophone
         }
-
         session.addInput(deviceInput)
+
         let output = AVCaptureAudioDataOutput()
         output.setSampleBufferDelegate(self, queue: outputQueue)
-        guard session.canAddOutput(output) else { throw RecorderError.writerCantAddInput }
-        session.addOutput(output)
-
-        guard writer.startWriting() else {
-            throw RecorderError.writerStartFailed
+        guard session.canAddOutput(output) else {
+            throw RecorderError.writerCantAddInput
         }
-        writer.startSession(atSourceTime: .zero)
-
-        self.writer = writer
-        audioInput = input
-        captureSession = session
-        session.startRunning()
-        print("✅ Microphone-only capture started successfully!")
+        session.addOutput(output)
+        return session
     }
 
     private func markRecordingStarted() {
@@ -398,6 +396,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             if #available(macOS 14.2, *) {
                 coreAudioTapRecorder.pauseRecording()
             }
+            captureSession?.stopRunning()
             isPaused = true
             recordingState = .paused
             pauseStartDate = Date()
@@ -437,6 +436,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 if #available(macOS 14.2, *) {
                     try coreAudioTapRecorder.resumeRecording()
                 }
+                captureSession?.startRunning()
                 isPaused = false
                 recordingState = .recording
                 startDurationTimer()
@@ -499,12 +499,14 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         stopDurationTimer()
 
         if source == .coreAudioTap {
+            captureSession?.stopRunning()
             if #available(macOS 14.2, *) {
-                coreAudioTapRecorder.stopRecording()
+                await coreAudioTapRecorder.stopRecording()
                 if let writeError = coreAudioTapRecorder.lastWriteError {
                     print("CoreAudioTap write error during recording:", writeError)
                 }
             }
+            captureSession = nil
             activeRecordingSource = nil
             return
         }
@@ -614,6 +616,13 @@ extension SystemAudioRecorder: SCStreamOutput, AVCaptureAudioDataOutputSampleBuf
     /// Receives audio sample buffers from the microphone
     nonisolated func captureOutput(_: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from _: AVCaptureConnection) {
         Task { @MainActor in
+            if self.activeRecordingSource == .coreAudioTap {
+                if #available(macOS 14.2, *) {
+                    self.coreAudioTapRecorder.appendMicrophoneSampleBuffer(sampleBuffer)
+                }
+                return
+            }
+
             guard let writer = self.writer,
                   writer.status == .writing || writer.status == .unknown
             else { return }

@@ -208,8 +208,9 @@ class RecordingManager {
         guard !isRecording else { return false }
 
         let source = RecordingSource.current
+        let includeMicrophone = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
         let needsMicrophone = source == .microphoneOnly
-            || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
+            || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
 
         // Check microphone permission if the selected source needs it.
         if needsMicrophone {
@@ -242,7 +243,7 @@ class RecordingManager {
                 duration: 0,
                 fileName: fileName,
                 hasMicTrack: source == .microphoneOnly
-                    || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
+                    || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
             )
             modelContext.insert(entity)
             try? modelContext.save()

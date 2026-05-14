@@ -372,10 +372,7 @@ struct VisualEffectBlur: NSViewRepresentable {
         return view
     }
 
-    /// Updates the NSVisualEffectView's material and blending mode to match the wrapper's configured properties.
-    /// - Parameters:
-    ///   - nsView: The NSVisualEffectView to update.
-    ///   - context: The current update context provided by SwiftUI.
+    /// Update visual effect view material and blending mode.
     func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
@@ -383,8 +380,7 @@ struct VisualEffectBlur: NSViewRepresentable {
 }
 
 private extension View {
-    /// Applies a capsule-shaped recording toolbar background with translucent material, a subtle white border, and a soft drop shadow.
-    /// - Returns: A view modified with an ultra-thin material-filled capsule background, a semi-transparent white stroked border, and a light shadow for elevation.
+    /// Recording toolbar background: capsule with ultra-thin material, border, and shadow.
     func recordingToolbarBackground() -> some View {
         background(
             Capsule()

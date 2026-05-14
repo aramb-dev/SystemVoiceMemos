@@ -265,9 +265,7 @@ struct ContentView: View {
         }
     }
 
-    /// Stops the currently active recording and updates the UI selection.
-    /// 
-    /// If a recording is not in progress, this call does nothing. When a recording is active it invokes the recording manager's stop flow and then recalculates the selected recording.
+    /// Stops the currently active recording and recalculates UI selection.
     private func handleStopRecording() {
         guard vm.recordingManager.isRecording else { return }
         Task {
@@ -276,9 +274,7 @@ struct ContentView: View {
         }
     }
 
-    /// Brings the application's main window to the front and ensures it is visible.
-    /// 
-    /// Unhides the app. If a recording is in progress, expands the recording UI to a full window and restores the toolbar if needed. Otherwise activates the app and locates the window with identifier `"main_window"`; if found, deminiaturizes it when necessary and makes it key and frontmost.
+    /// Brings the main app window to the front, expanding from recording mode if needed.
     private func showMainWindow() {
         NSApp.unhide(nil)
         if vm.recordingManager.isRecording {

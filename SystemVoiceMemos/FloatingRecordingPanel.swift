@@ -20,8 +20,6 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
     var onRestart: (() -> Void)?
     var onExpand: (() -> Void)?
 
-    /// Displays the floating recording panel for the given recorder and makes it visible.
-    /// - Parameter recorder: The `SystemAudioRecorder` instance to associate with the panel; its state is shown and controlled by the panel.
     func show(recorder: SystemAudioRecorder) {
         self.recorder = recorder
 
@@ -37,17 +35,11 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         isVisible = true
     }
 
-    /// Hides the floating recording panel and updates the published visibility state.
-    /// 
-    /// The panel is ordered out but not closed or released, allowing it to be shown again later.
     func hide() {
         panel?.orderOut(nil)
         isVisible = false
     }
 
-    /// Closes the floating panel and clears the panel-related state.
-    /// 
-    /// If a panel exists, removes its delegate, closes the window, sets the stored `panel` to `nil`, and updates `isVisible` to `false`.
     func close() {
         panel?.delegate = nil
         panel?.close()
@@ -55,9 +47,6 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         isVisible = false
     }
 
-    /// Creates and configures the floating `NSPanel` used to host the recording UI and assigns it to `self.panel`.
-    /// 
-    /// The panel is configured for non-activating, borderless presentation, floating behavior, screen-sharing exclusion when requested, and an initial on-screen position near the bottom center of the main screen. The panel's delegate is set to `self` and its level and collection behavior are initialized.
     private func createPanel() {
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: currentPanelSize),

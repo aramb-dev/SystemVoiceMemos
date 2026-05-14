@@ -213,10 +213,10 @@ class RecordingManager {
         guard !isRecording else { return false }
 
         let source = RecordingSource.current
-        let needsMicrophone = shouldIncludeMicrophone(for: source)
+        let hasMicTrack = shouldIncludeMicrophone(for: source)
 
         // Check microphone permission if the selected source needs it.
-        if needsMicrophone {
+        if hasMicTrack {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
                 await PermissionManager.shared.requestAudioPermission()
@@ -245,7 +245,7 @@ class RecordingManager {
                 createdAt: .now,
                 duration: 0,
                 fileName: fileName,
-                hasMicTrack: shouldIncludeMicrophone(for: source)
+                hasMicTrack: hasMicTrack
             )
             modelContext.insert(entity)
             try? modelContext.save()

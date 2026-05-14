@@ -238,10 +238,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             ]
             let micInput = AVAssetWriterInput(mediaType: .audio, outputSettings: micSettings)
             micInput.expectsMediaDataInRealTime = true
-            if writer.canAdd(micInput) {
-                writer.add(micInput)
-                self.micInput = micInput
-            }
+            guard writer.canAdd(micInput) else { throw RecorderError.writerCantAddInput }
+            writer.add(micInput)
+            self.micInput = micInput
 
             captureSession = try makeMicrophoneCaptureSession()
         }

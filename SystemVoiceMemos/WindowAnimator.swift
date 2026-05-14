@@ -43,9 +43,7 @@ final class WindowAnimator: ObservableObject {
         window.miniaturize(nil)
     }
 
-    /// Restores the main app window from a minimized or shrunk state to its saved full frame and brings it to the front.
-    /// 
-    /// If the application is hidden, it is unhidden. If the window is miniaturized it will be deminiaturized. If a previously saved frame exists, the window frame is restored with animation. The window is then made key and ordered front, the app is activated, `isMinimized` is set to `false`, and the saved frame is cleared.
+    /// Restore the main app window to its saved frame with animation and bring it to the front.
     func expandToFull() {
         // Ensure we have a valid window reference
         captureWindow()
@@ -73,9 +71,7 @@ final class WindowAnimator: ObservableObject {
         savedFrame = nil
     }
 
-    /// Restores the app window to its saved frame (or a centered default) immediately and without animation.
-    /// 
-    /// If a saved frame exists, the window is positioned to that rect; otherwise the window is centered on the main (or first) screen with a 960×700 size. The application is unhidden, the window is ordered front, made key, its alpha is set to fully opaque, `isMinimized` is set to `false`, and the saved frame is cleared.
+    /// Restore the main app window to its saved frame without animation and bring it to the front.
     func restoreWithoutAnimation() {
         // Ensure we have a valid window reference
         captureWindow()

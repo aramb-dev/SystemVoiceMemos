@@ -33,7 +33,7 @@ struct SystemVoiceMemosApp: App {
     }
 
     private var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.11.0"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.10.3"
     }
 
     var body: some Scene {

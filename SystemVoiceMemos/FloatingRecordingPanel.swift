@@ -3,7 +3,8 @@ import SwiftUI
 
 @MainActor
 final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate {
-    private let panelSize = NSSize(width: 344, height: 64)
+    private let fullPanelSize = NSSize(width: 408, height: 88)
+    private let compactPanelSize = NSSize(width: 198, height: 64)
     private let screenMargin: CGFloat = 10
 
     private var panel: NSPanel?
@@ -12,6 +13,7 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
 
     @Published var isVisible = false
     @AppStorage("minimalRecordingAlwaysOnTop") var isAlwaysOnTop = true
+    @AppStorage("minimalRecordingCompactMode") var isCompact = false
     @AppStorage(AppConstants.UserDefaultsKeys.hideFromScreenSharing) private var excludeFromScreenCapture = true
 
     var onStop: (() -> Void)?
@@ -25,6 +27,7 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
             createPanel()
         }
 
+        updatePanelSize()
         updateWindowBehavior()
         updateContent()
         clampToVisibleScreen()
@@ -46,7 +49,7 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
 
     private func createPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: panelSize),
+            contentRect: NSRect(origin: .zero, size: currentPanelSize),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false
@@ -73,7 +76,7 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
         // Center horizontally at bottom of screen
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
-            let x = screenFrame.midX - (panelSize.width / 2)
+            let x = screenFrame.midX - (currentPanelSize.width / 2)
             let y = screenFrame.minY + 80
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -91,10 +94,21 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
                 self?.updateWindowBehavior()
             }
         )
+        let isCompactBinding = Binding<Bool>(
+            get: { [weak self] in self?.isCompact ?? false },
+            set: { [weak self] newValue in
+                guard let self else { return }
+                self.isCompact = newValue
+                self.updatePanelSize()
+                self.clampToVisibleScreen()
+                self.updateContent()
+            }
+        )
 
         let contentView = MinimalRecordingView(
             recorder: recorder,
             isAlwaysOnTop: isOnTopBinding,
+            isCompact: isCompactBinding,
             onStop: { [weak self] in self?.onStop?() },
             onRestart: { [weak self] in self?.onRestart?() },
             onExpand: { [weak self] in self?.onExpand?() }
@@ -111,6 +125,24 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
 
     private func updateWindowLevel() {
         panel?.level = isAlwaysOnTop ? .statusBar : .normal
+    }
+
+    private var currentPanelSize: NSSize {
+        isCompact ? compactPanelSize : fullPanelSize
+    }
+
+    private func updatePanelSize() {
+        guard let panel else { return }
+
+        let oldFrame = panel.frame
+        let newSize = currentPanelSize
+        guard oldFrame.size != newSize else { return }
+
+        let newOrigin = NSPoint(
+            x: oldFrame.midX - newSize.width / 2,
+            y: oldFrame.midY - newSize.height / 2
+        )
+        panel.setFrame(NSRect(origin: newOrigin, size: newSize), display: true)
     }
 
     private var collectionBehavior: NSWindow.CollectionBehavior {

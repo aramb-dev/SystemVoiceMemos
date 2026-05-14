@@ -1,16 +1,16 @@
 export default function Hero() {
   return (
-    <section className="relative flex flex-col items-center bg-canvas-white overflow-hidden pt-[44px]">
-      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-32 pb-28">
+    <section className="relative flex flex-col items-center bg-[var(--bg-primary)] overflow-hidden pt-[44px]">
+      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-32 pb-36 sm:pt-40 sm:pb-48">
         <p
-          className="text-medium-gray mb-5"
+          className="text-[var(--text-secondary)] mb-6"
           style={{ fontSize: "17px", letterSpacing: "-0.022px", lineHeight: 1.47 }}
         >
-          v0.10.3 — Core Audio Tap
+          Open source for macOS
         </p>
 
         <h1
-          className="max-w-4xl text-midnight-graphite font-semibold mb-6"
+          className="max-w-4xl text-[var(--text-primary)] font-semibold mb-8"
           style={{
             fontFamily: "var(--font-display)",
             fontSize: "clamp(2.75rem, 7vw, 3.5rem)",
@@ -18,20 +18,20 @@ export default function Hero() {
             letterSpacing: "-0.28px",
           }}
         >
-          Capture every sound.
+          Voice Memos for
           <br />
-          Nothing else.
+          system audio.
         </h1>
 
         <p
-          className="max-w-xl text-medium-gray mb-10"
+          className="max-w-2xl text-[var(--text-secondary)] mb-12"
           style={{ fontSize: "24px", lineHeight: 1.33, letterSpacing: "-0.24px" }}
         >
-          A native macOS audio recorder that taps directly into system audio —
-          no screen-recording permission, no subscriptions, no cloud.
+          Record what your Mac is playing, your microphone, or both in one
+          simple app. No account, no subscription, no cloud.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-[10px] mb-16">
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-16">
           <a
             href="https://github.com/aramb-dev/SystemVoiceMemos/releases/latest"
             target="_blank"
@@ -52,9 +52,9 @@ export default function Hero() {
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-6">
-          {["macOS 14.2+", "Free & Open Source", "Local recordings only"].map((t) => (
-            <span key={t} className="text-[12px] text-medium-gray" style={{ letterSpacing: "-0.15px" }}>{t}</span>
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          {["macOS 14.2+", "Free and open source", "Local recordings only"].map((t) => (
+            <span key={t} className="text-[12px] text-[var(--text-secondary)]" style={{ letterSpacing: "-0.15px" }}>{t}</span>
           ))}
         </div>
       </div>

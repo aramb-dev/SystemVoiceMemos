@@ -1,0 +1,133 @@
+@theme {
+  /* ═══════════════════════════════════════════════════════════════
+     Apple Design System — Tailwind v4 @theme
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* ── Colors ── */
+  --color-midnight-graphite: #1d1d1f;
+  --color-deep-gray: #333333;
+  --color-charcoal-grey: #474747;
+  --color-medium-gray: #86868b;
+  --color-light-gray: #a1a1a6;
+  --color-light-silver: #c7c7c7;
+  --color-border-silver: #d2d2d7;
+  --color-lightest-gray-background: #e2e2e5;
+  --color-canvas-white: #f5f5f7;
+  --color-pure-white: #ffffff;
+  --color-true-black: #000000;
+  --color-interactive-blue: #0071e3;
+  --color-action-blue: #0066cc;
+  --color-sky-blue-highlight: #2997ff;
+  --color-cerulean-shine: #3397d4;
+  --color-pale-blue-overlay: #9fc6f4;
+  --color-vibrant-orange: #ec893c;
+  --color-deep-plum: #7424b5;
+  --color-blush-pink: #ea33c0;
+  --color-warm-taupe: #604630;
+  --color-cool-teal: #32ade6;
+
+  /* Dark-mode primitives */
+  --color-dark-base: #161617;
+  --color-dark-elevated: #1c1c1e;
+  --color-dark-secondary: #2c2c2e;
+  --color-dark-tertiary: #3a3a3c;
+  --color-dark-text-primary: #f5f5f7;
+  --color-dark-text-secondary: #86868b;
+  --color-dark-text-tertiary: #a1a1a6;
+  --color-dark-border: #424245;
+
+  /* ── Typography ── */
+  --font-sf-pro-text: 'SF Pro Text', -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  --font-sf-pro-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+
+  /* ── Typography Scale ── */
+  --text-caption: 12px;
+  --leading-caption: 1.33;
+  --tracking-caption: -0.01em;
+
+  --text-body-sm: 14px;
+  --leading-body-sm: 1.4286;
+  --tracking-body-sm: -0.016em;
+
+  --text-body: 17px;
+  --leading-body: 1.4706;
+  --tracking-body: -0.022em;
+
+  --text-subheading: 19px;
+  --leading-subheading: 1.21;
+  --tracking-subheading: -0.021em;
+
+  --text-callout: 21px;
+  --leading-callout: 1.19;
+  --tracking-callout: -0.021em;
+
+  --text-heading-sm: 24px;
+  --leading-heading-sm: 1.1667;
+  --tracking-heading-sm: -0.021em;
+
+  --text-heading-md: 28px;
+  --leading-heading-md: 1.14;
+  --tracking-heading-md: -0.021em;
+
+  --text-heading-lg: 32px;
+  --leading-heading-lg: 1.125;
+  --tracking-heading-lg: -0.021em;
+
+  --text-display-sm: 40px;
+  --leading-display-sm: 1.1;
+  --tracking-display-sm: -0.022em;
+
+  --text-display-md: 48px;
+  --leading-display-md: 1.083;
+  --tracking-display-md: -0.024em;
+
+  --text-display-lg: 56px;
+  --leading-display-lg: 1.07;
+  --tracking-display-lg: -0.028em;
+
+  --text-display-xl: 64px;
+  --leading-display-xl: 1.0625;
+  --tracking-display-xl: -0.03em;
+
+  --text-display-xxl: 80px;
+  --leading-display-xxl: 1.05;
+  --tracking-display-xxl: -0.036em;
+
+  --text-display-giant: 96px;
+  --leading-display-giant: 1.04;
+  --tracking-display-giant: -0.04em;
+
+  /* ── Spacing ── */
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-28: 28px;
+  --spacing-32: 32px;
+  --spacing-36: 36px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-52: 52px;
+  --spacing-64: 64px;
+  --spacing-72: 72px;
+  --spacing-80: 80px;
+  --spacing-96: 96px;
+  --spacing-120: 120px;
+
+  /* ── Border Radius ── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 11px;
+  --radius-xl: 18px;
+  --radius-full: 980px;
+  --radius-full-2: 999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
+  --shadow-product: 0 18px 40px rgba(0, 0, 0, 0.14);
+}

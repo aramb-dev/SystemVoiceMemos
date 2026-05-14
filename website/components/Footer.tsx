@@ -8,23 +8,23 @@ export default function Footer() {
   ]
 
   return (
-    <footer className="bg-midnight-graphite border-t border-white/10">
-      <div className="max-w-[980px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-medium-gray" style={{ fontSize: "12px", letterSpacing: "-0.15px" }}>
+    <footer className="bg-[var(--bg-secondary)] border-t border-[var(--border-primary)]">
+      <div className="max-w-[980px] mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <p className="text-[var(--text-secondary)]" style={{ fontSize: "12px", letterSpacing: "-0.15px" }}>
           Copyright © {new Date().getFullYear()} Abdur-Rahman Bilal · MIT License
         </p>
 
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-8">
           {links.map((l) => (
             <a
               key={l.label}
               href={l.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-medium-gray hover:text-white transition-colors"
+              className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               style={{ fontSize: "12px", letterSpacing: "-0.15px" }}
             >
-              {l.label === "GitHub" && <Github width={13} height={13} strokeWidth={1.5} />}
+              {l.label === "GitHub" && <Github width={16} height={16} strokeWidth={1.5} />}
               {l.label}
             </a>
           ))}

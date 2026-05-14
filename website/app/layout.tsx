@@ -2,12 +2,12 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "SystemVoiceMemos — System Audio Recorder for macOS",
+  title: "SystemVoiceMemos — Open Source Voice Memos for System Audio",
   description:
-    "Capture system audio and microphone on macOS without Screen Recording permission. Local M4A files, multiple export formats, folder organization.",
+    "An open source Voice Memos-style app for recording system audio and microphone on macOS. Local files, simple folders, and no account.",
   openGraph: {
     title: "SystemVoiceMemos",
-    description: "Capture system audio on macOS — no screen recording required.",
+    description: "Open source Voice Memos for your Mac's system audio.",
     type: "website",
   },
 }

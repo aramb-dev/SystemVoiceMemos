@@ -2,33 +2,33 @@ export default function HowItWorks() {
   const steps = [
     {
       num: "1",
-      title: "Choose your source",
-      body: "Select System Audio, Microphone, or Both. The app remembers your preference across launches.",
+      title: "Pick what to record",
+      body: "Choose system audio, microphone, or both depending on whether you are saving playback, voice notes, or a mixed memo.",
     },
     {
       num: "2",
       title: "Press record",
-      body: "One click starts the Core Audio tap. No permission dialogs, no setup — the waveform appears immediately.",
+      body: "Start a clean recording from the app and watch the waveform as your memo is captured.",
     },
     {
       num: "3",
-      title: "Export and share",
-      body: "Stop recording, then export to M4A, MP3, WAV, or AIFF in one step. Or share directly from the app.",
+      title: "Save or share it",
+      body: "Stop when you are done, organize the memo, export it, or share the file straight from your Mac.",
     },
   ]
 
   return (
-    <section className="bg-pure-white py-28 px-6">
+    <section className="bg-[var(--bg-elevated)] py-32 sm:py-44 px-6">
       <div className="max-w-[980px] mx-auto">
         <div className="text-center mb-20">
           <p
-            className="text-medium-gray mb-4"
+            className="text-[var(--text-secondary)] mb-6"
             style={{ fontSize: "17px", letterSpacing: "-0.022px", lineHeight: 1.47 }}
           >
             How it works
           </p>
           <h2
-            className="text-midnight-graphite font-semibold"
+            className="text-[var(--text-primary)] font-semibold"
             style={{
               fontFamily: "var(--font-display)",
               fontSize: "clamp(2rem, 4vw, 2.5rem)",
@@ -40,27 +40,27 @@ export default function HowItWorks() {
           </h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-px bg-border-silver">
+        <div className="grid md:grid-cols-3 gap-14">
           {steps.map((s) => (
-            <div key={s.num} className="bg-pure-white p-8">
+            <div key={s.num} className="px-2">
               <span
-                className="block font-bold leading-none mb-6 text-lightest-gray"
+                className="block font-semibold leading-none mb-8 text-[var(--bg-secondary)]"
                 style={{
                   fontFamily: "var(--font-display)",
-                  fontSize: "56px",
-                  letterSpacing: "-0.28px",
-                  lineHeight: 1.07,
+                  fontSize: "64px",
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1.0625,
                 }}
               >
                 {s.num}
               </span>
               <h3
-                className="text-midnight-graphite font-semibold mb-2"
-                style={{ fontSize: "17px", letterSpacing: "-0.015em", lineHeight: 1.47 }}
+                className="text-[var(--text-primary)] font-semibold mb-4"
+                style={{ fontSize: "17px", letterSpacing: "-0.021em", lineHeight: 1.47 }}
               >
                 {s.title}
               </h3>
-              <p className="text-medium-gray" style={{ fontSize: "14px", lineHeight: 1.47, letterSpacing: "-0.18px" }}>
+              <p className="text-[var(--text-secondary)]" style={{ fontSize: "14px", lineHeight: 1.4286, letterSpacing: "-0.016em" }}>
                 {s.body}
               </p>
             </div>

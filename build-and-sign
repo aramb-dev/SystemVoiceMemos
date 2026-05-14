@@ -22,6 +22,7 @@ set -euo pipefail
 
 APP_NAME="SystemVoiceMemos"
 SCHEME="SystemVoiceMemos"
+NOTARY_PROFILE="${NOTARY_PROFILE:-notarytool}"
 ARG_CONFIG=""
 BUMP_KIND=""
 RELEASE_NOTES_PATH=""
@@ -342,17 +343,16 @@ DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 
 log_info "Creating DMG with create-dmg"
-create-dmg --overwrite --dmg-title "$APP_NAME" "$APP_PATH" "$DIST_DIR"
-
-# create-dmg uses the app's display name; find whatever .dmg it created and rename
-GENERATED_DMG="$(find "$DIST_DIR" -maxdepth 1 -name "*.dmg" -newer "$APP_PATH" | head -n 1)"
-if [[ -z "$GENERATED_DMG" ]]; then
-    # Fallback: find any .dmg containing the version
-    GENERATED_DMG="$(find "$DIST_DIR" -maxdepth 1 -name "*${VERSION}*.dmg" | head -n 1)"
-fi
-if [[ -n "$GENERATED_DMG" && "$GENERATED_DMG" != "$DMG_PATH" ]]; then
-    mv "$GENERATED_DMG" "$DMG_PATH"
-fi
+DMG_STAGING="$(mktemp -d)"
+cp -R "$APP_PATH" "$DMG_STAGING/"
+# Remove existing DMG so create-dmg doesn't complain
+rm -f "$DMG_PATH"
+create-dmg \
+    --volname "$APP_NAME" \
+    --app-drop-link 600 185 \
+    "$DMG_PATH" \
+    "$DMG_STAGING/"
+rm -rf "$DMG_STAGING"
 
 if [[ ! -f "$DMG_PATH" ]]; then
     log_error "DMG not found at expected path: $DMG_PATH"

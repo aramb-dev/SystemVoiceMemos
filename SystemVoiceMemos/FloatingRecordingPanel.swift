@@ -168,10 +168,16 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
     }
 
     private var collectionBehavior: NSWindow.CollectionBehavior {
+        // .fullScreenAuxiliary is omitted: on macOS 26+ its validator requires
+        // a full-screen primary app to be present and aborts otherwise.
+        // .canJoinAllSpaces and .moveToActiveSpace must never be combined —
+        // they are documented as mutually exclusive placement behaviors.
         if isAlwaysOnTop {
-            return [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+            // Pin to all spaces; stay put during Mission Control / Exposé.
+            return [.canJoinAllSpaces, .stationary]
         }
-        return [.canJoinAllSpaces, .fullScreenAuxiliary, .moveToActiveSpace]
+        // Follow the user to whichever Space they switch to.
+        return [.moveToActiveSpace]
     }
 
     /// Updates the panel's window behavior to match current settings, refreshes its window level, and re-clamps the panel frame to the visible screen.

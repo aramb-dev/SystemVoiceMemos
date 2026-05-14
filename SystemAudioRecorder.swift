@@ -86,6 +86,14 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// Queue for processing audio sample buffers
     private let outputQueue = DispatchQueue(label: "SystemVoiceMemos.AudioOutput")
 
+    /// Serial queue used to start/stop AVCaptureSession off the main thread.
+    /// startRunning() and stopRunning() are synchronous and can block for
+    /// hundreds of milliseconds, so they must never run on the main actor.
+    private let sessionControlQueue = DispatchQueue(
+        label: "SystemVoiceMemos.SessionControl",
+        qos: .userInitiated
+    )
+
     /// Tiny placeholder dimensions keep any accidental screen stream cheap.
     /// System audio still needs a display-anchored ScreenCaptureKit stream,
     /// but this recorder never subscribes to or writes screen frames.
@@ -263,14 +271,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             print("🚀 Starting capture...")
             try await stream.startCapture()
 
-            if let session = captureSession {
-                session.startRunning()
-            }
+            startCaptureSession(captureSession)
 
             print("✅ Capture started successfully!")
             markRecordingStarted()
         } catch {
-            captureSession?.stopRunning()
+            stopCaptureSession(captureSession)
             if writer.status == .writing { writer.cancelWriting() }
             self.stream = nil
             self.writer = nil
@@ -301,9 +307,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 includeMicrophone: includeMicrophone
             )
             captureSession = session
-            captureSession?.startRunning()
+            startCaptureSession(captureSession)
         } catch {
-            session?.stopRunning()
+            stopCaptureSession(session)
             captureSession = nil
             await coreAudioTapRecorder.stopRecording()
             throw error
@@ -342,7 +348,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         self.writer = writer
         audioInput = input
         captureSession = session
-        session.startRunning()
+        startCaptureSession(session)
         print("✅ Microphone-only capture started successfully!")
     }
 
@@ -438,7 +444,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             if #available(macOS 14.2, *) {
                 coreAudioTapRecorder.pauseRecording()
             }
-            captureSession?.stopRunning()
+            stopCaptureSession(captureSession)
             isPaused = true
             recordingState = .paused
             pauseStartDate = Date()
@@ -448,7 +454,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         do {
             try await stream?.stopCapture()
-            captureSession?.stopRunning()
+            stopCaptureSession(captureSession)
             isPaused = true
             recordingState = .paused
             pauseStartDate = Date()
@@ -485,7 +491,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 if #available(macOS 14.2, *) {
                     try coreAudioTapRecorder.resumeRecording()
                 }
-                captureSession?.startRunning()
+                startCaptureSession(captureSession)
                 isPaused = false
                 recordingState = .recording
                 startDurationTimer()
@@ -493,7 +499,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             }
 
             try await stream?.startCapture()
-            captureSession?.startRunning()
+            startCaptureSession(captureSession)
             isPaused = false
             recordingState = .recording
             startDurationTimer()
@@ -552,7 +558,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         stopDurationTimer()
 
         if source == .coreAudioTap {
-            captureSession?.stopRunning()
+            stopCaptureSession(captureSession)
             if #available(macOS 14.2, *) {
                 await coreAudioTapRecorder.stopRecording()
                 if let writeError = coreAudioTapRecorder.lastWriteError {
@@ -567,7 +573,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         // Stop capture first
         do {
             try await stream?.stopCapture()
-            captureSession?.stopRunning()
+            stopCaptureSession(captureSession)
         } catch {
             print("stopCapture error:", error)
         }
@@ -601,6 +607,24 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         captureSession = nil
         writer = nil
         activeRecordingSource = nil
+    }
+}
+
+// MARK: - Session Control Helpers
+
+extension SystemAudioRecorder {
+    /// Starts `session.startRunning()` on `sessionControlQueue` so the blocking
+    /// call never runs on the main actor / main thread.
+    private func startCaptureSession(_ session: AVCaptureSession?) {
+        guard let s = session else { return }
+        sessionControlQueue.async { s.startRunning() }
+    }
+
+    /// Stops `session.stopRunning()` on `sessionControlQueue` so the blocking
+    /// call never runs on the main actor / main thread.
+    private func stopCaptureSession(_ session: AVCaptureSession?) {
+        guard let s = session else { return }
+        sessionControlQueue.async { s.stopRunning() }
     }
 }
 

@@ -264,17 +264,22 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
             micInput = input
         }
 
-        guard writer.startWriting() else {
-            throw writer.error ?? CoreAudioTapRecorderError.setupFailed("Could not start Core Audio asset writer.")
-        }
-        writer.startSession(atSourceTime: .zero)
+        // Perform startWriting, startSession, and all property assignments on
+        // writerQueue so that every subsequent writerQueue.async read sees a
+        // fully-initialised state without needing extra synchronisation.
+        try writerQueue.sync {
+            guard writer.startWriting() else {
+                throw writer.error ?? CoreAudioTapRecorderError.setupFailed("Could not start Core Audio asset writer.")
+            }
+            writer.startSession(atSourceTime: .zero)
 
-        self.writer = writer
-        self.systemInput = systemInput
-        self.micInput = micInput
-        systemFramePosition = 0
-        micStartTime = .invalid
-        micPausedDuration = .zero
+            self.writer = writer
+            self.systemInput = systemInput
+            self.micInput = micInput
+            self.systemFramePosition = 0
+            self.micStartTime = .invalid
+            self.micPausedDuration = .zero
+        }
     }
 
     /// Appends a system audio sample buffer to the asset writer's system input.

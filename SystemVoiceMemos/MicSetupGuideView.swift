@@ -204,7 +204,7 @@ struct MicSetupGuideView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Recording Source")
                     .font(.headline)
-                Text("In Settings, choose \u{201c}Mic + System Audio\u{201d} to capture both tracks at once.")
+                Text("Enable \u{201c}Record Microphone as Separate Track\u{201d} in Settings to capture both system audio and your mic at once.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

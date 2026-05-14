@@ -234,36 +234,22 @@ private struct WhatsNewView: View {
                         WhatsNewFeatureRow(
                             icon: "mic.fill",
                             tint: .blue,
-                            title: "Microphone Track Recording",
-                            description: "Record your microphone alongside system audio as a separate track. Enable it in Settings, then control system and mic levels independently in playback."
+                            title: "Microphone + Core Audio Tap",
+                            description: "Record your microphone alongside system audio using the modern Core Audio tap engine. No need to switch to the legacy screen-sharing engine."
                         )
 
                         WhatsNewFeatureRow(
-                            icon: "mic.slash.fill",
+                            icon: "toggle.fill",
                             tint: .orange,
-                            title: "Mic Mute in the Toolbar",
-                            description: "Tap the new mic button in the floating recording toolbar to mute your microphone mid-recording. Recording keeps going — your system audio track is never affected."
+                            title: "One-Click Mic Toggle",
+                            description: "Tap the mic button in the toolbar to turn microphone recording on or off. Your audio engine stays exactly as you set it."
                         )
 
                         WhatsNewFeatureRow(
-                            icon: "arrow.down.right.and.arrow.up.left",
-                            tint: .purple,
-                            title: "Compact Recording Toolbar",
-                            description: "Shrink the floating toolbar to a tiny pill that shows just the timer, pause, and stop — so it stays out of your way while you work."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "pin.fill",
+                            icon: "checkmark.shield.fill",
                             tint: .green,
-                            title: "Toolbar Always-on-Top & Screen Clamping",
-                            description: "The toolbar now stays visible on top of full-screen apps and snaps back if you drag it near a screen edge."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "waveform",
-                            tint: .accentColor,
-                            title: "Improved Core Audio Tap",
-                            description: "More reliable mic-track finalization, better device selection, and a smoother experience when switching sources or devices mid-session."
+                            title: "Smoother Permission Flow",
+                            description: "Microphone permission is requested only when you need it, with clearer guidance if access is denied."
                         )
                     }
                 }
@@ -296,7 +282,7 @@ private struct WhatsNewView: View {
             Text(releaseTitle)
                 .font(.largeTitle.bold())
 
-            Text("Mic track mute, compact toolbar, better Core Audio tap, and screen-clamping for the recording panel.")
+            Text("Microphone recording now works with Core Audio tap, easier one-click mic toggle, and improved permission handling.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

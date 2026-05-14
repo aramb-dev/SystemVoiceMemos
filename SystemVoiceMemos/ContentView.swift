@@ -476,7 +476,7 @@ struct ContentView: View {
             }
             .help(includeMicrophone
                 ? "Microphone will be recorded as a separate track"
-                : "Record microphone as a separate track using the legacy engine")
+                : "Record microphone as a separate track")
             .disabled(vm.recordingManager.isRecording)
 
             Button {
@@ -558,7 +558,6 @@ struct ContentView: View {
     private func toggleMicrophoneRecording() {
         let shouldEnable = !includeMicrophone
         if shouldEnable {
-            recordingSource = RecordingSource.legacyScreenCapture.rawValue
             Task {
                 await PermissionManager.shared.requestAudioPermission()
             }

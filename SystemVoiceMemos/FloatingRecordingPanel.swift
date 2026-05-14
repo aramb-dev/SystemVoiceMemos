@@ -222,7 +222,7 @@ final class FloatingRecordingPanel: NSObject, ObservableObject, NSWindowDelegate
     /// - Note: If a clamp is already in progress, this is a no-op. The actual clamp is enqueued to run on the main queue on the next run loop cycle.
     private func scheduleClampToVisibleScreen() {
         guard !isClampingFrame else { return }
-        DispatchQueue.main.async { [weak self] in
+        Task { [weak self] in
             self?.clampToVisibleScreen()
         }
     }

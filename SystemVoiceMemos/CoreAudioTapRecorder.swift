@@ -120,7 +120,7 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
     /// This will stop the underlying audio hardware and IO callback, ensure any in-progress sample writes are finished, clear writer-related resources, and clear the paused flag and pause timestamp.
     func stopRecording() async {
         stopHardware()
-        callbackQueue.sync {}
+        callbackQueue.sync { /* drain: wait for any in-flight IOProc callbacks to finish */ }
         await finishWriter()
         resetWriterState()
         stateLock.withLock {
@@ -468,7 +468,7 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
     /// - Parameter cancelWriting: If `true`, cancels any in-progress AVAssetWriter work and resets writer-related state before clearing pause state.
     private func cleanup(cancelWriting: Bool) {
         stopHardware()
-        callbackQueue.sync {}
+        callbackQueue.sync { /* drain: wait for any in-flight IOProc callbacks to finish */ }
         if cancelWriting {
             writerQueue.sync {
                 writer?.cancelWriting()

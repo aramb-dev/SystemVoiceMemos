@@ -359,7 +359,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// - Throws:
     ///   - `RecorderError.noMicrophone` if no suitable audio device is available or the device cannot be added to the session.
     ///   - `RecorderError.deviceUnavailable(_)` if creating an `AVCaptureDeviceInput` for the chosen device fails (includes the underlying error message).
-    ///   - `RecorderError.writerCantAddInput` if the session cannot accept the audio output.
+    ///   - `RecorderError.captureSessionCantAddOutput` if the session cannot accept the audio output.
     private func makeMicrophoneCaptureSession() throws -> AVCaptureSession {
         let storedUID = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.selectedMicrophoneUID) ?? ""
         let micDevice = storedUID.isEmpty
@@ -386,7 +386,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         let output = AVCaptureAudioDataOutput()
         output.setSampleBufferDelegate(self, queue: outputQueue)
         guard session.canAddOutput(output) else {
-            throw RecorderError.writerCantAddInput
+            throw RecorderError.captureSessionCantAddOutput
         }
         session.addOutput(output)
         return session
@@ -638,6 +638,7 @@ enum RecorderError: LocalizedError {
     case deviceUnavailable(String)
     case writerCantAddInput
     case writerStartFailed
+    case captureSessionCantAddOutput
 
     var errorDescription: String? {
         switch self {
@@ -647,6 +648,7 @@ enum RecorderError: LocalizedError {
         case .deviceUnavailable(let reason): return "Microphone unavailable: \(reason)"
         case .writerCantAddInput: return "Could not add audio input to writer."
         case .writerStartFailed: return "Failed to start asset writer."
+        case .captureSessionCantAddOutput: return "Could not add output to capture session."
         }
     }
 }

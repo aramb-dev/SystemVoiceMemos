@@ -43,6 +43,7 @@ final class WindowAnimator: ObservableObject {
         window.miniaturize(nil)
     }
 
+    /// Restore the main app window to its saved frame with animation and bring it to the front.
     func expandToFull() {
         // Ensure we have a valid window reference
         captureWindow()
@@ -50,6 +51,8 @@ final class WindowAnimator: ObservableObject {
             // No window found, can't expand
             return
         }
+
+        NSApp.unhide(nil)
 
         // Deminiaturize if minimized
         if window.isMiniaturized {
@@ -68,10 +71,13 @@ final class WindowAnimator: ObservableObject {
         savedFrame = nil
     }
 
+    /// Restore the main app window to its saved frame without animation and bring it to the front.
     func restoreWithoutAnimation() {
         // Ensure we have a valid window reference
         captureWindow()
         guard let window = mainWindow else { return }
+
+        NSApp.unhide(nil)
 
         let defaultFrame: NSRect = {
             let screen = NSScreen.main ?? NSScreen.screens.first!

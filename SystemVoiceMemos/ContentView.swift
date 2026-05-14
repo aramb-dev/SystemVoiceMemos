@@ -265,6 +265,7 @@ struct ContentView: View {
         }
     }
 
+    /// Stops the currently active recording and recalculates UI selection.
     private func handleStopRecording() {
         guard vm.recordingManager.isRecording else { return }
         Task {
@@ -273,7 +274,9 @@ struct ContentView: View {
         }
     }
 
+    /// Brings the main app window to the front, expanding from recording mode if needed.
     private func showMainWindow() {
+        NSApp.unhide(nil)
         if vm.recordingManager.isRecording {
             vm.recordingManager.expandToFullWindow(restoreToolbarIfNeeded: true)
         } else {
@@ -473,7 +476,7 @@ struct ContentView: View {
             }
             .help(includeMicrophone
                 ? "Microphone will be recorded as a separate track"
-                : "Record microphone as a separate track using the legacy engine")
+                : "Record microphone as a separate track")
             .disabled(vm.recordingManager.isRecording)
 
             Button {
@@ -555,7 +558,6 @@ struct ContentView: View {
     private func toggleMicrophoneRecording() {
         let shouldEnable = !includeMicrophone
         if shouldEnable {
-            recordingSource = RecordingSource.legacyScreenCapture.rawValue
             Task {
                 await PermissionManager.shared.requestAudioPermission()
             }

@@ -21,17 +21,19 @@ struct SystemVoiceMemosApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @AppStorage(AppConstants.UserDefaultsKeys.hasCompletedOnboarding) var hasCompletedOnboarding = false
     @AppStorage(AppConstants.UserDefaultsKeys.lastSeenWhatsNewVersion) private var lastSeenWhatsNewVersion = ""
+    @AppStorage(AppConstants.UserDefaultsKeys.lastSeenMicGuideVersion) private var lastSeenMicGuideVersion = ""
     @StateObject private var playbackManager = PlaybackManager()
     @StateObject private var updaterManager = UpdaterManager()
     @State private var showOnboarding = false
     @State private var showWhatsNew = false
+    @State private var showMicGuide = false
 
     private var appState: AppState {
         AppState.shared
     }
 
     private var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.10.2"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.10.3"
     }
 
     var body: some Scene {
@@ -58,8 +60,17 @@ struct SystemVoiceMemosApp: App {
                     WhatsNewView(version: currentVersion) {
                         lastSeenWhatsNewVersion = currentVersion
                         showWhatsNew = false
+                        // After dismissing What's New, show mic guide if not yet seen for this version
+                        showMicGuideIfNeeded()
                     }
                     .frame(width: 560, height: 520)
+                }
+                .sheet(isPresented: $showMicGuide) {
+                    MicSetupGuideView {
+                        lastSeenMicGuideVersion = currentVersion
+                        showMicGuide = false
+                    }
+                    .frame(width: 680, height: 560)
                 }
                 .onChange(of: hasCompletedOnboarding) { _, completed in
                     if completed {
@@ -157,6 +168,10 @@ struct SystemVoiceMemosApp: App {
                     showWhatsNew = true
                 }
 
+                Button("Microphone Setup Guide") {
+                    showMicGuide = true
+                }
+
                 Divider()
 
                 // Existing onboarding - stays as separate entry
@@ -185,8 +200,17 @@ struct SystemVoiceMemosApp: App {
     }
 
     private func showWhatsNewIfNeeded() {
-        guard hasCompletedOnboarding, lastSeenWhatsNewVersion != currentVersion else { return }
+        guard hasCompletedOnboarding, lastSeenWhatsNewVersion != currentVersion else {
+            // What's New already seen — check if mic guide is still pending
+            if hasCompletedOnboarding { showMicGuideIfNeeded() }
+            return
+        }
         showWhatsNew = true
+    }
+
+    private func showMicGuideIfNeeded() {
+        guard hasCompletedOnboarding, lastSeenMicGuideVersion != currentVersion else { return }
+        showMicGuide = true
     }
 }
 
@@ -208,38 +232,24 @@ private struct WhatsNewView: View {
 
                     VStack(alignment: .leading, spacing: 20) {
                         WhatsNewFeatureRow(
-                            icon: "waveform",
-                            tint: .accentColor,
-                            title: "System Audio Without Screen Recording",
-                            description: "The 0.10.1 Core Audio tap recorder captures system audio directly on macOS 14.2 and later, without showing the screen-sharing UI or needing Screen Recording permission."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "shield.checkered",
-                            tint: .green,
-                            title: "Safer Audio Capture",
-                            description: "The Core Audio path now handles mic permission errors, unavailable devices, callback thread safety, older macOS availability, mic-track finalization, and waveform edge cases more reliably."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "mic.badge.plus",
-                            tint: .red,
-                            title: "Mic Tracks, Playback, and Export",
-                            description: "Record microphone audio as its own track, then listen to system audio, mic audio, or both together, with export options for mixed or separate files."
-                        )
-
-                        WhatsNewFeatureRow(
-                            icon: "rectangle.on.rectangle",
+                            icon: "mic.fill",
                             tint: .blue,
-                            title: "Recording Toolbar Controls",
-                            description: "Customize the floating recording toolbar, restore it from the View or menu bar controls, and choose how it behaves when the main window is minimized or reopened."
+                            title: "Microphone + Core Audio Tap",
+                            description: "Record your microphone alongside system audio using the modern Core Audio tap engine. No need to switch to the legacy screen-sharing engine."
                         )
 
                         WhatsNewFeatureRow(
-                            icon: "sparkles",
-                            tint: .purple,
-                            title: "Cleaner Recording UI",
-                            description: "No recording can now be selected cleanly, the empty detail view uses a waveform treatment, and the floating toolbar has softer edges with less visual artifacting."
+                            icon: "toggle.fill",
+                            tint: .orange,
+                            title: "One-Click Mic Toggle",
+                            description: "Tap the mic button in the toolbar to turn microphone recording on or off. Your audio engine stays exactly as you set it."
+                        )
+
+                        WhatsNewFeatureRow(
+                            icon: "checkmark.shield.fill",
+                            tint: .green,
+                            title: "Smoother Permission Flow",
+                            description: "Microphone permission is requested only when you need it, with clearer guidance if access is denied."
                         )
                     }
                 }
@@ -272,7 +282,7 @@ private struct WhatsNewView: View {
             Text(releaseTitle)
                 .font(.largeTitle.bold())
 
-            Text("Includes the 0.10.1 Core Audio tap work plus new track controls, toolbar settings, and interface polish.")
+            Text("Microphone recording now works with Core Audio tap, easier one-click mic toggle, and improved permission handling.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

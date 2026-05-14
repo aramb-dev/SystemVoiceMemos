@@ -438,7 +438,7 @@
 				CODE_SIGN_ENTITLEMENTS = SystemVoiceMemos/SystemVoiceMemos.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = U8N2H82PMJ;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -460,7 +460,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 					MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.10.2;
+					MARKETING_VERSION = 0.10.3;
 					PRODUCT_BUNDLE_IDENTIFIER = "aramb-dev.SystemVoiceMemos";
 					PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -482,7 +482,7 @@
 				CODE_SIGN_ENTITLEMENTS = SystemVoiceMemos/SystemVoiceMemos.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = U8N2H82PMJ;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -504,7 +504,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 					MACOSX_DEPLOYMENT_TARGET = 14.0;
-					MARKETING_VERSION = 0.10.2;
+					MARKETING_VERSION = 0.10.3;
 					PRODUCT_BUNDLE_IDENTIFIER = "aramb-dev.SystemVoiceMemos";
 					PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

@@ -22,6 +22,8 @@ enum AppConstants {
         static let minimizeWindowDuringRecording = "minimizeWindowDuringRecording"
         static let restoreToolbarAfterExpand = "restoreToolbarAfterExpand"
         static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
+        /// Version string when the user last completed the mic setup guide (prevents re-showing each release)
+        static let lastSeenMicGuideVersion = "lastSeenMicGuideVersion"
 
         static let shareClickedCount = "shareClickedCount"
         static let shareCompletedCount = "shareCompletedCount"

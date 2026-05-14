@@ -201,18 +201,22 @@ class RecordingManager {
     /// Creates and starts a new recording
     ///
     /// - Parameter modelContext: SwiftData context for persistence
-    /// - Returns: Whether the recording started successfully
+    /// Begins a new audio recording, creates and inserts a corresponding `RecordingEntity`, and prepares the manager to track the in-progress recording.
+    ///
+    /// Checks and requests microphone permission when required by the selected recording source, starts the recorder writing to a new `.m4a` file in the app recordings directory, inserts a `RecordingEntity` (with `hasMicTrack` set according to the recording source and user preference), and assigns it to `pendingRecording`. On failure this method sets `lastError`.
+    /// - Parameters:
+    ///   - modelContext: The SwiftData model context used to insert and save the new `RecordingEntity`.
+    /// - Returns: `true` if recording was successfully started and a pending entity created, `false` otherwise.
     @discardableResult
     private func startNewRecording(modelContext: ModelContext) async -> Bool {
         // Guard against concurrent calls
         guard !isRecording else { return false }
 
         let source = RecordingSource.current
-        let needsMicrophone = source == .microphoneOnly
-            || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
+        let hasMicTrack = shouldIncludeMicrophone(for: source)
 
         // Check microphone permission if the selected source needs it.
-        if needsMicrophone {
+        if hasMicTrack {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
                 await PermissionManager.shared.requestAudioPermission()
@@ -241,8 +245,7 @@ class RecordingManager {
                 createdAt: .now,
                 duration: 0,
                 fileName: fileName,
-                hasMicTrack: source == .microphoneOnly
-                    || (source == .legacyScreenCapture && UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone))
+                hasMicTrack: hasMicTrack
             )
             modelContext.insert(entity)
             try? modelContext.save()
@@ -315,5 +318,11 @@ class RecordingManager {
     private func recordingURL(for recording: RecordingEntity) throws -> URL {
         let dir = try AppDirectories.recordingsDir()
         return dir.appendingPathComponent(recording.fileName)
+    }
+
+    private func shouldIncludeMicrophone(for source: RecordingSource) -> Bool {
+        let micEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
+        return source == .microphoneOnly
+            || ((source == .coreAudioTap || source == .legacyScreenCapture) && micEnabled)
     }
 }

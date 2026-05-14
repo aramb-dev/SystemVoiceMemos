@@ -4,6 +4,7 @@ import SwiftUI
 struct MinimalRecordingView: View {
     @ObservedObject var recorder: SystemAudioRecorder
     @Binding var isAlwaysOnTop: Bool
+    @Binding var isCompact: Bool
 
     var onStop: () -> Void
     var onRestart: () -> Void
@@ -17,6 +18,16 @@ struct MinimalRecordingView: View {
     }
 
     var body: some View {
+        Group {
+            if isCompact {
+                compactToolbar
+            } else {
+                fullToolbar
+            }
+        }
+    }
+
+    private var fullToolbar: some View {
         HStack(spacing: 12) {
             recordingIndicator
 
@@ -36,17 +47,104 @@ struct MinimalRecordingView: View {
 
             pinButton
 
+            compactButton
+
             expandButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(
-            Capsule()
-                .fill(.ultraThinMaterial)
-        )
-        .clipShape(Capsule())
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
-        .padding(6)
+        .recordingToolbarBackground()
+        .padding(16)
+    }
+
+    private var compactToolbar: some View {
+        HStack(spacing: 8) {
+            Text(formattedDuration)
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundColor(.primary)
+                .frame(width: 44)
+                .accessibilityLabel("Recording duration: \(formattedDuration)")
+
+            compactPauseButton
+            if recorder.hasMicTrack {
+                compactMicMuteButton
+            }
+            compactStopButton
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .recordingToolbarBackground()
+        .padding(10)
+        .onTapGesture(count: 2) {
+            isCompact = false
+        }
+        .contextMenu {
+            Button("Show Full Toolbar") {
+                isCompact = false
+            }
+        }
+    }
+
+    private var compactPauseButton: some View {
+        Button {
+            Task {
+                if recorder.isPaused {
+                    await recorder.resumeRecording()
+                } else {
+                    await recorder.pauseRecording()
+                }
+            }
+        } label: {
+            Image(systemName: recorder.isPaused ? "play.fill" : "pause.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(.regularMaterial))
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .help(recorder.isPaused ? "Resume" : "Pause")
+        .accessibilityLabel(recorder.isPaused ? "Resume Recording" : "Pause Recording")
+    }
+
+    private var compactStopButton: some View {
+        Button {
+            onStop()
+        } label: {
+            Image(systemName: "stop.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(Color.red))
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .help("Stop Recording")
+        .accessibilityLabel("Stop Recording")
+    }
+
+    private var compactMicMuteButton: some View {
+        Button {
+            recorder.isMicMuted.toggle()
+        } label: {
+            Image(systemName: recorder.isMicMuted ? "mic.slash.fill" : "mic.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(recorder.isMicMuted ? .orange : .primary)
+                .frame(width: 24, height: 24)
+                .background(
+                    Group {
+                        if recorder.isMicMuted {
+                            Circle().fill(Color.orange.opacity(0.2))
+                        } else {
+                            Circle().fill(.regularMaterial)
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .help(recorder.isMicMuted ? "Unmute Mic" : "Mute Mic")
+        .accessibilityLabel(recorder.isMicMuted ? "Unmute Microphone" : "Mute Microphone")
     }
 
     private var recordingIndicator: some View {
@@ -183,7 +281,40 @@ struct MinimalRecordingView: View {
             .contentShape(Circle())
             .help("Restart Recording")
             .accessibilityLabel("Restart Recording")
+
+            // Mic mute button — only visible when the recording has a mic track
+            if recorder.hasMicTrack {
+                micMuteButton
+            }
         }
+    }
+
+    private var micMuteButton: some View {
+        Button {
+            recorder.isMicMuted.toggle()
+        } label: {
+            Image(systemName: recorder.isMicMuted ? "mic.slash.fill" : "mic.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(recorder.isMicMuted ? .orange : .primary)
+                .frame(width: 32, height: 32)
+                .background(
+                    Group {
+                        if recorder.isMicMuted {
+                            Circle()
+                                .fill(Color.orange.opacity(0.15))
+                                .overlay { Circle().stroke(Color.orange.opacity(0.3), lineWidth: 1) }
+                        } else {
+                            Circle()
+                                .fill(.regularMaterial)
+                                .overlay { Circle().stroke(Color.white.opacity(0.1), lineWidth: 1) }
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .help(recorder.isMicMuted ? "Unmute Mic" : "Mute Mic")
+        .accessibilityLabel(recorder.isMicMuted ? "Unmute Microphone" : "Mute Microphone")
     }
 
     private var pinButton: some View {
@@ -198,6 +329,20 @@ struct MinimalRecordingView: View {
         .buttonStyle(.plain)
         .help(isAlwaysOnTop ? "Unpin from top" : "Keep on top")
         .accessibilityLabel(isAlwaysOnTop ? "Unpin from top" : "Keep on top")
+    }
+
+    private var compactButton: some View {
+        Button {
+            isCompact = true
+        } label: {
+            Image(systemName: "arrow.down.right.and.arrow.up.left")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.plain)
+        .help("Compact toolbar")
+        .accessibilityLabel("Compact Toolbar")
     }
 
     private var expandButton: some View {
@@ -227,8 +372,24 @@ struct VisualEffectBlur: NSViewRepresentable {
         return view
     }
 
+    /// Update visual effect view material and blending mode.
     func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
+    }
+}
+
+private extension View {
+    /// Recording toolbar background: capsule with ultra-thin material, border, and shadow.
+    func recordingToolbarBackground() -> some View {
+        background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+        )
+        .overlay {
+            Capsule()
+                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
     }
 }

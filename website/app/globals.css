@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-midnight-graphite: #1d1d1f;
+  --color-medium-gray: #6e6e73;
+  --color-light-gray: #a1a1a6;
+  --color-border-silver: #d6d6d6;
+  --color-lightest-gray: #e2e2e5;
+  --color-canvas-white: #f5f5f7;
+  --color-pure-white: #ffffff;
+  --color-interactive-blue: #0071e3;
+  --color-action-blue: #0066cc;
+  --color-sky-blue: #2997ff;
+
+  --font-sans: 'SF Pro Text', -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-canvas-white);
+  color: var(--color-midnight-graphite);
+  overflow-x: hidden;
+}
+
+/* ── Nav blur ── */
+.nav-blur {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* ── macOS window chrome ── */
+.mac-chrome {
+  background: rgba(22, 22, 26, 0.96);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 2px 4px rgba(0,0,0,0.12),
+    0 20px 60px rgba(0,0,0,0.55),
+    0 60px 120px rgba(0,0,0,0.35);
+}
+.mac-titlebar {
+  height: 40px;
+  background: #2c2c2e;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 7px;
+  position: relative;
+}
+.mac-titlebar .title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: -0.01em;
+  pointer-events: none;
+}
+.mac-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Waveform animation ── */
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(0.2); }
+  50%       { transform: scaleY(1); }
+}
+.wave-bar {
+  transform-origin: bottom;
+  animation: waveBar 1.5s ease-in-out infinite;
+}
+
+/* ── Fade up ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both; }

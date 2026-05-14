@@ -214,43 +214,35 @@ struct RecordingSourceTests {
 
 @Suite("needsMicrophone logic (PR change)")
 struct NeedsMicrophoneLogicTests {
-    // Mirrors the exact expression from RecordingManager.startNewRecording() after the PR:
-    //   let needsMicrophone = source == .microphoneOnly
-    //       || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
-    private func needsMicrophone(source: RecordingSource, includeMicrophone: Bool) -> Bool {
-        source == .microphoneOnly
-            || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
-    }
-
     @Test("microphoneOnly always needs microphone regardless of includeMicrophone flag")
     func microphoneOnlyAlwaysNeeds() {
-        #expect(needsMicrophone(source: .microphoneOnly, includeMicrophone: false) == true)
-        #expect(needsMicrophone(source: .microphoneOnly, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .microphoneOnly, includeMicrophone: false) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .microphoneOnly, includeMicrophone: true) == true)
     }
 
     @Test("coreAudioTap needs microphone only when includeMicrophone is true")
     func coreAudioTapNeedsWhenEnabled() {
-        #expect(needsMicrophone(source: .coreAudioTap, includeMicrophone: true) == true)
-        #expect(needsMicrophone(source: .coreAudioTap, includeMicrophone: false) == false)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .coreAudioTap, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .coreAudioTap, includeMicrophone: false) == false)
     }
 
     @Test("legacyScreenCapture needs microphone only when includeMicrophone is true")
     func legacyScreenCaptureNeedsWhenEnabled() {
-        #expect(needsMicrophone(source: .legacyScreenCapture, includeMicrophone: true) == true)
-        #expect(needsMicrophone(source: .legacyScreenCapture, includeMicrophone: false) == false)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .legacyScreenCapture, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .legacyScreenCapture, includeMicrophone: false) == false)
     }
 
     // Regression: before this PR, coreAudioTap was NOT in the condition, so with includeMicrophone=true
     // it would NOT have triggered needsMicrophone. This test ensures the fix is in place.
     @Test("coreAudioTap with includeMicrophone=true triggers needsMicrophone (regression)")
     func regressionCoreAudioTapWithMic() {
-        #expect(needsMicrophone(source: .coreAudioTap, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .coreAudioTap, includeMicrophone: true) == true)
     }
 
     @Test("boundary: all false inputs give false")
     func allFalseInputs() {
-        #expect(needsMicrophone(source: .coreAudioTap, includeMicrophone: false) == false)
-        #expect(needsMicrophone(source: .legacyScreenCapture, includeMicrophone: false) == false)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .coreAudioTap, includeMicrophone: false) == false)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .legacyScreenCapture, includeMicrophone: false) == false)
     }
 }
 
@@ -261,49 +253,22 @@ struct NeedsMicrophoneLogicTests {
 
 @Suite("hasMicTrack logic (PR change)")
 struct HasMicTrackLogicTests {
-    // Mirrors the exact expression from RecordingManager.startNewRecording() after the PR:
-    //   hasMicTrack: source == .microphoneOnly
-    //       || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
-    private func hasMicTrack(source: RecordingSource, includeMicrophone: Bool) -> Bool {
-        source == .microphoneOnly
-            || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
-    }
-
     @Test("microphoneOnly always sets hasMicTrack")
     func microphoneOnlyAlwaysSets() {
-        #expect(hasMicTrack(source: .microphoneOnly, includeMicrophone: false) == true)
-        #expect(hasMicTrack(source: .microphoneOnly, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .microphoneOnly, includeMicrophone: false) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .microphoneOnly, includeMicrophone: true) == true)
     }
 
     @Test("coreAudioTap sets hasMicTrack only when includeMicrophone is true")
     func coreAudioTapSetsWhenEnabled() {
-        #expect(hasMicTrack(source: .coreAudioTap, includeMicrophone: true) == true)
-        #expect(hasMicTrack(source: .coreAudioTap, includeMicrophone: false) == false)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .coreAudioTap, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .coreAudioTap, includeMicrophone: false) == false)
     }
 
     @Test("legacyScreenCapture sets hasMicTrack only when includeMicrophone is true")
     func legacyScreenCaptureSetsWhenEnabled() {
-        #expect(hasMicTrack(source: .legacyScreenCapture, includeMicrophone: true) == true)
-        #expect(hasMicTrack(source: .legacyScreenCapture, includeMicrophone: false) == false)
-    }
-
-    @Test("hasMicTrack logic matches needsMicrophone logic (they must stay in sync)")
-    func hasMicTrackMatchesNeedsMicrophoneLogic() {
-        let cases: [(RecordingSource, Bool)] = [
-            (.coreAudioTap, false),
-            (.coreAudioTap, true),
-            (.legacyScreenCapture, false),
-            (.legacyScreenCapture, true),
-            (.microphoneOnly, false),
-            (.microphoneOnly, true),
-        ]
-        for (source, includeMic) in cases {
-            let micNeeded = source == .microphoneOnly
-                || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMic)
-            let micTrack = source == .microphoneOnly
-                || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMic)
-            #expect(micNeeded == micTrack, "needsMicrophone and hasMicTrack should match for source=\(source), includeMic=\(includeMic)")
-        }
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .legacyScreenCapture, includeMicrophone: true) == true)
+        #expect(RecordingManager.shouldIncludeMicrophone(for: .legacyScreenCapture, includeMicrophone: false) == false)
     }
 }
 

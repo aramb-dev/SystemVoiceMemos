@@ -28,6 +28,7 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
     // Lock protecting _isPaused and _lastWriteError — both are read from the
     // Core Audio IO callback queue and written from the caller (main actor).
     private let stateLock = NSLock()
+    private let framePositionLock = NSLock()
     private var _isPaused = false
     private var _lastWriteError: (any Error)?
     private var pauseStartedAt: Date?
@@ -195,8 +196,8 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
             let frameCount = self.frameCount(from: inputData)
             guard frameCount > 0 else { return }
 
-            let presentationFrame = self.systemFramePosition
-            self.systemFramePosition += Int64(frameCount)
+            let presentationFrame = self.framePositionLock.withLock { self.systemFramePosition }
+            self.framePositionLock.withLock { self.systemFramePosition += Int64(frameCount) }
 
             do {
                 let sampleBuffer = try self.makeSystemSampleBuffer(
@@ -279,7 +280,7 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
             self.writer = writer
             self.systemInput = systemInput
             self.micInput = micInput
-            self.systemFramePosition = 0
+            self.framePositionLock.withLock { self.systemFramePosition = 0 }
             self.micStartTime = .invalid
             self.micPausedDuration = .zero
         }
@@ -376,11 +377,11 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
             micStartTime = originalTime
             // Snapshot the system track's current position so mic PTSs are placed
             // relative to the same origin as the frame-counted system PTSs.
-            // systemFramePosition is written on callbackQueue; reading it here
-            // (writerQueue) without a lock is safe in practice on Apple platforms
-            // (64-bit aligned read) and the class is already @unchecked Sendable.
+            // systemFramePosition is written on callbackQueue and read on writerQueue;
+            // guard the read with framePositionLock for consistent cross-queue access.
             let sampleRate = CMTimeScale(clientFormat.mSampleRate > 0 ? clientFormat.mSampleRate : 44100)
-            micSystemAnchorOffset = CMTime(value: CMTimeValue(systemFramePosition), timescale: sampleRate)
+            let anchoredFrame = self.framePositionLock.withLock { self.systemFramePosition }
+            micSystemAnchorOffset = CMTime(value: CMTimeValue(anchoredFrame), timescale: sampleRate)
         }
 
         let elapsed = CMTimeSubtract(originalTime, micStartTime)
@@ -538,7 +539,7 @@ final class CoreAudioTapRecorder: @unchecked Sendable {
         systemInput = nil
         micInput = nil
         systemFormatDescription = nil
-        systemFramePosition = 0
+        framePositionLock.withLock { systemFramePosition = 0 }
         micStartTime = .invalid
         micPausedDuration = .zero
         micSystemAnchorOffset = .zero

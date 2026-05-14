@@ -182,7 +182,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             markRecordingStarted()
             return
         case .microphoneOnly:
-            try startMicrophoneOnlyRecording(to: url)
+            try await startMicrophoneOnlyRecording(to: url)
             markRecordingStarted()
             return
         case .legacyScreenCapture:
@@ -270,12 +270,12 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             print("🚀 Starting capture...")
             try await stream.startCapture()
 
-            startCaptureSession(captureSession)
+            await startCaptureSession(captureSession)
 
             print("✅ Capture started successfully!")
             markRecordingStarted()
         } catch {
-            stopCaptureSession(captureSession)
+            await stopCaptureSession(captureSession)
             if writer.status == .writing { writer.cancelWriting() }
             self.stream = nil
             self.writer = nil
@@ -306,9 +306,9 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 includeMicrophone: includeMicrophone
             )
             captureSession = session
-            startCaptureSession(captureSession)
+            await startCaptureSession(captureSession)
         } catch {
-            stopCaptureSession(session)
+            await stopCaptureSession(session)
             captureSession = nil
             await coreAudioTapRecorder.stopRecording()
             throw error
@@ -319,7 +319,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     /// Configure an AAC microphone-only AVAssetWriter, start an AVCaptureSession for the selected microphone, and begin writing audio to the provided file URL.
     /// - Parameter to: Destination file URL for the resulting `.m4a` recording.
     /// - Throws: `RecorderError.writerCantAddInput` if the writer cannot accept the audio input; `RecorderError.noMicrophone` if microphone permission has not been determined; `RecorderError.permissionDenied` if microphone access is denied; `RecorderError.writerStartFailed` if the writer fails to start. Errors thrown by `AVAssetWriter` initializers or `makeMicrophoneCaptureSession()` are propagated.
-    private func startMicrophoneOnlyRecording(to url: URL) throws {
+    private func startMicrophoneOnlyRecording(to url: URL) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .m4a)
         let micSettings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
@@ -347,7 +347,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         self.writer = writer
         audioInput = input
         captureSession = session
-        startCaptureSession(session)
+        await startCaptureSession(session)
         print("✅ Microphone-only capture started successfully!")
     }
 
@@ -443,7 +443,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             if #available(macOS 14.2, *) {
                 coreAudioTapRecorder.pauseRecording()
             }
-            stopCaptureSession(captureSession)
+            await stopCaptureSession(captureSession)
             isPaused = true
             recordingState = .paused
             pauseStartDate = Date()
@@ -453,7 +453,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
         do {
             try await stream?.stopCapture()
-            stopCaptureSession(captureSession)
+            await stopCaptureSession(captureSession)
             isPaused = true
             recordingState = .paused
             pauseStartDate = Date()
@@ -467,7 +467,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
     ///
     /// Restarts the capture stream and accumulates pause duration.
     /// Resumes an in-progress, paused recording and updates recording timing and state.
-    /// 
+    ///
     /// If a pause was active, accumulates the wall-clock pause time into `pausedDuration` and converts it
     /// to a `CMTime` added to `pausedCMTimeDuration` for sample timestamp adjustment. Then resumes capture
     /// according to the current `activeRecordingSource`: for the core-audio-tap path the tap is resumed
@@ -490,7 +490,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
                 if #available(macOS 14.2, *) {
                     try coreAudioTapRecorder.resumeRecording()
                 }
-                startCaptureSession(captureSession)
+                await startCaptureSession(captureSession)
                 isPaused = false
                 recordingState = .recording
                 startDurationTimer()
@@ -498,7 +498,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
             }
 
             try await stream?.startCapture()
-            startCaptureSession(captureSession)
+            await startCaptureSession(captureSession)
             isPaused = false
             recordingState = .recording
             startDurationTimer()
@@ -557,7 +557,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         stopDurationTimer()
 
         if source == .coreAudioTap {
-            stopCaptureSession(captureSession)
+            await stopCaptureSession(captureSession)
             if #available(macOS 14.2, *) {
                 await coreAudioTapRecorder.stopRecording()
                 if let writeError = coreAudioTapRecorder.lastWriteError {
@@ -572,7 +572,7 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
         // Stop capture first
         do {
             try await stream?.stopCapture()
-            stopCaptureSession(captureSession)
+            await stopCaptureSession(captureSession)
         } catch {
             print("stopCapture error:", error)
         }
@@ -613,17 +613,27 @@ final class SystemAudioRecorder: NSObject, ObservableObject {
 
 extension SystemAudioRecorder {
     /// Starts `session.startRunning()` on `sessionControlQueue` so the blocking
-    /// call never runs on the main actor / main thread.
-    private func startCaptureSession(_ session: AVCaptureSession?) {
+    /// call never runs on the main actor / main thread, and awaits completion.
+    private func startCaptureSession(_ session: AVCaptureSession?) async {
         guard let s = session else { return }
-        sessionControlQueue.async { s.startRunning() }
+        await withCheckedContinuation { continuation in
+            sessionControlQueue.async {
+                s.startRunning()
+                continuation.resume()
+            }
+        }
     }
 
     /// Stops `session.stopRunning()` on `sessionControlQueue` so the blocking
-    /// call never runs on the main actor / main thread.
-    private func stopCaptureSession(_ session: AVCaptureSession?) {
+    /// call never runs on the main actor / main thread, and awaits completion.
+    private func stopCaptureSession(_ session: AVCaptureSession?) async {
         guard let s = session else { return }
-        sessionControlQueue.async { s.stopRunning() }
+        await withCheckedContinuation { continuation in
+            sessionControlQueue.async {
+                s.stopRunning()
+                continuation.resume()
+            }
+        }
     }
 }
 

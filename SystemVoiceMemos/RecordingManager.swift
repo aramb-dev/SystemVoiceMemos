@@ -320,9 +320,14 @@ class RecordingManager {
         return dir.appendingPathComponent(recording.fileName)
     }
 
+    /// Shared predicate for whether a recording source should include a microphone track.
+    nonisolated static func shouldIncludeMicrophone(for source: RecordingSource, includeMicrophone: Bool) -> Bool {
+        source == .microphoneOnly
+            || ((source == .coreAudioTap || source == .legacyScreenCapture) && includeMicrophone)
+    }
+
     private func shouldIncludeMicrophone(for source: RecordingSource) -> Bool {
         let micEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.includeMicrophone)
-        return source == .microphoneOnly
-            || ((source == .coreAudioTap || source == .legacyScreenCapture) && micEnabled)
+        return Self.shouldIncludeMicrophone(for: source, includeMicrophone: micEnabled)
     }
 }
